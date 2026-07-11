@@ -1,0 +1,11 @@
+[package]
+name = "spectrafit-models"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+spectrafit-types = { workspace = true }
+libm = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }

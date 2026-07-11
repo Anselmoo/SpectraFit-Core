@@ -1,0 +1,33 @@
+name: Docstring and Skill Validators
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  docstring-and-validators:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pyyaml
+
+      - name: Run Ruff docstring checks
+        run: ruff check . --select D
+
+      - name: Run skill validators
+        run: |
+          python .claude/skills/docstring-enforcer/scripts/validate_docstrings.py python tests
+          python .claude/skills/benchmark-scenario-generator/scripts/validate_scenario.py .claude/skills/benchmark-scenario-generator
+          python .claude/skills/rust-model-scaffolder/scripts/validate_model_output.py .claude/skills/rust-model-scaffolder

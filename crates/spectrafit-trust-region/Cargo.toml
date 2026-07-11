@@ -1,0 +1,13 @@
+[package]
+name = "spectrafit-trust-region"
+version = "0.1.0"
+edition = "2021"
+description = "faer-native trust-region core shared by spectrafit-core's LM/TRF/dogleg/geodesic solvers"
+
+[dependencies]
+spectrafit-types = { workspace = true }
+faer = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }

@@ -1,0 +1,72 @@
+# Defaults shared across every job. Pulled in by .gitlab-ci.yml via `include:`.
+# All scripts in child files use `|` block scalars so shell colons
+# (echo "ERROR: …") cannot leak into YAML's mapping parser.
+#
+# Cycle 31 — baked CI image migration. All apt/rustup/cargo-llvm-cov
+# installation moves into .gitlab/docker/Dockerfile.ci (built by the
+# `build:ci-image` .pre job). The before_script shrinks to a ~10-line
+# tool-check that surfaces missing binaries in the first 5 lines of any
+# job log. No more per-job apt-get, no more per-job rustup, no more
+# per-job cargo-llvm-cov tarball fetch.
+#
+# Cycle 30L's GPG-repair sequence is intentionally absent — it was a
+# workaround for flaky Debian mirrors inside the nikolaik base image.
+# Since apt now runs only at IMAGE BUILD TIME (inside Dockerfile.ci),
+# the GPG/mirror race cannot occur in pipeline jobs.
+#
+# CARGO_HOME points under $CI_PROJECT_DIR so the project-tree cache
+# (registry index, build artifacts) persists across pipeline jobs via
+# GitLab's cache: blocks. The Rust toolchain itself lives in
+# /usr/local/rustup (baked into the image) and is NOT under $CI_PROJECT_DIR.
+# RUSTUP_HOME is therefore intentionally absent from variables: here —
+# setting it would shadow the baked /usr/local/rustup and force every job
+# to re-install the toolchain from the cache, defeating the baked image.
+#
+# RUSTFLAGS: mold linker is declared as a top-level pipeline variable so
+# every cargo invocation (clippy, test, build) benefits without each job
+# having to remember to export it.
+
+default:
+  image: "$CI_REGISTRY_IMAGE/ci:latest"
+  before_script:
+    - |
+      set -e
+      # Tool-check only — everything is pre-installed in the baked image.
+      # Fail fast with a clear message if the image is stale or mis-tagged.
+      for tool in rustc cargo cargo-llvm-cov cmake gfortran cc mold node npm uv python3; do
+        command -v "$tool" >/dev/null 2>&1 || {
+          echo "ERROR before_script: '$tool' missing from $CI_REGISTRY_IMAGE/ci:latest"
+          echo "ERROR Rebuild the image: trigger build:ci-image manually or push a Dockerfile.ci change."
+          exit 1
+        }
+      done
+      # $CARGO_HOME/bin on PATH so project-tree cargo installs (if any) are found.
+      export PATH="$CARGO_HOME/bin:$HOME/.local/bin:$PATH"
+      echo "tools OK (image: $CI_REGISTRY_IMAGE/ci:latest)"
+
+variables:
+  # Project-tree CARGO_HOME: GitLab runner can cache $CI_PROJECT_DIR subtrees.
+  # $HOME/.cargo is NOT cacheable on shared runners (Andy Balaam pattern).
+  # RUSTUP_HOME is intentionally absent — see header comment above.
+  CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+  # mold linker: applied to every cargo invocation in the pipeline.
+  # The image already has mold installed; this flag wires it into cargo's cc driver.
+  RUSTFLAGS: "-C link-arg=-fuse-ld=mold"
+  # Each job declares its own cache: block (see 10-setup.yml / 20-lint.yml /
+  # 30-test.yml / 40-coverage.yml). No top-level cache: here — a single shared
+  # cache caused cache poisoning between setup (pull-push) and lint (pull-only)
+  # jobs when they ran concurrently in Cycle 30.
+
+# ---------------------------------------------------------------------------
+# Shared rule set (F13 follow-up, 2026-06-27): run a job in BOTH merge-request
+# pipelines AND branch/tag pipelines, so the full CI gates every MR (not just
+# the lightweight preview job). Jobs reference it with:
+#     rules: !reference [.rules_default, rules]
+# Paired with the top-level `workflow:` block in .gitlab-ci.yml, which suppresses
+# the duplicate branch pipeline while an MR is open (no double-runs).
+# ---------------------------------------------------------------------------
+.rules_default:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
