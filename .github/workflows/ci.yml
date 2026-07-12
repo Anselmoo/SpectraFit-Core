@@ -20,15 +20,15 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
@@ -38,7 +38,7 @@ jobs:
           components: clippy
 
       - name: Cache Cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -66,7 +66,7 @@ jobs:
   citation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate CITATION.cff
         uses: citation-file-format/cffconvert-github-action@2.0.0
         with:
@@ -78,20 +78,20 @@ jobs:
       matrix:
         python-version: ["3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
       - name: Cache Cargo artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -293,7 +293,7 @@ jobs:
 
       - name: Upload Coverage Atlas
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-atlas-${{ github.sha }}
           path: coverage-atlas.html
@@ -302,7 +302,7 @@ jobs:
 
       - name: Upload Python coverage XML
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-coverage-${{ github.sha }}
           path: coverage.xml
@@ -311,7 +311,7 @@ jobs:
 
       - name: Upload Rust coverage lcov
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rust-coverage-${{ github.sha }}
           path: target/llvm-cov/lcov.info
@@ -321,15 +321,15 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           # No uv cache here: the web job only spins up the FastAPI server briefly
           # (it does not compile Rust or run the full suite), so the cache saves almost
@@ -340,7 +340,7 @@ jobs:
           enable-cache: false
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: npm
@@ -396,7 +396,7 @@ jobs:
 
       - name: Upload web coverage (lcov)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-coverage-${{ github.sha }}
           path: web/coverage/lcov.info
@@ -409,7 +409,7 @@ jobs:
 
       - name: Upload web bundle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-report-${{ github.sha }}
           path: web/dist
@@ -420,20 +420,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
       - name: Restore Cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -481,7 +481,7 @@ jobs:
 
       - name: Upload run artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: regression-gate-${{ github.sha }}
           path: .spectrafit_reports/benchmark/**
@@ -501,15 +501,15 @@ jobs:
     needs: [build-and-test, web]
     if: always()
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: false
 
@@ -517,19 +517,19 @@ jobs:
         run: uv sync --extra benchmark
 
       - name: Download python coverage XML
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: python-coverage-${{ github.sha }}
           path: .
 
       - name: Download rust lcov
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: rust-coverage-${{ github.sha }}
           path: target/llvm-cov/
 
       - name: Download web lcov
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: web-coverage-${{ github.sha }}
           path: web/coverage/
@@ -545,7 +545,7 @@ jobs:
 
       - name: Upload fused Atlas
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-atlas-fused-${{ github.sha }}
           path: coverage-atlas-fused.html
