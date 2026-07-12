@@ -1,0 +1,57 @@
+# Deploy + preview stages. `pages` is reserved by GitLab Pages: output MUST go
+# to `public/`. Publishes the Atlas at `/`, the web bundle at `/web/`, and (when
+# a benchmark run exists in the artifact tree) the self-contained report at
+# `/report.html`.
+#
+# build:report_html is listed as an optional need so its artifact
+# (artifacts/report.html) is downloaded when available. The `|| true` guards on
+# every fallible command ensure Pages deploy never fails on optional content.
+
+pages:
+  stage: pages
+  needs:
+    - job: coverage:atlas
+      optional: true
+    - job: build:web
+      optional: true
+    - job: build:report_html
+      optional: true
+  script:
+    - |
+      mkdir -p public/web
+      cp coverage-atlas.html public/index.html || true
+      cp -r web/dist/. public/web/ 2>/dev/null || true
+      if [ -f artifacts/report.html ]; then
+        cp artifacts/report.html public/report.html
+        echo "Copied benchmark report.html -> public/report.html ($(du -h public/report.html | cut -f1))"
+      else
+        echo "No benchmark report.html found — skipping"
+      fi
+  artifacts:
+    paths:
+      - public/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# MR-only — reviewers download the bundle directly from the pipeline without
+# triggering a Pages deploy.
+preview-artifacts:
+  stage: preview
+  needs:
+    - job: coverage:atlas
+      optional: true
+    - job: build:web
+      optional: true
+  script:
+    - |
+      mkdir -p preview/web
+      cp coverage-atlas.html preview/ || true
+      cp -r web/dist/. preview/web/ 2>/dev/null || true
+  artifacts:
+    name: "preview-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 7 days
+    when: always
+    paths:
+      - preview/
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

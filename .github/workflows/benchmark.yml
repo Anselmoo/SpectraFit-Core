@@ -1,0 +1,99 @@
+name: Benchmark
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # Monday 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      reps:
+        description: 'Timing repetitions per case'
+        default: '10'
+        required: false
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install LAPACK (for varpro on Linux)
+        run: sudo apt-get install -y liblapack-dev libopenblas-dev
+
+      - name: Sync dependencies
+        # Weekly run includes jax (the third backend in the full report).
+        run: uv sync --extra benchmark --extra jax
+
+      - name: Build extension (release profile for fair timing)
+        run: uv run maturin develop --release
+
+      - name: Run benchmark (emits results.json + manifest.json)
+        env:
+          REPS: ${{ github.event.inputs.reps || '10' }}
+        run: PYTHONPATH=python uv run python -m oracles.cli run --reps "$REPS" --mc 30
+
+      - name: Regression gate (spectrafit vs lmfit)
+        # Two-phase gate: first the structured JSON for the GH Actions summary
+        # (and the artifact uploaded below — exit ignored so we always emit
+        # the breakdown), then the human-readable run that decides job status.
+        run: |
+          set +e
+          PYTHONPATH=python uv run python -m oracles.cli gate --json \
+            | tee gate.json
+          set -e
+          if [ -s gate.json ]; then
+            {
+              echo "### Benchmark gate"
+              echo ""
+              echo '```json'
+              cat gate.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          PYTHONPATH=python uv run python -m oracles.cli gate
+
+      - name: Build self-contained report.html
+        run: PYTHONPATH=python uv run poe bundle_report_only
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.sha }}
+          # The run-centric tree: results.json + manifest.json + report.html.
+          path: .spectrafit_reports/benchmark/**
+          retention-days: 90
+
+      - name: Upload report.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report-${{ github.sha }}
+          path: .spectrafit_reports/benchmark/**/report.html
+          retention-days: 90
+          if-no-files-found: warn
