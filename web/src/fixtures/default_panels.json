@@ -1,0 +1,255 @@
+[
+  {
+    "id": "spectrum",
+    "title": "Spectrum \u00b7 guess \u00b7 fit",
+    "desc": "Reference (red), initial guess (dashed), and each backend's fitted curve.",
+    "chartKind": "line",
+    "source": "spectrumSeries",
+    "layout": {
+      "wide": true,
+      "height": 300
+    }
+  },
+  {
+    "id": "residuals",
+    "title": "Residuals",
+    "desc": "Observed \u2212 fitted per backend; unstructured scatter about zero means a clean fit.",
+    "chartKind": "line",
+    "source": "residualSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "peaks",
+    "title": "Per-peak contributions",
+    "desc": "Reconstructed model components, colored by component index.",
+    "chartKind": "line",
+    "source": "peakSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "ecdf-resid",
+    "title": "Residual calibration (ECDF)",
+    "desc": "Empirical CDF of |residual|/\u03c3 \u2014 a curve further left is better-calibrated.",
+    "chartKind": "ecdf",
+    "source": "ecdfResidSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "param-error",
+    "title": "Parameter recovery error",
+    "desc": "Relative error (%) per parameter \u00d7 backend. Greener is closer to truth.",
+    "chartKind": "heatmap",
+    "source": "paramErrorMatrix",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "pull-calibration",
+    "title": "Uncertainty calibration (pull)",
+    "desc": "(estimate \u2212 truth)/\u03c3; a calibrated solver places \u224868% inside the \u00b11\u03c3 band.",
+    "chartKind": "violin",
+    "source": "pullRows",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "param-sigma",
+    "title": "Reported parameter \u03c3",
+    "desc": "Fitted 1\u03c3 uncertainty per parameter \u00d7 backend. Lower (greener) is more precise.",
+    "chartKind": "heatmap",
+    "source": "paramSigmaMatrix",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "corr-matrix",
+    "title": "Parameter correlation",
+    "desc": "Correlation of the featured backend's parameters. Strong amplitude\u2013sigma coupling within a peak is expected.",
+    "chartKind": "heatmap",
+    "source": "corrMatrix",
+    "layout": {
+      "wide": true,
+      "height": 340
+    }
+  },
+  {
+    "id": "convergence",
+    "title": "Convergence",
+    "desc": "Objective cost vs iteration (log). Lower and steeper is better.",
+    "chartKind": "line",
+    "source": "convSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "gradient",
+    "title": "Gradient norm history",
+    "desc": "\u2016\u2207cost\u2016 over iterations; rapid decay to the floor signals a well-conditioned solve.",
+    "chartKind": "line",
+    "source": "gradSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "conv-efficiency",
+    "title": "Convergence efficiency",
+    "desc": "Cost reduction per iteration \u2014 how much objective each step buys.",
+    "chartKind": "line",
+    "source": "convEffSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "stability-r2",
+    "title": "R\u00b2 stability vs runs",
+    "desc": "Mean \u00b11\u03c3 band of R\u00b2 as Monte-Carlo runs accumulate. A tighter band is more reproducible.",
+    "chartKind": "band",
+    "source": "stabilityR2Bands",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "stability-iters",
+    "title": "Iteration-count stability vs runs",
+    "desc": "Mean \u00b11\u03c3 band of iterations to convergence across repeated runs.",
+    "chartKind": "band",
+    "source": "stabilityItersBands",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "param-spread",
+    "title": "Estimate spread vs runs",
+    "desc": "Parameter-estimate spread (mean \u00b11\u03c3) shrinking as runs accumulate \u2014 the reproducibility envelope.",
+    "chartKind": "band",
+    "source": "paramSpreadBands",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "model-selection-aic",
+    "title": "Solver-consensus AIC",
+    "desc": "\u0394AIC per backend vs the best-fit AIC in the run. All backends fit the SAME model here; near-zero means they converged to the same minimum (good \u2014 not 'this model is uniquely preferred', that's classical model selection across different shapes).",
+    "chartKind": "lollipop",
+    "source": "modelSelectionAic",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "timing-box",
+    "title": "Runtime stability (box)",
+    "desc": "Per-call runtime distribution over timing repetitions (log). Tight boxes mean predictable latency.",
+    "chartKind": "box",
+    "source": "timingBoxRows",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "ecdf-time",
+    "title": "Runtime reliability (ECDF)",
+    "desc": "Empirical CDF of per-call runtime per backend.",
+    "chartKind": "ecdf",
+    "source": "ecdfTimeSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "accuracy-dist",
+    "title": "Accuracy distribution",
+    "desc": "Reduced-\u03c7\u00b2 spread over repetitions; a narrow violin near 1 is a stable, well-scaled fit.",
+    "chartKind": "violin",
+    "source": "accuracyRows",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "warmup",
+    "title": "Cold \u2192 hot amortization",
+    "desc": "Per-run time as the one-off cost amortizes over many runs (log\u2013log).",
+    "chartKind": "line",
+    "source": "warmupSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "scaling",
+    "title": "Scaling \u2014 runtime vs N",
+    "desc": "Hot runtime vs spectrum length (log\u2013log), with the CPU\u2194GPU crossover marked.",
+    "chartKind": "line",
+    "source": "scalingSeries",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "suite-speed",
+    "title": "Suite speedup distribution",
+    "desc": "Per-backend speedup across all benchmark cases.",
+    "chartKind": "violin",
+    "source": "suiteSpeedRows",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "suite-accuracy",
+    "title": "Suite accuracy distribution",
+    "desc": "Per-backend R\u00b2 across all cases \u2014 tightly clustered near unity.",
+    "chartKind": "violin",
+    "source": "suiteAccRows",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  },
+  {
+    "id": "suite-tradeoff",
+    "title": "Accuracy vs speed tradeoff",
+    "desc": "Every case \u00d7 backend: speedup (x) vs R\u00b2 (y). Up-and-to-the-right is better.",
+    "chartKind": "scatter",
+    "source": "suiteTradeoffPoints",
+    "layout": {
+      "wide": false,
+      "height": 230
+    }
+  }
+]

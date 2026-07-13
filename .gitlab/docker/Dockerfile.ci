@@ -1,0 +1,113 @@
+# Baked CI image for spectrafit-core pipelines (Cycle 31).
+#
+# Base: nikolaik/python-nodejs:python3.13-nodejs22-bookworm
+#   Bakes Python 3.13, Node 22, npm, uv, pip, poetry, pipenv.
+#   We ADD: Rust stable + llvm-tools-preview, cargo-llvm-cov (prebuilt),
+#   cmake, gfortran, liblapack-dev, libopenblas-dev, mold.
+#
+# Build-time arg lets CI pin a specific cargo-llvm-cov release without
+# editing the Dockerfile body:
+#   docker build --build-arg LLVM_COV_VERSION=v0.8.7 ...
+#
+# Every subsequent pipeline skips ALL apt/rustup/cargo-install steps —
+# the image already carries them. Per-pipeline cost recovery: ~18–25 min.
+#
+# To rebuild the image (manual bootstrap or after a dep bump):
+#   docker build --build-arg LLVM_COV_VERSION=v0.8.7 \
+#     -t "$CI_REGISTRY_IMAGE/ci:latest" \
+#     -f .gitlab/docker/Dockerfile.ci .
+#   docker push "$CI_REGISTRY_IMAGE/ci:latest"
+# OR: manually trigger the `build:ci-image` job in GitLab CI.
+
+ARG LLVM_COV_VERSION=v0.8.7
+ARG RUST_VERSION=1.96.0
+ARG PLAYWRIGHT_VERSION=1.60.0
+
+FROM nikolaik/python-nodejs:python3.13-nodejs22-bookworm
+
+ARG LLVM_COV_VERSION
+ARG RUST_VERSION
+ARG PLAYWRIGHT_VERSION
+
+# 1. System build deps — cmake + gfortran + LAPACK/OpenBLAS for netlib-src
+#    (transitive dep of spectrafit-varpro → nalgebra-lapack).
+#    mold: faster linker (~25–40 % link-time reduction on large Rust workspaces).
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        build-essential pkg-config cmake gfortran \
+        liblapack-dev libopenblas-dev \
+        mold && \
+    rm -rf /var/lib/apt/lists/*
+
+# 1b. Playwright chromium SYSTEM LIBRARIES (libnspr4, libnss3, libatk*, …).
+#     The chromium BINARY is installed per-job (`npx playwright install
+#     chromium`), but its shared-library deps are system packages that must be
+#     baked here. Without them chromium's launch crashes with
+#     `libnspr4.so: cannot open shared object file` — a hard launch failure,
+#     not a clean test skip — which reds the BLOCKING report_e2e render gate in
+#     .gitlab/50-build.yml (Invariant 0 / andon-strict). `playwright
+#     install-deps` resolves the exact apt set for the installed Playwright
+#     version, so we never hand-maintain the libnspr4/libnss3/libatk list. We
+#     pin the Playwright major to match web/package.json (@playwright/test
+#     ^1.60.0) so this layer's content stays deterministic across rebuilds
+#     (same rationale as the pinned RUST_VERSION below). `--with-deps` here
+#     would also download the browser binary into root's cache; we only need
+#     the system libs at image-build time, so `install-deps` is the lean
+#     choice. apt + root are available on this Debian-bookworm base.
+RUN npx --yes "playwright@${PLAYWRIGHT_VERSION}" install-deps chromium && \
+    rm -rf /var/lib/apt/lists/* /root/.npm
+
+# 2. Rust stable + llvm-tools-preview component.
+#    RUSTUP_HOME + CARGO_HOME placed under /usr/local so they're on the
+#    default PATH and not inside $CI_PROJECT_DIR (which the runner mounts fresh
+#    each job). Individual jobs still set CARGO_HOME=$CI_PROJECT_DIR/.cargo for
+#    the project-tree cache (registry index, build artifacts); the toolchain
+#    itself stays baked here.
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+# --profile minimal: skip rust-docs + rust source (~150-200 MB saved).
+# Only rustc + cargo + the explicitly-named components land on disk; CI does
+# not read docs or source.
+#
+# Components:
+#   • llvm-tools-preview — REQUIRED for cargo-llvm-cov.
+#   • clippy — REQUIRED for the lint:rust job (`cargo clippy --workspace`);
+#     not in the default minimal profile.
+#
+# --default-toolchain is pinned to $RUST_VERSION (not the floating `stable`
+# tag) so the layer's effective content stays deterministic across pipeline
+# runs. Cycle 31 hotfix 4 (pipeline #13 Kaniko cache analysis): without
+# this, a Rust release silently invalidates the cache despite the RUN
+# command text being identical. Bump RUST_VERSION via the docker-build.yml
+# build-arg when intentionally moving to a new toolchain.
+RUN curl --proto '=https' --tlsv1.2 -sSfL --retry 3 --retry-delay 5 \
+        https://sh.rustup.rs \
+    | sh -s -- -y --profile minimal --default-toolchain "${RUST_VERSION}" \
+        --component llvm-tools-preview \
+        --component clippy \
+        --no-modify-path && \
+    rustup show
+
+# 3. Prebuilt cargo-llvm-cov from taiki-e's releases.
+#    Static binary — no compile step, ~7 MB download at image build time
+#    instead of a ~2–3 min `cargo install` per job.
+RUN curl -sSfL --retry 3 --retry-delay 5 \
+        "https://github.com/taiki-e/cargo-llvm-cov/releases/download/${LLVM_COV_VERSION}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz" \
+    | tar -xz -C /usr/local/cargo/bin/
+
+# 4. Smoke-check: fail the image build early if anything is missing.
+RUN for tool in rustc cargo cargo-llvm-cov cmake gfortran cc mold node npm uv python3; do \
+        command -v "$tool" || { echo "MISSING: $tool"; exit 1; }; \
+    done && \
+    echo "smoke-check passed" && \
+    rustc --version && cargo --version && \
+    cargo llvm-cov --version && \
+    cmake --version | head -1 && mold --version && \
+    node --version && npm --version && \
+    uv --version && python3 --version
+# cargo-llvm-cov is invoked as a cargo subcommand (`cargo llvm-cov ...`), not a
+# standalone binary. Running `cargo-llvm-cov --version` directly hits its
+# subcommand router and errors `expected subcommand 'llvm-cov'`. Pipeline #12
+# revealed this — the image built cleanly all the way through this smoke check.

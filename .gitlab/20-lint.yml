@@ -1,0 +1,59 @@
+# Lint stage — cheap checks that surface obvious drift before the expensive tests.
+# Cycle 31: NEEDS_BUILD_DEPS removed — cmake/gfortran/mold are baked into the
+# CI image. Each job declares only the cache bucket(s) it needs.
+#
+# Cycle 31 hotfix 8: all rust-* caches are now .cargo/-only (no target/).
+# Pipeline #18 ENOSPC mid-rustc forced the change; each Rust job rebuilds from
+# a warm cargo registry. Cost: ~2-3 min per Rust job; benefit: bounded disk.
+
+lint:python:
+  rules: !reference [.rules_default, rules]
+  stage: lint
+  needs: [setup]
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      # `--no-sync` skips uv's default-re-resolve-on-run, which would otherwise
+      # try to install the local spectrafit-core editable wheel (triggering
+      # maturin → netlib-src → cmake). The .venv artifact from setup already
+      # has ruff + ty + every dep; lint:python just runs the binaries.
+      UV_CACHE_DIR=.uv-cache uv run --no-sync ruff check .
+      UV_CACHE_DIR=.uv-cache uv run --no-sync ty check python/oracles python/spectrafit_core
+
+lint:rust:
+  rules: !reference [.rules_default, rules]
+  stage: lint
+  needs: [setup]
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .cargo/
+      # Cycle 31 hotfix 8: target/ removed from the rust-* cache pipeline-wide.
+      # Pulling a 1-2 GB target/ + writing it back on every job overflowed GWDG
+      # runner disk in pipeline #18 (ENOSPC mid-rustc on `syn`/`serde_derive`).
+      # Each job rebuilds from a warm cargo registry; .cargo/ alone is small
+      # and high-value. The clippy → test:rust target/ warm-handoff is gone,
+      # but test:rust under hotfix 8 also no longer pulls target/, so the
+      # handoff was dead weight anyway.
+      policy: pull
+  script:
+    - |
+      cargo clippy --workspace --all-targets -- -D warnings
+
+lint:web:
+  rules: !reference [.rules_default, rules]
+  stage: lint
+  needs: [setup]
+  cache:
+    - key: "web-$CI_COMMIT_REF_SLUG"
+      paths:
+        - web/node_modules/
+      policy: pull
+  script:
+    - |
+      cd web && npm run typecheck

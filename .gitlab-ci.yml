@@ -1,0 +1,60 @@
+# GitLab CI — primary pipeline for spectrafit-core (GitLab MPCDF is the
+# primary development host and CI source of truth).
+# Remote: https://gitlab.mpcdf.mpg.de/anhahn/spectrafit-core.git
+#
+# GitHub (Anselmoo/spectrafit-core) carries a public, history-free snapshot
+# mirror of `main` published via the manual `publish:github` job in
+# .gitlab/70-publish.yml — it does not run CI of its own.
+#
+# Cross-language coverage design (mirrors the cjermain pattern from ci.yml):
+#   1. `cargo llvm-cov show-env --sh` sets LLVM_PROFILE_FILE, RUSTC_WRAPPER,
+#      and CARGO_LLVM_COV_TARGET_DIR in the current shell.
+#   2. `uv run maturin develop` rebuilds the PyO3 extension under instrumentation.
+#   3. `cargo test` and `pytest` both write .profraw files into the same target dir.
+#   4. `cargo llvm-cov report --lcov` merges all profile data into one lcov.info.
+#   This means the PyO3 boundary (crates/spectrafit-core) appears in Rust coverage
+#   even when exercised only through the Python test suite.
+#
+# File layout — `.gitlab/` carries one yaml per stage-group so every job sits in
+# a small focused file with `|` block scalars (no `: ` ambiguity in shell strings).
+#
+# Required CI/CD variables (set in GitLab MPCDF project settings):
+#   None for the core pipeline. If you add release-artifact upload later,
+#   use $CI_JOB_TOKEN (built-in) — do NOT commit any PAT or API key here.
+#   GITHUB_TOKEN — a GitHub fine-grained PAT (repo: Anselmoo/spectrafit-core,
+#   permission: Contents read/write), masked + protected + hidden, used only
+#   by the manual publish:github job in .gitlab/70-publish.yml.
+
+stages:
+  - setup
+  - lint
+  - test
+  - coverage
+  - build
+  - pages
+  - preview
+  - publish
+
+# Pipeline-creation rules (F13 follow-up, 2026-06-27): run the full pipeline for
+# merge requests AND branch pushes/tags. The middle `when: never` clause prevents
+# a duplicate *branch* pipeline while an MR is open for that branch — the MR
+# pipeline covers it — so the full CI gates every MR without double-running.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+include:
+  - local: .gitlab/docker-build.yml
+  - local: .gitlab/00-defaults.yml
+  - local: .gitlab/10-setup.yml
+  - local: .gitlab/20-lint.yml
+  - local: .gitlab/30-test.yml
+  - local: .gitlab/40-coverage.yml
+  - local: .gitlab/50-build.yml
+  - local: .gitlab/55-deep-bench.yml
+  - local: .gitlab/60-pages.yml
+  - local: .gitlab/70-publish.yml

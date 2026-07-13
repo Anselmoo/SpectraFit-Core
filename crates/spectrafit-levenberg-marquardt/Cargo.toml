@@ -1,0 +1,13 @@
+[package]
+name = "spectrafit-levenberg-marquardt"
+version = "0.1.0"
+edition = "2021"
+description = "Levenberg–Marquardt family (LM / TRF / geodesic) on the faer-native trust-region framework"
+
+[dependencies]
+spectrafit-trust-region = { workspace = true }
+faer = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+spectrafit-types = { workspace = true }

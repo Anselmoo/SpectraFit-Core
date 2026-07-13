@@ -1,0 +1,68 @@
+# Coverage stage — promote the lcov.info that test:python emits, then fuse all
+# three continents into the Coverage Atlas (the navigable map sized by LOC,
+# coloured by coverage %).
+#
+# Cycle 31 hotfix 7 (proper): GWDG runners have no shared cache server, so
+# cross-job state transfer of profraw + instrumented binaries via cache was
+# unreliable. The merged Rust lcov + workspace/per-crate gates moved INTO
+# test:python (where profraw and binaries are guaranteed to be on the same
+# runner). This file is now reduced to (1) promoting the lcov.info to a
+# 14-day artifact (test:python's expire is 1 day) and (2) fusing python +
+# rust + web coverage into the Atlas. Supersedes hotfix 6's
+# `allow_failure: true` workaround.
+
+# Thin promotion job: extend the lcov.info lifetime to 14 days so the Coverage
+# Atlas + downstream consumers can be regenerated after test:python's 1-day
+# artifact has expired. The actual gates fire in test:python.
+coverage:rust-lcov:
+  rules: !reference [.rules_default, rules]
+  stage: coverage
+  needs:
+    - job: test:python:rust-cov
+      artifacts: true
+  script:
+    - |
+      test -f target/llvm-cov/lcov.info || {
+        echo "ERROR target/llvm-cov/lcov.info missing — test:python did not emit it."
+        echo "ERROR The merged Rust lcov moved into test:python in Cycle 31 hotfix 7."
+        exit 1
+      }
+      echo "Rust lcov OK: $(wc -l < target/llvm-cov/lcov.info) lines, $(du -h target/llvm-cov/lcov.info | cut -f1)"
+  artifacts:
+    expire_in: 14 days
+    paths:
+      - target/llvm-cov/lcov.info
+
+# Atlas always uploads — the artifact is the deliverable. allow_failure so a
+# script-level glitch doesn't gate the pipeline once the individual gates passed.
+coverage:atlas:
+  rules: !reference [.rules_default, rules]
+  stage: coverage
+  needs:
+    - job: test:python:pytest
+      artifacts: true
+    - job: coverage:rust-lcov
+      artifacts: true
+    - job: test:web
+      artifacts: true
+  allow_failure: true
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      # `--no-sync` so uv doesn't re-install the local spectrafit-core editable
+      # wheel (triggers maturin + cmake). The Atlas script is pure Python.
+      UV_CACHE_DIR=.uv-cache uv run --no-sync python scripts/coverage_atlas.py \
+        --python coverage.xml \
+        --rust target/llvm-cov/lcov.info \
+        --web web/coverage/lcov.info \
+        --out coverage-atlas.html
+  artifacts:
+    expire_in: 14 days
+    when: always
+    paths:
+      - coverage-atlas.html

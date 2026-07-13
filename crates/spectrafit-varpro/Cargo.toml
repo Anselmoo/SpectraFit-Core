@@ -1,0 +1,21 @@
+[package]
+name = "spectrafit-varpro"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+spectrafit-types = { workspace = true }
+spectrafit-models = { workspace = true }
+spectrafit-graph = { workspace = true }
+nalgebra = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+varpro = { workspace = true, features = ["lapack-accelerate"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+varpro = { workspace = true, features = ["lapack-netlib"] }
+
+[dev-dependencies]
+approx = { workspace = true }
+serde_json = { workspace = true }

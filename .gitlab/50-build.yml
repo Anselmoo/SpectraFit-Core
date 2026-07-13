@@ -1,0 +1,124 @@
+# Build stage — production web bundle.
+#
+# Cycle 31: declare the per-job cache bucket the build needs. The Cycle 31
+# baked image carries node + npm, but web/node_modules is a project-tree
+# artifact populated by `setup` (10-setup.yml) into the `web-*` cache
+# bucket. Pipeline #13 surfaced the gap — `build:web` ran `npm run build`
+# without web/node_modules in the working tree and died with
+# `sh: 1: tsc: not found` (the build script invokes `tsc --noEmit && vite
+# build`, where `tsc` lives in `web/node_modules/.bin/`). Mirrors the cache
+# wiring `test:web` already has in `30-test.yml`.
+
+build:web:
+  rules: !reference [.rules_default, rules]
+  stage: build
+  # Cycle 31 hotfix 7: depend on `setup` (not just test:web) so we inherit its
+  # web/node_modules/ ARTIFACT — GWDG runners have no shared cache server
+  # ("Failed to extract cache" in pipeline #16 when build:web landed on a
+  # runner that hadn't seen the web-* cache). Artifacts ARE cross-runner;
+  # cache on GWDG is local-only. test:web stays in needs because we still
+  # want stage ordering enforced.
+  needs:
+    - job: setup
+      artifacts: true
+    - job: test:web
+      artifacts: false
+  cache:
+    - key: "web-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - web/node_modules/
+      policy: pull
+  script:
+    - |
+      cd web && npm run build
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - web/dist/
+
+# Plan F — self-contained, offline-viewable report.html as a CI artefact (a)
+# plus a Playwright UX walk over the bundled HTML (b).
+#
+# Runs a REAL benchmark via `python -m oracles.cli run --reps 1 --mc 4` (low-rep / low-mc
+# so it lands inside the GWDG runner budget at ~2-4 min) so the bundled
+# report.html carries actual backend timings, real κ(J) numbers, and the
+# full 139-case suite. This replaces the earlier synth-driven build, which
+# produced a contract-shaped but empty-of-real-data payload — the bundle
+# pipeline was proven end-to-end but the artefact itself was not a full
+# report. Real numbers + real cases are what users open the artefact for.
+#
+# The Playwright walk runs against the bundled HTML via `poe report_e2e`
+# (Plan D's 2-destination shell spec at web/tests/e2e/report-ux.spec.ts:
+# Suite + Case destinations click, backend cards render, headline mentions
+# spectrafit, window.__BENCH__ is inlined).
+build:report_html:
+  rules: !reference [.rules_default, rules]
+  stage: build
+  # 2h budget: cold release build (~15 min) + real benchmark run + bundle +
+  # Playwright render walk. Runner maximum_timeout must be ≥ 7200 s for this to
+  # be honored (GWDG shared runners still at 3600 s — contact support to raise).
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+    - key: "web-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - web/node_modules/
+      policy: pull
+  # Rebuild the PyO3 extension before running the benchmark (the wheel is the
+  # subject under benchmark; without it spectrafit is absent from the roster
+  # and lmfit / scipy / jax dominate every panel). maturin develop (editable,
+  # compiles _core into the python source tree) — not a wheel install, which
+  # site-packages-shadows under PYTHONPATH=python.
+  script:
+    - |
+      UV_CACHE_DIR=.uv-cache uv run --no-sync maturin develop --release
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli run --reps 1 --mc 4
+      # Primary-pipeline gate enforcement: assert the four axes (speed/accuracy/
+      # regressions/self-perf) on the run just produced. BLOCKING — a regressed or
+      # slower-than-baseline run reds the pipeline here instead of shipping a green
+      # build with a broken headline. Mirrors GitHub ci.yml `regression-gate`.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli gate
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync poe bundle_report_only
+      mkdir -p artifacts
+      cp .spectrafit_reports/benchmark/*/report.html artifacts/report.html
+      cp .spectrafit_reports/benchmark/*/results.json artifacts/results.json
+      cp .spectrafit_reports/benchmark/*/manifest.json artifacts/manifest.json
+      ls -lh artifacts/
+      # Plan F (b) — UX walk against the bundle. Skip-graceful if Playwright
+      # is unavailable on the image (the spec self-skips when REPORT_HTML_PATH
+      # is empty, so an upstream chromium failure becomes a skipped test, not
+      # a red job that blocks the artefact upload).
+      # Install the chromium browser AND its system libraries (libnspr4,
+      # libnss3, libatk*, …). `--with-deps` runs `playwright install-deps`
+      # under the hood (apt, needs root — available in the Debian-bookworm CI
+      # image). Without the system libs the chromium binary launch crashes
+      # with `libnspr4.so: cannot open shared object file`, which is a hard
+      # launch failure, NOT a clean skip — so it would red the BLOCKING gate
+      # below. The baked CI image (.gitlab/docker/Dockerfile.ci) also installs
+      # these libs; this in-step `--with-deps` is the belt-and-suspenders path
+      # that works even on a runner whose image predates that change.
+      (cd web && npx playwright install --with-deps chromium >/dev/null 2>&1 || true)
+      # Value-bearing render gate: BLOCKING (Invariant 0 / andon-strict). The spec
+      # (web/tests/e2e/report-ux.spec.ts) was rewritten 2026-06-14 against the
+      # current Standing/Verification/Evidence shell (it had been stale vs the old
+      # Suite/Case tabs and only surfaced once the chromium-deps fix let it run);
+      # all 4 assertions pass locally against the bundle. Chromium + its system
+      # deps are provisioned just above, so a genuine render regression — the
+      # shell failing to mount, plots not rendering on Evidence, or the subject
+      # solver missing — is the only way this step goes red.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync poe report_e2e
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/report.html
+      - artifacts/results.json
+      - artifacts/manifest.json
+      - web/playwright-report/
+    when: always

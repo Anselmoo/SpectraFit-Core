@@ -1,0 +1,94 @@
+# Manual GitHub sneak-preview publish. Force-pushes a history-free,
+# single-commit snapshot of `main` to the public GitHub mirror
+# (Anselmoo/spectrafit-core) via `rrt git publish-snapshot`. Two jobs:
+#
+# - publish:github — the full-pipeline lane. Keeps default stage-ordering (no
+#   `needs:` override), so it only becomes triggerable after every earlier
+#   stage (setup/lint/test/coverage/build/pages) has succeeded.
+# - publish:github:fast — the fast lane (see
+#   docs/superpowers/specs/2026-07-11-github-publish-fast-lane-design.md).
+#   `needs: []` decouples it from stage-ordering entirely, so it's clickable
+#   as soon as the pipeline is created. Safe only because it re-verifies, via
+#   `scripts/fast_lane_gate.py`, that the diff since the last GitHub publish
+#   touches nothing but `.github/**` — a class of change GitLab CI never
+#   executes anyway, so the full pipeline buys zero extra safety for it.
+#
+# Neither job runs automatically — both are `when: manual`.
+#
+# dependencies: [] is required on BOTH jobs despite `publish:github` having no
+# `needs:` override — without it, GitLab implicitly tries to download
+# artifacts from every prior job (confirmed via a real missing_dependency_failure
+# on first trigger, 2026-07-10): the never-triggered optional `build:ci-image`
+# (.pre stage, `when: manual`) has no artifacts to fetch, which the scheduler
+# treats as an unsatisfiable dependency. `dependencies: []` opts out of
+# artifact fetching entirely (these jobs only need the git checkout) while
+# `publish:github` still preserves stage-ordering — unlike `needs: []`, which
+# would also skip waiting for earlier stages. `publish:github:fast` uses BOTH
+# `needs: []` (skip stage-ordering) AND `dependencies: []` (skip artifacts) —
+# the whole point of the fast lane.
+#
+# Consequence: neither job has the `.venv` artifact from `setup` available,
+# so neither can use `uv run` to resolve Python dependencies. Both jobs' own
+# scripts use bare `python3`; `publish:github:fast` additionally does a
+# targeted `python3 -m pip install --quiet pyyaml` for the gate script's YAML
+# parsing (not added to `publish:github`, which never runs the gate).
+#
+# Requires the `GITHUB_TOKEN` CI/CD variable (masked + protected + hidden): a
+# GitHub fine-grained PAT scoped to Anselmoo/spectrafit-core,
+# "Contents: Read and write" only.
+#
+# `git remote add gitlab ...` exists so rrt's primary_remote = "gitlab" safety
+# guard (pyproject.toml [tool.rrt]) actually resolves here — a fresh CI
+# checkout otherwise has no remote literally named `gitlab`, which would make
+# the guard silently no-op instead of protecting anything.
+#
+# rrt is pinned to ==1.11.2 (not @latest) so a future release can't silently
+# change this job's behavior.
+#
+# git config user.email/user.name is set explicitly because rrt's
+# publish-snapshot creates a real commit (git commit -m "Initial commit")
+# internally, and neither the base image (nikolaik/python-nodejs, a generic
+# dev image) nor GitLab Runner itself provisions a git identity by default.
+#
+# Exclusion is done manually BEFORE invoking rrt, not via its --exclude flag —
+# a second confirmed repo-release-tools 1.11.2 bug (2026-07-11): rrt's
+# internal `git rm -r --ignore-unmatch` (used to apply --exclude) omits
+# `-f`/--force. On the `git checkout --orphan` branch publish-snapshot
+# creates internally, there is no HEAD commit yet, so git's "does this match
+# HEAD" safety check trivially fails for every file and `git rm` refuses.
+# Removing the excluded paths here — on the real `main` checkout, before rrt
+# ever creates its orphan branch — sidesteps the bug entirely.
+#
+# The exclusion-removal logic (scripts/publish_remove_excluded.py), the
+# shared pattern list it and the fast-lane gate both consult
+# (scripts/publish_exclusions.py), and the smoke-test/git-config/remote-setup/
+# rrt-invocation sequence (scripts/publish_snapshot.sh) are extracted into
+# standalone scripts so publish:github and publish:github:fast cannot drift
+# apart — both jobs call the exact same scripts/publish_snapshot.sh.
+
+publish:github:
+  stage: publish
+  when: manual
+  dependencies: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - chmod +x scripts/publish_snapshot.sh
+    - scripts/publish_snapshot.sh
+
+publish:github:fast:
+  stage: publish
+  when: manual
+  needs: []
+  dependencies: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - git remote add github "https://x-access-token:${GITHUB_TOKEN}@github.com/Anselmoo/spectrafit-core.git" 2>/dev/null || true
+    - git fetch github main
+    - GITHUB_SHA=$(git rev-parse github/main)
+    - echo "Diff-gating fast-lane publish against published GitHub main ($GITHUB_SHA)..."
+    - python3 -m pip install --quiet pyyaml
+    - python3 scripts/fast_lane_gate.py "$GITHUB_SHA" HEAD
+    - chmod +x scripts/publish_snapshot.sh
+    - scripts/publish_snapshot.sh
