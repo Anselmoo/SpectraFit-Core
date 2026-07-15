@@ -1,0 +1,2562 @@
+{
+  "components": {
+    "schemas": {
+      "AccuracyDist": {
+        "additionalProperties": false,
+        "description": "Per-solver reduced-\u03c7\u00b2 distribution over repetitions.",
+        "properties": {
+          "median": {
+            "title": "Median",
+            "type": "number"
+          },
+          "p25": {
+            "title": "P25",
+            "type": "number"
+          },
+          "p5": {
+            "title": "P5",
+            "type": "number"
+          },
+          "p75": {
+            "title": "P75",
+            "type": "number"
+          },
+          "raw": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Raw",
+            "type": "array"
+          }
+        },
+        "required": [
+          "raw",
+          "median",
+          "p5",
+          "p25",
+          "p75"
+        ],
+        "title": "AccuracyDist",
+        "type": "object"
+      },
+      "BackendProfile": {
+        "additionalProperties": false,
+        "description": "All of ONE backend's featured-case metrics, grouped (no parallel dicts).\n\nElement types match the per-panel charts exactly: `scaling`/`ecdf_*` keep the\n(x, y) `Point2D` axes, `param_err` is per-parameter, `param_spread`/`stability`\nkeep the mean\u00b1sd `SpreadPt` bands.",
+        "properties": {
+          "accuracy": {
+            "$ref": "#/components/schemas/AccuracyDist"
+          },
+          "conv": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Conv",
+            "type": "array"
+          },
+          "convEff": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Per-iteration convergence efficiency (cost reduction per step) derived from `conv`. Populated ONLY when `history_source == 'real'` (the subject's measured cost history); `None` for backends whose history is `reconstructed`, since a proxy-derived efficiency must not be presented as a measured series. Additive field \u2014 old payloads validate with None.",
+            "title": "Conveff"
+          },
+          "ecdfResid": {
+            "items": {
+              "$ref": "#/components/schemas/Point2D"
+            },
+            "title": "Ecdfresid",
+            "type": "array"
+          },
+          "ecdfTime": {
+            "items": {
+              "$ref": "#/components/schemas/Point2D"
+            },
+            "title": "Ecdftime",
+            "type": "array"
+          },
+          "fit": {
+            "$ref": "#/components/schemas/SolverFit"
+          },
+          "grad": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Grad",
+            "type": "array"
+          },
+          "historySource": {
+            "enum": [
+              "real",
+              "reconstructed"
+            ],
+            "title": "Historysource",
+            "type": "string"
+          },
+          "jacobianConditionNumber": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\u03ba(J) at convergence. Structural property of the case, not the solver. \u03ba \u2265 1e6 \u2192 ill-conditioned (explains backend disagreement); \u03ba \u2264 1e4 \u2192 well-posed.",
+            "title": "Jacobianconditionnumber"
+          },
+          "paramErr": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Paramerr",
+            "type": "array"
+          },
+          "paramSpread": {
+            "items": {
+              "$ref": "#/components/schemas/SpreadPt"
+            },
+            "title": "Paramspread",
+            "type": "array"
+          },
+          "scaling": {
+            "items": {
+              "$ref": "#/components/schemas/Point2D"
+            },
+            "title": "Scaling",
+            "type": "array"
+          },
+          "stability": {
+            "$ref": "#/components/schemas/StabilityEntry"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          },
+          "thetaDistance": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Scale-normalized per-iteration distance of the parameter vector to the synthetic ground truth, d\u2096 = \u2016(\u03b8\u2096 \u2212 \u03b8_true)/s\u2016\u2082 (s = per-parameter magnitude scale). Same length as `conv`. The REAL convergence-to-truth metric \u2014 distinct from the \u03c7\u00b2 descent in `conv`. None for non-synthetic cases (no \u03b8_true) or backends without a parameter trajectory (only spectrafit's faer LM records it). Additive field \u2014 old payloads validate with None.",
+            "title": "Thetadistance"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/TimingDist"
+          },
+          "uncertainty": {
+            "$ref": "#/components/schemas/Uncertainty"
+          },
+          "warmup": {
+            "$ref": "#/components/schemas/Warmup"
+          }
+        },
+        "required": [
+          "fit",
+          "conv",
+          "grad",
+          "historySource",
+          "timing",
+          "accuracy",
+          "summary",
+          "paramErr",
+          "ecdfResid",
+          "ecdfTime",
+          "warmup",
+          "scaling",
+          "uncertainty",
+          "paramSpread",
+          "stability"
+        ],
+        "title": "BackendProfile",
+        "type": "object"
+      },
+      "BenchReport": {
+        "additionalProperties": false,
+        "description": "The complete benchmark report payload (the ``BENCH`` object consumed by the web app).",
+        "properties": {
+          "analyzed": {
+            "items": {
+              "$ref": "#/components/schemas/Featured"
+            },
+            "title": "Analyzed",
+            "type": "array"
+          },
+          "baselineSolverId": {
+            "default": "lmfit",
+            "title": "Baselinesolverid",
+            "type": "string"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryMeta"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "gitBranch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Git branch name at benchmark run time. None when git is unavailable. Additive field.",
+            "title": "Gitbranch"
+          },
+          "gitCommit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Git commit hash (short, \u22657 chars) at benchmark run time. None when git is unavailable or the run is not in a git repo. Additive field \u2014 old payloads validate with None.",
+            "title": "Gitcommit"
+          },
+          "inference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InferenceBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "manifest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ManifestSignals"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "panels": {
+            "items": {
+              "$ref": "#/components/schemas/PanelSpec"
+            },
+            "title": "Panels",
+            "type": "array"
+          },
+          "runTimestampUnix": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Unix epoch seconds when the benchmark run started (int). None when not captured. Additive field.",
+            "title": "Runtimestampunix"
+          },
+          "schemaVersion": {
+            "default": "1.7",
+            "title": "Schemaversion",
+            "type": "string"
+          },
+          "solvers": {
+            "items": {
+              "$ref": "#/components/schemas/SolverMeta"
+            },
+            "title": "Solvers",
+            "type": "array"
+          },
+          "suite": {
+            "items": {
+              "$ref": "#/components/schemas/SuiteCase"
+            },
+            "title": "Suite",
+            "type": "array"
+          },
+          "trustBlock": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrustBlock"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "V&V evidence block emitted by oracles.audit.runner. Additive \u2014 Pydantic fills None for pre-Plan-E payloads, so old runs still parse."
+          }
+        },
+        "required": [
+          "solvers",
+          "categories",
+          "analyzed",
+          "suite"
+        ],
+        "title": "BenchReport",
+        "type": "object"
+      },
+      "CI": {
+        "additionalProperties": false,
+        "description": "A point estimate with its confidence interval.",
+        "properties": {
+          "hi": {
+            "title": "Hi",
+            "type": "number"
+          },
+          "lo": {
+            "title": "Lo",
+            "type": "number"
+          },
+          "point": {
+            "title": "Point",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lo",
+          "point",
+          "hi"
+        ],
+        "title": "CI",
+        "type": "object"
+      },
+      "CalibrationResult": {
+        "additionalProperties": false,
+        "description": "Frozen contract view of ``oracles.inference.CalibrationStat``.\n\nResult of a binomial calibration test on parameter pulls\n(\u03b8_est \u2212 \u03b8_true) / \u03c3_est. All fields mirror ``CalibrationStat`` exactly\nso the engine can pass the stat object straight into ``model_validate``.\n\nWhen fewer than ``InferenceConfig.min_pulls`` pulls were collected, the\nengine still emits a **populated** record with ``skipped=True, passed=False,\ncoverage=0.0, binomial_p=1.0`` \u2014 it is never ``None`` for insufficient data.\n``None`` on ``InferenceBlock`` only appears for old payloads that predate\nthe field (additive-minor schema upgrade); the web layer must check\n``skipped`` to distinguish \"test ran but data was insufficient\" from\n\"old payload that never had the field\".\n\n``binomial_p`` is retained as an *honest strict diagnostic*: it reports the\npoint-null test of H0: coverage = nominal.  At large n this has extreme power\nand will reject even a negligible deviation; it is NOT the gate criterion.\n\n``passed`` uses a practical-equivalence rule: the Clopper\u2013Pearson CI must lie\nentirely within ``[nominal \u2212 equivalence_margin, nominal + equivalence_margin]``.\n``equivalence_margin`` carries the pre-registered band (default 0.03 = \u00b13 pp).\nAdditive field \u2014 old payloads without it default to 0.03 (matching the engine\ndefault) so validation is lossless.",
+        "properties": {
+          "alpha": {
+            "title": "Alpha",
+            "type": "number"
+          },
+          "binomialP": {
+            "title": "Binomialp",
+            "type": "number"
+          },
+          "coverage": {
+            "title": "Coverage",
+            "type": "number"
+          },
+          "coverageCiHi": {
+            "title": "Coveragecihi",
+            "type": "number"
+          },
+          "coverageCiLo": {
+            "title": "Coveragecilo",
+            "type": "number"
+          },
+          "equivalenceMargin": {
+            "default": 0.03,
+            "title": "Equivalencemargin",
+            "type": "number"
+          },
+          "ksP": {
+            "title": "Ksp",
+            "type": "number"
+          },
+          "ksStat": {
+            "title": "Ksstat",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "nominal": {
+            "title": "Nominal",
+            "type": "number"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "n",
+          "coverage",
+          "coverageCiLo",
+          "coverageCiHi",
+          "nominal",
+          "binomialP",
+          "ksStat",
+          "ksP",
+          "alpha",
+          "passed",
+          "skipped"
+        ],
+        "title": "CalibrationResult",
+        "type": "object"
+      },
+      "CaseInference": {
+        "additionalProperties": false,
+        "description": "Per-case inference: intervals that make each comparison falsifiable.",
+        "properties": {
+          "caseId": {
+            "title": "Caseid",
+            "type": "string"
+          },
+          "deltaR2Ci": {
+            "$ref": "#/components/schemas/CI"
+          },
+          "speedupCi": {
+            "$ref": "#/components/schemas/CI"
+          }
+        },
+        "required": [
+          "caseId",
+          "speedupCi",
+          "deltaR2Ci"
+        ],
+        "title": "CaseInference",
+        "type": "object"
+      },
+      "CategoryMeta": {
+        "additionalProperties": false,
+        "description": "Benchmark category definition (id, label, case count, hue token).",
+        "properties": {
+          "hue": {
+            "title": "Hue",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "n",
+          "hue"
+        ],
+        "title": "CategoryMeta",
+        "type": "object"
+      },
+      "CredibilityRung": {
+        "description": "V&V maturity ladder (inspired by ASME V&V credibility levels).\n\nThe live wire set earns RUNG_2..RUNG_4. RUNG_1 / RUNG_5 are reserved\nend-stops (see the per-member comments), part of the public contract and\npinned by an enum-value test \u2014 reserved, not dead.",
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "title": "CredibilityRung",
+        "type": "integer"
+      },
+      "EquivalenceResult": {
+        "additionalProperties": false,
+        "description": "Per-category TOST: 'saturated' earned, not asserted.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "diff": {
+            "title": "Diff",
+            "type": "number"
+          },
+          "equivalent": {
+            "title": "Equivalent",
+            "type": "boolean"
+          },
+          "margin": {
+            "title": "Margin",
+            "type": "number"
+          }
+        },
+        "required": [
+          "category",
+          "equivalent",
+          "margin",
+          "diff"
+        ],
+        "title": "EquivalenceResult",
+        "type": "object"
+      },
+      "ExprEdge": {
+        "additionalProperties": false,
+        "description": "One tied/shared-parameter expression edge.\n\nWire form (camelCase): ``{\"targetNode\": \"p1\", \"targetParam\": \"sigma\",\n\"expression\": \"p0.sigma\"}``. Typed (not a bare ``dict[str, str]``) so the\ninner keys camelize like every other contract field \u2014 the web reads\n``edge.targetNode`` / ``edge.targetParam``. Accepts the engine's snake_case\ndicts via ``populate_by_name`` on :class:`_Base`.",
+        "properties": {
+          "expression": {
+            "title": "Expression",
+            "type": "string"
+          },
+          "targetNode": {
+            "title": "Targetnode",
+            "type": "string"
+          },
+          "targetParam": {
+            "title": "Targetparam",
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetNode",
+          "targetParam",
+          "expression"
+        ],
+        "title": "ExprEdge",
+        "type": "object"
+      },
+      "Featured": {
+        "additionalProperties": false,
+        "description": "One analyzed case rendered in full detail across all panels.\n\nPer-backend metrics live in one `profiles` map (keyed by solver id); the\nremaining fields are case-level (shared across backends). A report carries a\n*list* of these (``BenchReport.analyzed``), one per deep-dived case, selectable\nin the UI; the `id` is unique within the list.",
+        "properties": {
+          "Ngrid": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Ngrid",
+            "type": "array"
+          },
+          "baseline": {
+            "title": "Baseline",
+            "type": "number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "corr": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Corr",
+            "type": "array"
+          },
+          "crossN": {
+            "title": "Crossn",
+            "type": "number"
+          },
+          "exprEdges": {
+            "description": "Tied/shared-parameter expression edges (camelCase keys on the wire: targetNode / targetParam / expression). Empty for unconstrained cases. Additive-minor field.",
+            "items": {
+              "$ref": "#/components/schemas/ExprEdge"
+            },
+            "title": "Expredges",
+            "type": "array"
+          },
+          "fixedParams": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "Per-node fixed parameter names, e.g. {\"p0\": [\"center\"]} means node p0's center was held at its guess value during the fit. Empty for unconstrained cases. Additive-minor field \u2014 old payloads validate with {}.",
+            "title": "Fixedparams",
+            "type": "object"
+          },
+          "globalFit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GlobalFit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guess": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Guess",
+            "type": "array"
+          },
+          "guessParams": {
+            "items": {
+              "$ref": "#/components/schemas/PeakACS"
+            },
+            "title": "Guessparams",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "modelFormula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "LaTeX formula string for the featured case's model shape. Sourced from PeakModel.formula_latex in the oracle registry. None when no formula is registered. Additive field.",
+            "title": "Modelformula"
+          },
+          "modelSourceFile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Relative path to the Rust kernel source for this case's model, e.g. \"crates/spectrafit-models/src/gaussian.rs\". None for landscape/optfn cases without a dedicated kernel. Additive field \u2014 old payloads validate with None.",
+            "title": "Modelsourcefile"
+          },
+          "multidim": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MultiDim"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nestedAdequacy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NestedAdequacy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nested-model adequacy V&V result for this case. Populated when the benchmark engine runs the nested-order oracle (Task 4.3). None for cases without a known generative order or when the oracle was not executed. Additive-minor field \u2014 old payloads without nestedAdequacy validate with None."
+          },
+          "noise": {
+            "title": "Noise",
+            "type": "number"
+          },
+          "paramNames": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paramnames",
+            "type": "array"
+          },
+          "peaks": {
+            "items": {
+              "$ref": "#/components/schemas/Peak"
+            },
+            "title": "Peaks",
+            "type": "array"
+          },
+          "profiles": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/BackendProfile"
+            },
+            "title": "Profiles",
+            "type": "object"
+          },
+          "ref": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Ref",
+            "type": "array"
+          },
+          "runsSched": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Runssched",
+            "type": "array"
+          },
+          "schedule": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "truth": {
+            "items": {
+              "$ref": "#/components/schemas/PeakACS"
+            },
+            "title": "Truth",
+            "type": "array"
+          },
+          "x": {
+            "items": {
+              "type": "number"
+            },
+            "title": "X",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "x",
+          "ref",
+          "guess",
+          "truth",
+          "noise",
+          "baseline",
+          "profiles",
+          "peaks",
+          "paramNames",
+          "corr",
+          "Ngrid",
+          "schedule",
+          "runsSched",
+          "crossN"
+        ],
+        "title": "Featured",
+        "type": "object"
+      },
+      "GlobalFit": {
+        "additionalProperties": false,
+        "description": "Shared-model multi-spectrum joint global fit (the lmfit ``fit_multi_datasets`` pattern).\n\n**SYNTHETIC placeholder \u2014 no experimental data.**  Uses a ``GlobalFitGraph``\nfit over synthetic Gaussian peaks; this field is NOT rendered in the production\nUI (classified ``ignored: cut``).  Peak centers/widths are shared across every\ndataset slice (global analysis) while each slice's amplitudes vary; ``traces``\nare the recovered per-peak amplitude traces and ``slices`` carry the per-dataset\nobserved + jointly-fitted curves on the shared ``x`` grid.\n\nThe ``dataset_axis`` / ``axis_label`` names are deliberately axis-neutral: the\nglobal-fit machinery in spectrafit-core (``GlobalFitGraph``) is not specific to\ntime \u2014 here the axis incidentally represents time, but the contract does not\nclaim that.",
+        "properties": {
+          "axisLabel": {
+            "default": "dataset",
+            "title": "Axislabel",
+            "type": "string"
+          },
+          "dataProvenance": {
+            "default": "synthetic",
+            "enum": [
+              "measured",
+              "synthetic"
+            ],
+            "title": "Dataprovenance",
+            "type": "string"
+          },
+          "datasetAxis": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Datasetaxis",
+            "type": "array"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalFitSlice"
+            },
+            "title": "Slices",
+            "type": "array"
+          },
+          "source": {
+            "default": "spectrafit-core",
+            "title": "Source",
+            "type": "string"
+          },
+          "traces": {
+            "items": {
+              "$ref": "#/components/schemas/PeakTrace"
+            },
+            "title": "Traces",
+            "type": "array"
+          },
+          "x": {
+            "items": {
+              "type": "number"
+            },
+            "title": "X",
+            "type": "array"
+          },
+          "xLabel": {
+            "default": "x",
+            "title": "Xlabel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "x",
+          "datasetAxis",
+          "slices",
+          "traces"
+        ],
+        "title": "GlobalFit",
+        "type": "object"
+      },
+      "GlobalFitSlice": {
+        "additionalProperties": false,
+        "description": "One dataset slice in a shared-model multi-spectrum global fit: observed + jointly-fitted model.\n\nThe ``coord`` field carries the axis coordinate for this slice (e.g. a time\nvalue, a temperature, a sample index) \u2014 the name is axis-neutral because the\nglobal-fit machinery is not specific to time.",
+        "properties": {
+          "coord": {
+            "title": "Coord",
+            "type": "number"
+          },
+          "model": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Model",
+            "type": "array"
+          },
+          "obs": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Obs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "coord",
+          "obs",
+          "model"
+        ],
+        "title": "GlobalFitSlice",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InferenceBlock": {
+        "additionalProperties": false,
+        "description": "Top-level inference attached to BenchReport (additive 1.3 -> 1.4).\n\n``calibration`` and ``speed_inference`` are additive-minor fields (Task 5.3):\nold payloads that lack them validate with ``None``; the gate axis is inert\nwhen ``None`` (no-pass-by-absence rule).",
+        "properties": {
+          "calibration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalibrationResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseInference"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "config": {
+            "$ref": "#/components/schemas/InferenceConfig"
+          },
+          "equivalence": {
+            "items": {
+              "$ref": "#/components/schemas/EquivalenceResult"
+            },
+            "title": "Equivalence",
+            "type": "array"
+          },
+          "speedInference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpeedInferenceResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "winnerStability": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Winnerstability",
+            "type": "object"
+          }
+        },
+        "required": [
+          "config",
+          "cases",
+          "equivalence",
+          "winnerStability"
+        ],
+        "title": "InferenceBlock",
+        "type": "object"
+      },
+      "InferenceConfig": {
+        "additionalProperties": false,
+        "description": "Pre-registered inference parameters (written to the manifest, not tuned).\n\nThe four new fields are the Bonferroni-split family \u03b1 values and the\ncalibration-test hyper-parameters defined in the cycle 5 global constraints.\nThey carry defaults so old payloads that lack them validate without a migrator.",
+        "properties": {
+          "alphaCalibration": {
+            "default": 0.025,
+            "title": "Alphacalibration",
+            "type": "number"
+          },
+          "alphaSpeed": {
+            "default": 0.025,
+            "title": "Alphaspeed",
+            "type": "number"
+          },
+          "bootstrapB": {
+            "title": "Bootstrapb",
+            "type": "integer"
+          },
+          "calibrationMargin": {
+            "default": 0.03,
+            "title": "Calibrationmargin",
+            "type": "number"
+          },
+          "coverageNominal": {
+            "default": 0.6827,
+            "title": "Coveragenominal",
+            "type": "number"
+          },
+          "equivalenceMargin": {
+            "title": "Equivalencemargin",
+            "type": "number"
+          },
+          "fdrQ": {
+            "title": "Fdrq",
+            "type": "number"
+          },
+          "minPulls": {
+            "default": 20,
+            "title": "Minpulls",
+            "type": "integer"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "equivalenceMargin",
+          "bootstrapB",
+          "seed",
+          "fdrQ"
+        ],
+        "title": "InferenceConfig",
+        "type": "object"
+      },
+      "ManifestSignals": {
+        "additionalProperties": false,
+        "description": "Headline numbers from ``manifest.json`` surfaced via the contract.\n\nMirrors the keys :func:`oracles.reports._headline` writes; ``pinned``\nis populated from :func:`oracles.reports.read_perf_baseline` (``None``\nwhen no baseline is currently pinned).",
+        "properties": {
+          "gateState": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pass",
+                  "warn",
+                  "fail"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aggregate gate verdict. Single source of truth; the web UI must render this rather than recomputing from regression flags.",
+            "title": "Gatestate"
+          },
+          "geomeanSpeedupVsBaseline": {
+            "title": "Geomeanspeedupvsbaseline",
+            "type": "number"
+          },
+          "harmonicMeanSpeedupVsBaseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Harmonic mean of per-case speedup values vs the baseline solver. Complements the geometric mean per Eeckhout (2024): the harmonic mean is the correct aggregate for equal-time comparisons and is always \u2264 the geometric mean for positively-skewed speedup distributions. Additive field \u2014 old payloads on disk validate with None.",
+            "title": "Harmonicmeanspeedupvsbaseline"
+          },
+          "maxAbsDeltaR2": {
+            "title": "Maxabsdeltar2",
+            "type": "number"
+          },
+          "nonfiniteDr2CaseIds": {
+            "description": "Case ids whose |\u0394r\u00b2| vs the baseline was non-finite (NaN/Inf). The accuracy gate fails when this is non-empty; carried as a list so _sanitize (which coerces non-finite floats) cannot erase the signal.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Nonfinitedr2Caseids",
+            "type": "array"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PinnedBaseline"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "regressions": {
+            "title": "Regressions",
+            "type": "integer"
+          },
+          "sanitizedValuePaths": {
+            "description": "JSONPath-ish locators ('$.suite[3].m.jax.r2') of non-finite floats the presentation sanitizer coerced to 0.0 when this artifact was written. Non-empty means some rendered 0.0 values are suppressions, not measurements (G5 disclosure, 2026-06-23 tribunal). Carried as a list so _sanitize cannot erase the signal; additive field \u2014 old payloads validate with [].",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sanitizedvaluepaths",
+            "type": "array"
+          },
+          "saturatedCategories": {
+            "description": "Categories where every supported backend hits r\u00b2\u22650.999 on every case. Differential below the noise floor; UI should mark these explicitly.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Saturatedcategories",
+            "type": "array"
+          },
+          "spectrafitWinRate": {
+            "title": "Spectrafitwinrate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "geomeanSpeedupVsBaseline",
+          "maxAbsDeltaR2",
+          "spectrafitWinRate",
+          "regressions"
+        ],
+        "title": "ManifestSignals",
+        "type": "object"
+      },
+      "MultiDim": {
+        "additionalProperties": false,
+        "description": "Genuinely N-dimensional (\u22653-D) fit showcase (SP-2).\n\nA synthetic N-D Gaussian is recovered by a real least-squares solve with the\nparametric ``gaussian_nd`` kernel (D inferred from the node's indexed\n``center_<i>`` parameters). ``peaks`` are the *fitted* parameters and\n``r_squared`` the recovery quality. Full N-D obs/model/residual grids are\nintentionally NOT stored \u2014 they do not scale past 2-D \u2014 so ``projections``\ncarries 2-D marginal slices of the fitted model for any visualization.\n\n**SYNTHETIC \u2014 no experimental data; NOT rendered in the production UI\n(classified ``ignored: cut``).**",
+        "properties": {
+          "dataProvenance": {
+            "default": "synthetic",
+            "enum": [
+              "measured",
+              "synthetic"
+            ],
+            "title": "Dataprovenance",
+            "type": "string"
+          },
+          "nDims": {
+            "title": "Ndims",
+            "type": "integer"
+          },
+          "nPoints": {
+            "title": "Npoints",
+            "type": "integer"
+          },
+          "peaks": {
+            "items": {
+              "$ref": "#/components/schemas/NdPeak"
+            },
+            "title": "Peaks",
+            "type": "array"
+          },
+          "projections": {
+            "items": {
+              "$ref": "#/components/schemas/Projection"
+            },
+            "title": "Projections",
+            "type": "array"
+          },
+          "rSquared": {
+            "title": "Rsquared",
+            "type": "number"
+          },
+          "shape": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Shape",
+            "type": "array"
+          },
+          "source": {
+            "default": "spectrafit-core",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nDims",
+          "shape",
+          "nPoints",
+          "rSquared",
+          "peaks",
+          "projections"
+        ],
+        "title": "MultiDim",
+        "type": "object"
+      },
+      "NdPeak": {
+        "additionalProperties": false,
+        "description": "A recovered N-D Gaussian peak: amplitude + per-axis center and sigma.\n\n``center`` and ``sigma`` each have ``n_dims`` entries (indexed `center_0..` /\n`sigma_0..` from the parametric ``gaussian_nd`` kernel).",
+        "properties": {
+          "amplitude": {
+            "title": "Amplitude",
+            "type": "number"
+          },
+          "center": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Center",
+            "type": "array"
+          },
+          "sigma": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Sigma",
+            "type": "array"
+          }
+        },
+        "required": [
+          "amplitude",
+          "center",
+          "sigma"
+        ],
+        "title": "NdPeak",
+        "type": "object"
+      },
+      "NestedAdequacy": {
+        "additionalProperties": false,
+        "description": "Frozen contract view of ``oracles.nested.NestedAdequacy``.\n\nResult of a nested-order V&V against a known generative order: checks\nthat model-selection criteria (LRT / F / AIC / BIC) recover the true\norder m* by comparing the (m*\u22121) reduced, m* true, and (m*+1)\nover-fitted models.\n\nBoth AIC and BIC verdicts are reported separately.  On the featured\nreal tri-Gaussian, AIC over-selects the 4-peak model\n(``over_not_preferred_aic = False``) while BIC correctly recovers the\ntrue 3-peak order (``over_not_preferred_bic = True``).\n\n``nested_adequacy: NestedAdequacy | None = None`` on ``Featured`` is an\nadditive-minor field \u2014 old payloads that lack it validate with ``None``.",
+        "properties": {
+          "overNotPreferredAic": {
+            "title": "Overnotpreferredaic",
+            "type": "boolean"
+          },
+          "overNotPreferredBic": {
+            "title": "Overnotpreferredbic",
+            "type": "boolean"
+          },
+          "recoveredTrueOrderAic": {
+            "title": "Recoveredtrueorderaic",
+            "type": "boolean"
+          },
+          "recoveredTrueOrderBic": {
+            "title": "Recoveredtrueorderbic",
+            "type": "boolean"
+          },
+          "reducedRejected": {
+            "title": "Reducedrejected",
+            "type": "boolean"
+          },
+          "reducedVsTrue": {
+            "$ref": "#/components/schemas/SelectionStats"
+          },
+          "selectedOrderAic": {
+            "title": "Selectedorderaic",
+            "type": "integer"
+          },
+          "selectedOrderBic": {
+            "title": "Selectedorderbic",
+            "type": "integer"
+          },
+          "trueOrder": {
+            "title": "Trueorder",
+            "type": "integer"
+          },
+          "trueVsOver": {
+            "$ref": "#/components/schemas/SelectionStats"
+          }
+        },
+        "required": [
+          "trueOrder",
+          "reducedRejected",
+          "overNotPreferredAic",
+          "overNotPreferredBic",
+          "selectedOrderAic",
+          "selectedOrderBic",
+          "recoveredTrueOrderAic",
+          "recoveredTrueOrderBic",
+          "reducedVsTrue",
+          "trueVsOver"
+        ],
+        "title": "NestedAdequacy",
+        "type": "object"
+      },
+      "NistDataset": {
+        "additionalProperties": false,
+        "description": "Per-dataset NIST StRD certified-value validation result.",
+        "properties": {
+          "minSigFigs": {
+            "description": "Worst (minimum) per-parameter sig-fig agreement.",
+            "title": "Minsigfigs",
+            "type": "number"
+          },
+          "model": {
+            "description": "Human-readable model description.",
+            "title": "Model",
+            "type": "string"
+          },
+          "nParams": {
+            "title": "Nparams",
+            "type": "integer"
+          },
+          "name": {
+            "description": "StRD problem name, e.g. 'Gauss1'.",
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/NistParam"
+            },
+            "title": "Params",
+            "type": "array"
+          },
+          "passed": {
+            "description": "True iff min_sig_figs \u2265 the validation threshold.",
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "model",
+          "nParams",
+          "params",
+          "minSigFigs",
+          "passed"
+        ],
+        "title": "NistDataset",
+        "type": "object"
+      },
+      "NistParam": {
+        "additionalProperties": false,
+        "description": "One parameter's certified-vs-fitted agreement for a NIST StRD dataset.",
+        "properties": {
+          "certified": {
+            "description": "NIST certified value (10+ sig figs).",
+            "title": "Certified",
+            "type": "number"
+          },
+          "fitted": {
+            "description": "Spectrafit recovered value.",
+            "title": "Fitted",
+            "type": "number"
+          },
+          "name": {
+            "description": "NIST parameter name, e.g. 'b1'.",
+            "title": "Name",
+            "type": "string"
+          },
+          "sigFigsAgreed": {
+            "description": "-log10(|fitted-certified|/|certified|); \u221e-capped for exact agreement.",
+            "title": "Sigfigsagreed",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "certified",
+          "fitted",
+          "sigFigsAgreed"
+        ],
+        "title": "NistParam",
+        "type": "object"
+      },
+      "NistValidation": {
+        "additionalProperties": false,
+        "description": "Aggregate NIST StRD certified-value validation (the W8 evidence block).\n\nIndependent external replication against NIST's extended-precision certified\nvalues \u2014 the evidence RUNG_5 was reserved for. Additive on TrustBlock.",
+        "properties": {
+          "datasets": {
+            "items": {
+              "$ref": "#/components/schemas/NistDataset"
+            },
+            "title": "Datasets",
+            "type": "array"
+          },
+          "minSigFigs": {
+            "description": "Worst min_sig_figs across all datasets.",
+            "title": "Minsigfigs",
+            "type": "number"
+          },
+          "passed": {
+            "description": "True iff every dataset agrees to \u2265 threshold sig figs.",
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "thresholdSigFigs": {
+            "description": "Required minimum significant-figure agreement.",
+            "title": "Thresholdsigfigs",
+            "type": "number"
+          },
+          "totalAvailable": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Size of the external NIST StRD nonlinear-regression universe (the denominator for 'N of M' coverage). Emitted by the validation builder so the UI never hardcodes the total. Additive \u2014 None for payloads written before this field existed.",
+            "title": "Totalavailable"
+          }
+        },
+        "required": [
+          "thresholdSigFigs",
+          "datasets",
+          "minSigFigs",
+          "passed"
+        ],
+        "title": "NistValidation",
+        "type": "object"
+      },
+      "PanelLayout": {
+        "additionalProperties": false,
+        "description": "Grid sizing intent for one panel \u2014 hints, not CSS.",
+        "properties": {
+          "height": {
+            "default": 230,
+            "maximum": 640.0,
+            "minimum": 120.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "wide": {
+            "default": false,
+            "title": "Wide",
+            "type": "boolean"
+          }
+        },
+        "title": "PanelLayout",
+        "type": "object"
+      },
+      "PanelSpec": {
+        "additionalProperties": false,
+        "description": "One report panel as data: which series, which chart, which slot.\n\nThe web app renders these generically (PanelRenderer); adding a panel is\none record in ``oracles.panels.DEFAULT_PANELS``, not a new React block.\n``source`` keys into the web-side series-builder registry \u2014 it is a contract\nstring, pinned both sides by the default-panels fixture test.\nAdditive 1.2 -> 1.3 bump together with ``BenchReport.panels``.",
+        "properties": {
+          "chartKind": {
+            "enum": [
+              "line",
+              "scatter",
+              "ecdf",
+              "violin",
+              "box",
+              "heatmap",
+              "field",
+              "lollipop",
+              "dumbbell",
+              "sparkline",
+              "band"
+            ],
+            "title": "Chartkind",
+            "type": "string"
+          },
+          "desc": {
+            "default": "",
+            "title": "Desc",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/PanelLayout"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "chartKind",
+          "source"
+        ],
+        "title": "PanelSpec",
+        "type": "object"
+      },
+      "Peak": {
+        "additionalProperties": false,
+        "description": "A single peak contribution curve (featured solver), labeled g1/g2/\u2026.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "y": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Y",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "y"
+        ],
+        "title": "Peak",
+        "type": "object"
+      },
+      "PeakACS": {
+        "additionalProperties": false,
+        "description": "Peak parameters in the report's short form: amplitude / center / sigma.",
+        "properties": {
+          "a": {
+            "title": "A",
+            "type": "number"
+          },
+          "c": {
+            "title": "C",
+            "type": "number"
+          },
+          "s": {
+            "title": "S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "a",
+          "c",
+          "s"
+        ],
+        "title": "PeakACS",
+        "type": "object"
+      },
+      "PeakTrace": {
+        "additionalProperties": false,
+        "description": "A shared peak's amplitude evolving across the dataset axis.",
+        "properties": {
+          "amplitude": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Amplitude",
+            "type": "array"
+          },
+          "center": {
+            "title": "Center",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "sigma": {
+            "title": "Sigma",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "center",
+          "sigma",
+          "amplitude"
+        ],
+        "title": "PeakTrace",
+        "type": "object"
+      },
+      "PinnedBaseline": {
+        "additionalProperties": false,
+        "description": "The ``.spectrafit_reports/perf_baseline.json`` sidecar surfaced to the web.\n\nMirrors :func:`oracles.reports.write_perf_baseline`'s on-disk shape so\nthe gate's self-vs-self signal is one fetch away in the browser.",
+        "properties": {
+          "geomeanSpeedupVsBaseline": {
+            "title": "Geomeanspeedupvsbaseline",
+            "type": "number"
+          },
+          "nCases": {
+            "title": "Ncases",
+            "type": "integer"
+          },
+          "recordedAt": {
+            "title": "Recordedat",
+            "type": "string"
+          },
+          "runId": {
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "recordedAt",
+          "geomeanSpeedupVsBaseline",
+          "nCases"
+        ],
+        "title": "PinnedBaseline",
+        "type": "object"
+      },
+      "Point2D": {
+        "additionalProperties": false,
+        "description": "A single (x, y) point used by line / ecdf / scaling / warmup series.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Point2D",
+        "type": "object"
+      },
+      "Projection": {
+        "additionalProperties": false,
+        "description": "A 2-D projection (marginal slice) of a higher-D fit: axis-pair + matrix.",
+        "properties": {
+          "labels": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Labels",
+            "type": "array"
+          },
+          "matrix": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Matrix",
+            "type": "array"
+          }
+        },
+        "required": [
+          "labels",
+          "matrix"
+        ],
+        "title": "Projection",
+        "type": "object"
+      },
+      "SelectionStats": {
+        "additionalProperties": false,
+        "description": "Frozen contract view of ``oracles.nested.SelectionStats``.\n\nStatistics for one nested-model comparison (full minus reduced):\nLRT / F-test / information criteria.  All statistics are \"full minus\nreduced\" oriented: negative \u0394-AIC / \u0394-BIC means the full model is\npreferred.",
+        "properties": {
+          "dAIC": {
+            "title": "Daic",
+            "type": "number"
+          },
+          "dBIC": {
+            "title": "Dbic",
+            "type": "number"
+          },
+          "fP": {
+            "title": "Fp",
+            "type": "number"
+          },
+          "fStat": {
+            "title": "Fstat",
+            "type": "number"
+          },
+          "lrtP": {
+            "title": "Lrtp",
+            "type": "number"
+          },
+          "lrtStat": {
+            "title": "Lrtstat",
+            "type": "number"
+          }
+        },
+        "required": [
+          "lrtStat",
+          "lrtP",
+          "fStat",
+          "fP",
+          "dAIC",
+          "dBIC"
+        ],
+        "title": "SelectionStats",
+        "type": "object"
+      },
+      "SolverFit": {
+        "additionalProperties": false,
+        "description": "One solver's fit of the featured case: params + curve + residuals.",
+        "properties": {
+          "curve": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Curve",
+            "type": "array"
+          },
+          "params": {
+            "items": {
+              "$ref": "#/components/schemas/PeakACS"
+            },
+            "title": "Params",
+            "type": "array"
+          },
+          "resid": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Resid",
+            "type": "array"
+          }
+        },
+        "required": [
+          "params",
+          "curve",
+          "resid"
+        ],
+        "title": "SolverFit",
+        "type": "object"
+      },
+      "SolverMeta": {
+        "additionalProperties": false,
+        "description": "Solver legend entry (id, label, and theme color tokens).\n\nRe-exported from oracles.bench_contract for BenchReport.solvers.",
+        "properties": {
+          "color": {
+            "title": "Color",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "soft": {
+            "title": "Soft",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "color",
+          "soft"
+        ],
+        "title": "SolverMeta",
+        "type": "object"
+      },
+      "SpeedInferenceResult": {
+        "additionalProperties": false,
+        "description": "Frozen contract view of ``oracles.inference.SpeedStat``.\n\nResult of a geomean-speedup significance test: bootstrap CI on the\ngeometric mean of per-case speedup ratios plus sign-test and Wilcoxon\nsigned-rank p-values. All fields mirror ``SpeedStat`` exactly.\n\nWhen fewer than 2 valid per-case speedups were available, the engine still\nemits a **populated** record with ``skipped=True, passed=False,\ngeomean_speedup=0.0, ci_lo=0.0, ci_hi=0.0`` \u2014 it is never ``None`` for\ninsufficient data. ``None`` on ``InferenceBlock`` only appears for old\npayloads that predate the field (additive-minor schema upgrade); the web\nlayer must check ``skipped`` to distinguish \"test ran but data was\ninsufficient\" from \"old payload that never had the field\".",
+        "properties": {
+          "alpha": {
+            "title": "Alpha",
+            "type": "number"
+          },
+          "ciHi": {
+            "title": "Cihi",
+            "type": "number"
+          },
+          "ciLo": {
+            "title": "Cilo",
+            "type": "number"
+          },
+          "excludesOne": {
+            "title": "Excludesone",
+            "type": "boolean"
+          },
+          "geomeanSpeedup": {
+            "title": "Geomeanspeedup",
+            "type": "number"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "signP": {
+            "title": "Signp",
+            "type": "number"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "boolean"
+          },
+          "wilcoxonP": {
+            "title": "Wilcoxonp",
+            "type": "number"
+          }
+        },
+        "required": [
+          "geomeanSpeedup",
+          "ciLo",
+          "ciHi",
+          "excludesOne",
+          "signP",
+          "wilcoxonP",
+          "alpha",
+          "passed",
+          "skipped"
+        ],
+        "title": "SpeedInferenceResult",
+        "type": "object"
+      },
+      "SpreadPt": {
+        "additionalProperties": false,
+        "description": "A mean\u00b1sd point versus run count (param-spread / stability series).",
+        "properties": {
+          "mean": {
+            "title": "Mean",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "sd": {
+            "title": "Sd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "n",
+          "mean",
+          "sd"
+        ],
+        "title": "SpreadPt",
+        "type": "object"
+      },
+      "StabilityEntry": {
+        "additionalProperties": false,
+        "description": "One backend's metric stability versus run count (mean\u00b1sd per metric).",
+        "properties": {
+          "iters": {
+            "items": {
+              "$ref": "#/components/schemas/SpreadPt"
+            },
+            "title": "Iters",
+            "type": "array"
+          },
+          "r2": {
+            "items": {
+              "$ref": "#/components/schemas/SpreadPt"
+            },
+            "title": "R2",
+            "type": "array"
+          },
+          "redChi2": {
+            "items": {
+              "$ref": "#/components/schemas/SpreadPt"
+            },
+            "title": "Redchi2",
+            "type": "array"
+          },
+          "rmse": {
+            "items": {
+              "$ref": "#/components/schemas/SpreadPt"
+            },
+            "title": "Rmse",
+            "type": "array"
+          }
+        },
+        "required": [
+          "r2",
+          "rmse",
+          "redChi2",
+          "iters"
+        ],
+        "title": "StabilityEntry",
+        "type": "object"
+      },
+      "SuiteCase": {
+        "additionalProperties": false,
+        "description": "One row in the all-cases suite (regression map / win-rate tables).",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "m": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SuiteMetric"
+            },
+            "title": "M",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "regression": {
+            "title": "Regression",
+            "type": "boolean"
+          },
+          "winner": {
+            "title": "Winner",
+            "type": "string"
+          },
+          "winnerReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Short human-readable explanation of WHY the winner won, contrasting key signals (\u03ba(J), n_iter, convergence_efficiency) for the winner vs the baseline. None when the required signals are absent. Additive field \u2014 old payloads validate with None.",
+            "title": "Winnerreason"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "difficulty",
+          "m",
+          "winner",
+          "regression"
+        ],
+        "title": "SuiteCase",
+        "type": "object"
+      },
+      "SuiteMetric": {
+        "additionalProperties": false,
+        "description": "Single-point per-solver metrics for a suite row.",
+        "properties": {
+          "convergenceEfficiency": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mean cost reduction per iteration: (cost\u2080 \u2212 cost\u2099) / n_iter. Populated when a real cost history exists (history_source=='real'); None for reconstructed histories. Additive field \u2014 old payloads validate with None.",
+            "title": "Convergenceefficiency"
+          },
+          "illConditioned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "True when \u03ba(J) \u2265 1e6 (ill-conditioned). None when \u03ba(J) was not computed. Additive field.",
+            "title": "Illconditioned"
+          },
+          "medMs": {
+            "title": "Medms",
+            "type": "number"
+          },
+          "metricUndefinedReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Human-readable explanation when red_chi2_weighted is None, e.g. \"sigma=0 (noiseless)\". Additive field.",
+            "title": "Metricundefinedreason"
+          },
+          "paramErr": {
+            "title": "Paramerr",
+            "type": "number"
+          },
+          "r2": {
+            "title": "R2",
+            "type": "number"
+          },
+          "redChi2": {
+            "title": "Redchi2",
+            "type": "number"
+          },
+          "redChi2Weighted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "\u03c3-weighted reduced-\u03c7\u00b2: \u03a3((y\u2212\u0177)/\u03c3)\u00b2 / dof. None when \u03c3=0 (noiseless case); see metric_undefined_reason. Additive field \u2014 old payloads validate with None.",
+            "title": "Redchi2Weighted"
+          },
+          "speedup": {
+            "title": "Speedup",
+            "type": "number"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "speedup",
+          "r2",
+          "redChi2",
+          "medMs",
+          "paramErr",
+          "success"
+        ],
+        "title": "SuiteMetric",
+        "type": "object"
+      },
+      "Summary": {
+        "additionalProperties": false,
+        "description": "Headline KPI block per solver for the featured case.",
+        "properties": {
+          "aic": {
+            "title": "Aic",
+            "type": "number"
+          },
+          "bic": {
+            "title": "Bic",
+            "type": "number"
+          },
+          "chi2": {
+            "title": "Chi2",
+            "type": "number"
+          },
+          "cv": {
+            "title": "Cv",
+            "type": "number"
+          },
+          "dAIC": {
+            "title": "Daic",
+            "type": "number"
+          },
+          "dBIC": {
+            "title": "Dbic",
+            "type": "number"
+          },
+          "iqrMs": {
+            "title": "Iqrms",
+            "type": "number"
+          },
+          "mae": {
+            "title": "Mae",
+            "type": "number"
+          },
+          "medMs": {
+            "title": "Medms",
+            "type": "number"
+          },
+          "nIter": {
+            "title": "Niter",
+            "type": "integer"
+          },
+          "r2": {
+            "title": "R2",
+            "type": "number"
+          },
+          "redChi2": {
+            "title": "Redchi2",
+            "type": "number"
+          },
+          "rmse": {
+            "title": "Rmse",
+            "type": "number"
+          },
+          "speedup": {
+            "title": "Speedup",
+            "type": "number"
+          },
+          "speedupCi": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CI"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "r2",
+          "chi2",
+          "redChi2",
+          "rmse",
+          "mae",
+          "nIter",
+          "medMs",
+          "iqrMs",
+          "cv",
+          "speedup",
+          "success",
+          "aic",
+          "bic",
+          "dAIC",
+          "dBIC"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "TimingDist": {
+        "additionalProperties": false,
+        "description": "Per-solver runtime distribution over timing repetitions (milliseconds).",
+        "properties": {
+          "cv": {
+            "title": "Cv",
+            "type": "number"
+          },
+          "iqr": {
+            "title": "Iqr",
+            "type": "number"
+          },
+          "mean": {
+            "title": "Mean",
+            "type": "number"
+          },
+          "median": {
+            "title": "Median",
+            "type": "number"
+          },
+          "p25": {
+            "title": "P25",
+            "type": "number"
+          },
+          "p5": {
+            "title": "P5",
+            "type": "number"
+          },
+          "p75": {
+            "title": "P75",
+            "type": "number"
+          },
+          "p95": {
+            "title": "P95",
+            "type": "number"
+          },
+          "raw": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Raw",
+            "type": "array"
+          }
+        },
+        "required": [
+          "raw",
+          "median",
+          "mean",
+          "p5",
+          "p25",
+          "p75",
+          "p95",
+          "iqr",
+          "cv"
+        ],
+        "title": "TimingDist",
+        "type": "object"
+      },
+      "TrustBlock": {
+        "additionalProperties": false,
+        "description": "Aggregate trust evidence attached to a BenchReport.",
+        "properties": {
+          "nClaimsAudited": {
+            "title": "Nclaimsaudited",
+            "type": "integer"
+          },
+          "nClaimsTotal": {
+            "title": "Nclaimstotal",
+            "type": "integer"
+          },
+          "nistValidation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NistValidation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "NIST StRD certified-value validation (W8). Additive \u2014 Pydantic fills None for payloads that predate the A7 external-validation wire."
+          },
+          "rung": {
+            "$ref": "#/components/schemas/CredibilityRung"
+          },
+          "wires": {
+            "items": {
+              "$ref": "#/components/schemas/WireResult"
+            },
+            "title": "Wires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rung",
+          "wires",
+          "nClaimsAudited",
+          "nClaimsTotal"
+        ],
+        "title": "TrustBlock",
+        "type": "object"
+      },
+      "Uncertainty": {
+        "additionalProperties": false,
+        "description": "Parameter-pull diagnostics: pulls = (est\u2212truth)/\u03c3, coverage, reported \u03c3.\n\n``coverage`` is ``None`` when no valid \u03c3 was available for any MC sample\n(e.g. backends like jax that set every ``param_stderr`` entry to ``None``).\nA ``None`` coverage is distinct from a genuine ``0.0`` (all pulls |p| \u2265 1\u03c3).",
+        "properties": {
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "pulls": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Pulls",
+            "type": "array"
+          },
+          "sigma": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Sigma",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pulls",
+          "coverage",
+          "sigma"
+        ],
+        "title": "Uncertainty",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Warmup": {
+        "additionalProperties": false,
+        "description": "Cold/hot amortization for one solver (JAX compile cost amortizing 1\u2192100).",
+        "properties": {
+          "coldMs": {
+            "title": "Coldms",
+            "type": "number"
+          },
+          "curve": {
+            "items": {
+              "$ref": "#/components/schemas/Point2D"
+            },
+            "title": "Curve",
+            "type": "array"
+          },
+          "hotMs": {
+            "title": "Hotms",
+            "type": "number"
+          },
+          "hotThroughput": {
+            "title": "Hotthroughput",
+            "type": "number"
+          },
+          "pts": {
+            "items": {
+              "$ref": "#/components/schemas/WarmupPt"
+            },
+            "title": "Pts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "curve",
+          "pts",
+          "hotThroughput",
+          "coldMs",
+          "hotMs"
+        ],
+        "title": "Warmup",
+        "type": "object"
+      },
+      "WarmupPt": {
+        "additionalProperties": false,
+        "description": "One cold/hot amortization point: per-run ms at a cumulative run count.",
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "perRun": {
+            "title": "Perrun",
+            "type": "number"
+          }
+        },
+        "required": [
+          "n",
+          "perRun"
+        ],
+        "title": "WarmupPt",
+        "type": "object"
+      },
+      "WireResult": {
+        "additionalProperties": false,
+        "description": "One verification wire's outcome.",
+        "properties": {
+          "details": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "evidence": {
+            "description": "One-line evidence statement.",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skipped",
+              "gap"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "wireId": {
+            "description": "W1..W6 from the value-stream diagram.",
+            "title": "Wireid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "wireId",
+          "name",
+          "status",
+          "evidence"
+        ],
+        "title": "WireResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "summary": "Serves the frozen BenchReport contract (the report the web UI consumes).",
+    "title": "SpectraFit Benchmark API",
+    "version": "1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/report": {
+      "get": {
+        "description": "Return the newest run's validated :class:`BenchReport`.",
+        "operationId": "get_latest_report_api_report_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The latest run's report (the BenchReport contract)."
+      }
+    },
+    "/api/report/{run_id}": {
+      "get": {
+        "description": "Return the validated :class:`BenchReport` for the given *run_id*.",
+        "operationId": "get_report_api_report__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "A specific run's report by id."
+      }
+    },
+    "/api/runs": {
+      "get": {
+        "description": "Return the run ids under ``<REPORTS_ROOT>/benchmark/`` (newest first).",
+        "operationId": "list_runs_api_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Runs Api Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List available benchmark run ids (newest first)."
+      }
+    },
+    "/api/trust": {
+      "get": {
+        "description": "Latest run's verification ledger slice (trust block + inference).\n\nThe downloadable 'verification ledger' the UI links to for reviewers. The full\nV&V detail (wires, NIST datasets, nested-adequacy, \u03c3-calibration, speed-significance)\nlives here rather than as a dedicated UI page; the landing carries only a compact,\nexternally-anchored trust signal. camelCase wire form, like /report.",
+        "operationId": "get_trust_api_trust_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Trust Api Trust Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The latest run's verification ledger (trust block + inference)."
+      }
+    },
+    "/api/v1/report": {
+      "get": {
+        "description": "Return the newest run's validated :class:`BenchReport`.",
+        "operationId": "get_latest_report_api_v1_report_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The latest run's report (the BenchReport contract)."
+      }
+    },
+    "/api/v1/report/{run_id}": {
+      "get": {
+        "description": "Return the validated :class:`BenchReport` for the given *run_id*.",
+        "operationId": "get_report_api_v1_report__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "A specific run's report by id."
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "description": "Return the run ids under ``<REPORTS_ROOT>/benchmark/`` (newest first).",
+        "operationId": "list_runs_api_v1_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Runs Api V1 Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List available benchmark run ids (newest first)."
+      }
+    },
+    "/api/v1/trust": {
+      "get": {
+        "description": "Latest run's verification ledger slice (trust block + inference).\n\nThe downloadable 'verification ledger' the UI links to for reviewers. The full\nV&V detail (wires, NIST datasets, nested-adequacy, \u03c3-calibration, speed-significance)\nlives here rather than as a dedicated UI page; the landing carries only a compact,\nexternally-anchored trust signal. camelCase wire form, like /report.",
+        "operationId": "get_trust_api_v1_trust_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Trust Api V1 Trust Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The latest run's verification ledger (trust block + inference)."
+      }
+    }
+  }
+}

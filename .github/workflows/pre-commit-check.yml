@@ -1,0 +1,133 @@
+name: Pre-Commit Check
+
+# Trigger on pull request and push to main
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# The success/failure PR-comment steps below use the github-script action to call
+# the issues/PR comment API; without an explicit grant the default GITHUB_TOKEN is
+# read-only on many repos and `createComment` 403s, failing an otherwise-green job.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pre-commit:
+    # CWE-829 hardening ("pwn request"): this job checks out and EXECUTES PR
+    # content (pre-commit hooks — several `language: system` — plus `cargo
+    # clippy`/`cargo check`, which runs arbitrary `build.rs`). Only run it for
+    # trusted triggers: a push (only maintainers can push to main), Dependabot
+    # (a fixed, trusted GitHub App identity), or a PR author who is already a
+    # repo owner/member/collaborator. A first-time external contributor's PR
+    # is skipped here until a maintainer signals trust (e.g. by pushing a
+    # commit themselves, which re-triggers this job under the push condition).
+    if: >-
+      github.event_name == 'push' ||
+      github.actor == 'dependabot[bot]' ||
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    # The cargo-clippy / cargo-check pre-commit hooks compile the workspace; with the
+    # Cargo cache below a warm run is fast, but a cold run (cache miss) needs >15 min.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0  # Full history needed for some checks
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c  # v4
+        with:
+          python-version: "3.13"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-precommit-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-precommit-
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies with uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # `--extra benchmark` installs the LIGHT optional deps (fastapi, typer,
+          # lmfit→scipy) so the `ty` hook can resolve+type-check the bench/api
+          # modules' imports. The HEAVY `jax` extra is intentionally omitted to keep
+          # this governance job fast; `jax`/`optimistix` imports are declared in
+          # `[tool.ty.analysis] allowed-unresolved-imports` so they don't error here.
+          uv sync --extra benchmark
+        shell: bash
+
+      - name: Run pre-commit hooks on all files
+        id: precommit
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # pre-commit is installed into the uv-managed .venv (not on PATH); invoke
+          # via `uv run` so it is found and so hooks inherit the venv environment.
+          uv run pre-commit run --all-files --show-diff-on-failure --color always
+        continue-on-error: true
+        shell: bash
+
+      - name: Run self-heal check mode
+        id: selfheal
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          uv run python scripts/self_heal_automation.py --mode check --fail-on-fixes
+        continue-on-error: true
+        shell: bash
+
+      - name: Upload self-heal artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: self-heal-reports
+          path: .spectrafit_reports/self-heal/
+          if-no-files-found: warn
+
+      - name: Post PR comment on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true  # cosmetic; a comment failure must not mask/replace the real status
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Pre-commit validation failed\n\nPlease run `pre-commit run --all-files` locally and fix violations before pushing.'
+            })
+
+      - name: Fail if hooks failed
+        if: steps.precommit.outcome == 'failure' || steps.selfheal.outcome == 'failure'
+        run: |
+          echo "Pre-commit or self-heal validation failed. Review the output above."
+          exit 1
+        shell: bash
+
+      - name: Comment success
+        if: success() && github.event_name == 'pull_request'
+        continue-on-error: true  # cosmetic ✅ note; must never turn a green gate red
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All pre-commit checks passed'
+            })
