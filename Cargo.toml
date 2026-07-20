@@ -1,0 +1,49 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.dependencies]
+# Python bindings
+pyo3 = { version = "0.22", features = ["extension-module"] }
+numpy = { version = "0.22" }
+
+# Linear algebra + LM solver
+nalgebra = "0.34"
+levenberg-marquardt = "0.15"
+# Pure-Rust SIMD linear algebra (no BLAS/C dep) — backs the faer-native
+# trust-region core in crates/spectrafit-trust-region.
+faer = "0.24"
+
+# Parallelism
+rayon = "1.10"
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+
+# Math functions (erfc, etc.)
+libm = "0.2"
+
+# Dev / float comparison
+approx = "0.5"
+
+# Internal path dependencies
+spectrafit-types = { path = "crates/spectrafit-types" }
+spectrafit-models = { path = "crates/spectrafit-models" }
+spectrafit-graph = { path = "crates/spectrafit-graph" }
+spectrafit-solver = { path = "crates/spectrafit-solver" }
+spectrafit-varpro = { path = "crates/spectrafit-varpro" }
+spectrafit-trust-region = { path = "crates/spectrafit-trust-region" }
+spectrafit-levenberg-marquardt = { path = "crates/spectrafit-levenberg-marquardt" }
+spectrafit-dogleg = { path = "crates/spectrafit-dogleg" }
+spectrafit-newton-cg = { path = "crates/spectrafit-newton-cg" }
+
+# Variable Projection (separable NLS) — features applied per-platform in crates/spectrafit-varpro
+varpro = { version = "0.14" }
+
+[profile.release]
+lto = true
+codegen-units = 1

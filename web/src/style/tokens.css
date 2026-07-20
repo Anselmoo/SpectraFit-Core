@@ -1,0 +1,183 @@
+:root {
+  /* substrate + glass surfaces */
+  --bg: oklch(0.17 0.012 250);
+  --surface: oklch(0.22 0.014 250 / 0.55);
+  --surface-2: oklch(0.26 0.016 250 / 0.62);
+  --glass-blur: 18px;
+  --hairline: oklch(0.62 0.02 250 / 0.20);
+  /* ink */
+  --ink: oklch(0.96 0.005 250);
+  --ink-dim: oklch(0.74 0.01 250);
+  --ink-faint: oklch(0.56 0.01 250);
+  /* single restrained scientific accent */
+  --accent: oklch(0.78 0.12 200);
+  /* contrasting second accent — for paired traces (e.g. time-resolved kinetics:
+     peak A on --accent (cyan), peak B on --accent-alt (warm) — high contrast) */
+  --accent-alt: oklch(0.72 0.16 48);
+  /* provenance materials — a certainty gradient (measured -> absent) */
+  --prov-measured: oklch(0.96 0.005 250);
+  --prov-derived: oklch(0.80 0.012 250);
+  --prov-reconstructed: oklch(0.66 0.02 250);
+  --prov-absent: oklch(0.45 0.01 250);
+  /* gate/status — used ONLY on the gate badge, never on data ink */
+  --pass: oklch(0.80 0.13 150);
+  --warn: oklch(0.83 0.12 85);
+  --fail: oklch(0.70 0.16 25);
+  /* per-solver identity colors — consumed via SolverMeta.color = var(--c-<id>).
+     Dark-register brights (visible on the substrate); restored from the
+     pre-A2.0 theme.css that the hard cut dropped. Okabe-Ito-derived, hue-distinct. */
+  --c-spectrafit: oklch(0.68 0.14 248);        /* blue */
+  --c-lmfit: oklch(0.72 0.13 168);             /* green */
+  --c-jax: oklch(0.72 0.16 48);                /* vermilion */
+  --c-scipy-ls-lm: oklch(0.72 0.09 235);       /* gray-blue (MINPACK) */
+  --c-scipy-ls-trf: oklch(0.70 0.17 295);      /* purple (trust-region) */
+  --c-scipy-ls-dogbox: oklch(0.74 0.13 195);   /* teal (dogleg) */
+  --c-spectrafit-soft: oklch(0.68 0.14 248 / 0.20);
+  --c-lmfit-soft: oklch(0.72 0.13 168 / 0.20);
+  --c-jax-soft: oklch(0.72 0.16 48 / 0.20);
+  --c-scipy-ls-lm-soft: oklch(0.72 0.09 235 / 0.20);
+  --c-scipy-ls-trf-soft: oklch(0.70 0.17 295 / 0.20);
+  --c-scipy-ls-dogbox-soft: oklch(0.74 0.13 195 / 0.20);
+  /* type — NOT Inter/Roboto (Kare): editorial display + plex body/mono */
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* space scale (8px base) + shape + motion */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --radius: 14px;
+  --motion: 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* per-destination layout widths */
+  --layout-editorial: 760px;
+  --layout-evidence: 1200px;
+  --layout-nav: 760px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+}
+
+/* provenance material classes — certainty gradient (measured → absent) */
+.prov-measured      { color: var(--prov-measured);      opacity: 1.0; }
+.prov-derived       { color: var(--prov-derived);       opacity: 0.92; }
+.prov-reconstructed { color: var(--prov-reconstructed); opacity: 0.7; }
+.prov-absent        { color: var(--prov-absent);        opacity: 0.5; }
+
+/* credibility-rung ladder */
+.rung-ladder { display: flex; flex-direction: column; gap: var(--s2); }
+.rung-head   { display: flex; align-items: baseline; gap: var(--s3); }
+.rung-now    { font-family: var(--font-mono); font-size: 1.25rem; color: var(--accent); }
+.rung-cap    { font-size: 0.8rem; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.rung-steps  { display: flex; gap: var(--s1); }
+.rung-step   { display: block; width: 28px; height: 6px; border-radius: 3px; transition: background var(--motion); }
+.rung-gap    { margin: 0; font-size: 0.82rem; color: var(--ink-dim); font-family: var(--font-mono); }
+.rung-legend { margin: 0; font-size: 0.74rem; color: var(--ink-faint); font-family: var(--font-mono); }
+
+/* render-truth money figure — claimed vs audited rung */
+.render-truth { display: flex; flex-direction: column; gap: var(--s3); }
+.rt-cols      { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+.rt-col       { display: flex; flex-direction: column; gap: var(--s1); flex: 1; min-width: 100px; }
+.rt-label     { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-family: var(--font-mono); }
+.rt-rung      { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 300; line-height: 1; }
+.rt-note      { font-size: 0.76rem; color: var(--ink-faint); }
+.rt-arrow     { font-size: 1.4rem; color: var(--ink-faint); flex-shrink: 0; }
+.rt-blocked   { margin: 0; font-size: 0.84rem; color: var(--ink-dim); line-height: 1.5; }
+.rt-wire      { display: inline; }
+.rt-structural-gap { margin: var(--s2) 0 0; font-size: 0.76rem; color: var(--ink-faint); line-height: 1.5; font-family: var(--font-mono); }
+
+/* Evidence section grouping + sticky rail (Dye + Jobs + Tog) */
+/* Dye: section label — small uppercase mono label in --ink-faint */
+.ev-section {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin: var(--s7) 0 var(--s4);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--hairline);
+}
+/* Tog: sticky section rail — subtle horizontal nav bar */
+.ev-rail {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: var(--s4);
+  padding: var(--s2) 0;
+  background: oklch(0.17 0.012 250 / 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ev-rail a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.ev-rail a:hover { color: var(--accent); }
+
+/* Suite-table rows are clickable (open the case drill-down) — make that
+   discoverable: a hover highlight + underlined case id, so the affordance is
+   visible, not just a cursor change (Tog: no hidden interaction). */
+.suite-row--clickable { transition: background var(--motion); }
+.suite-row--clickable:hover { background: var(--surface-2); }
+.suite-row--clickable:hover td:first-child { text-decoration: underline; }
+.suite-row--clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Jobs: smooth scroll for anchor navigation */
+html { scroll-behavior: smooth; }
+
+
+/* Standing hero: the money figure IS the rung (Dye primary · Ive monument · Jobs one-number) */
+.money { display:flex; align-items:center; gap:var(--s5); flex-wrap:wrap; }
+.money-rung { font-family:var(--font-mono); font-size:clamp(3rem,8vw,5.5rem); font-weight:200; line-height:.9; }
+.money-claimed { color:var(--ink-faint); }
+.money-audited { color:var(--fail); }
+.money-arrow  { color:var(--ink-faint); font-size:2rem; }
+.money-ladder { display:flex; gap:var(--s1); margin-top:var(--s2); }
+/* Tog: absent/partial measurement, explained where you meet it (not a footnote) */
+.absent-note { display:flex; gap:var(--s2); align-items:flex-start; padding:var(--s3);
+  border:1px dashed var(--hairline); border-radius:8px; color:var(--prov-absent); font-size:.82rem; line-height:1.5; }
+/* Tog+Ive: ONE orchestrated entrance — communicates reading order, reduced-motion safe */
+@media (prefers-reduced-motion: no-preference) {
+  .stagger > * { opacity:0; transform:translateY(8px); animation:rise var(--motion) forwards; }
+  .stagger > *:nth-child(1){animation-delay:40ms} .stagger > *:nth-child(2){animation-delay:110ms}
+  .stagger > *:nth-child(3){animation-delay:180ms} .stagger > *:nth-child(4){animation-delay:250ms}
+  @keyframes rise { to { opacity:1; transform:none } }
+}
+/* quiet provenance footer — closes the editorial columns (Ive composition · Kare warmth) */
+.prov-footer { margin-top:var(--s7); text-align:center; font-family:var(--font-mono);
+  font-size:0.72rem; color:var(--ink-faint); letter-spacing:0.04em; }
+.prov-footer .prov-mark { color:var(--ink-dim); }
+
+/* verification-wire matrix */
+.wire-matrix { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+/* Grid: wire-id (fixed) · dot (fixed) · name (1fr, grows) · evidence (minmax wraps).
+   The evidence column uses minmax(0, auto) so it can shrink below its content width
+   and let white-space / overflow-wrap take effect — the only fix for long NIST strings. */
+.wire-row    { display: grid; grid-template-columns: 3.5rem 10px 1fr minmax(0, auto); align-items: start; gap: var(--s3);
+               padding: var(--s2) var(--s3); border-radius: 8px; background: var(--surface-2);
+               border-left: 2px solid transparent; }
+/* R5 council: FAIL rows carry a structural border-left accent — Jobs/Dye/Tog.
+   padding-left compensates so the text column doesn't shift: s3(12px) − 2px border = 10px. */
+.wire-row[data-status="fail"] { border-left: 2px solid var(--fail); padding-left: calc(var(--s3) - 2px); }
+.wire-id     { font-size: 0.78rem; color: var(--ink-faint); white-space: nowrap; padding-top: 2px; }
+.wire-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.wire-name   { font-size: 0.88rem; color: var(--ink-dim); }
+/* Evidence wraps rather than forcing horizontal scroll (R1: Dye hierarchy + Tog no-clip).
+   min-width: 0 ensures the cell can shrink; overflow-wrap: anywhere breaks long tokens. */
+.wire-evidence { font-size: 0.78rem; color: var(--ink-faint); font-family: var(--font-mono);
+                 text-align: right; min-width: 0; white-space: normal; overflow-wrap: anywhere; }

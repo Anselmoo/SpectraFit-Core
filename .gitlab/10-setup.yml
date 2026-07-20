@@ -1,0 +1,61 @@
+# Install all deps once; downstream jobs inherit `.venv/` + `web/node_modules/`
+# via artifacts (1-hour TTL) and warm caches via the three cache buckets below.
+#
+# Cycle 31 — cache architecture.
+# Three named buckets, all policy: pull-push here (setup is the ONLY writer):
+#   rust-*   — $CARGO_HOME (registry index) + target/ (build artifacts)
+#   static-* — .uv-cache/ (uv wheel cache) + .venv/ (installed env)
+#   web-*    — web/node_modules/
+# Downstream jobs declare only the bucket(s) they need, all with policy: pull.
+# Cycle 31 hotfix 8: rust-* no longer carries target/ (only .cargo/); each
+# Rust job rebuilds from a warm cargo registry. This bounds runner disk use
+# after pipeline #18 hit ENOSPC mid-rustc from a 1-2 GB cached target/.
+#
+# The `*` in the key is $CI_COMMIT_REF_SLUG so caches are branch-scoped and
+# don't cross-contaminate MR branches.
+
+setup:
+  rules: !reference [.rules_default, rules]
+  stage: setup
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      # New branches seed from the default branch's warm .cargo registry instead
+      # of a cold fetch (target/ deliberately excluded — ENOSPC, hotfix 8).
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      # Cycle 31 hotfix 8: target/ removed from this cache bucket pipeline-wide.
+      # Pipeline #18 hit ENOSPC mid-rustc when test:python pulled an extant
+      # target/ from a prior bloated push. Each job rebuilds from the cached
+      # cargo registry; .cargo/ alone is small and high-value.
+      policy: pull-push
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull-push
+    - key: "web-$CI_COMMIT_REF_SLUG"
+      paths:
+        - web/node_modules/
+      policy: pull-push
+  script:
+    - |
+      # Python deps (benchmark extra carries FastAPI + uvicorn + lmfit).
+      # `--no-install-project` skips building the local editable
+      # spectrafit-core package — that triggers `maturin pep517 build-wheel`
+      # which needs cmake + gfortran + LAPACK (netlib-src). Letting
+      # test:python own the maturin compile keeps `setup` lean.
+      # lint:python (ruff, ty) and test:web (uvicorn + synth fixture) don't
+      # need the compiled .so to function, so the lighter setup is sufficient.
+      UV_CACHE_DIR=.uv-cache uv sync --no-install-project --extra benchmark
+      # Pre-fetch Cargo deps so test:python / test:rust / lint:rust hit
+      # a warm registry (no build, just download).
+      cargo fetch
+      # Web deps
+      cd web && npm ci
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - .venv/
+      - web/node_modules/
