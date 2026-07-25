@@ -1,0 +1,9 @@
+SECRETS.local.md
+*.local.patch
+
+# quality/self-assess plugin audit-run output — point-in-time snapshots that
+# go stale as soon as their findings are fixed, not durable project docs.
+# The durable record of a fix is the commit that made it, not the report
+# that found it.
+quality/
+self-assess/

@@ -1,0 +1,169 @@
+# spectrafit-core pre-commit hooks
+# 
+# STRATEGY: Hybrid approach
+# - Git pre-commit: Fast shell scripts (bash only, zero Python deps)
+# - Claude Code hooks: Python validators for semantic analysis (in .claude/settings.json)
+# - CI/CD: Can use either bash (fast) or Python (semantic verification)
+#
+# See DECISIONS.md [2026-05-06] for architecture rationale and trade-offs.
+
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-ast
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff-check
+        # pre-commit: attempt to auto-fix what ruff can
+        args: [--fix]
+        stages: [pre-commit]
+      - id: ruff-check
+        # pre-push: strict (no --fix) — mirrors .gitlab/20-lint.yml `lint:python`
+        # so a commit that bypassed pre-commit (--no-verify, fresh worktree
+        # without `pre-commit install`, agent-side edit) still gets caught
+        # client-side before the push reaches the GWDG runner. Cycle 30L.
+        alias: ruff-check-strict
+        stages: [pre-push]
+      - id: ruff-format
+
+  - repo: https://github.com/Anselmoo/repo-release-tools
+    rev: v1.8.1
+    hooks:
+      - id: rrt-branch-name
+      - id: rrt-changelog
+      - id: rrt-commit-subject
+      # Native folder-structure check against [tool.rrt.folders] (pyproject.toml).
+      # Replaces the former `uvx … rrt folder check` local hook; single source of
+      # truth for required layout, supersedes scripts/validate_repo_layout.sh.
+      - id: rrt-folder-check
+        stages: [pre-commit, pre-push]
+
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty (type checker)
+        description: Run the Astral `ty` type checker over project sources (not .claude tooling).
+        entry: uv run ty check --output-format concise python tests
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      # NOTE: the `mypy-check` hook was removed. mypy is not a project dependency
+      # (not in [dependency-groups].dev) so it failed to spawn on every run, and
+      # `ty` (Astral's checker, configured above) is the project's type checker.
+
+      - id: cargo-fmt
+        name: rustfmt (rust)
+        description: Ensure changed Rust files are formatted.
+        entry: uv run rustfmt --check --edition 2021
+        language: system
+        files: '\.rs$'
+        # Skip .claude/ tooling: rust-model-scaffolder templates/examples are
+        # intentionally-unformatted scaffolds, and .claude/worktrees/ holds agent
+        # worktree checkouts (full repo copies) that must not be re-linted here.
+        exclude: '^\.claude/'
+
+      - id: cargo-clippy
+        name: cargo clippy (rust)
+        description: Run clippy as a safety check (warn-level).
+        entry: uv run cargo clippy --workspace --all-targets --all-features
+        language: system
+        pass_filenames: false
+        files: '\.rs$'
+
+      - id: cargo-check
+        name: cargo check (rust)
+        description: Run cargo check for fast Rust compile validation.
+        entry: uv run cargo check --workspace
+        language: system
+        pass_filenames: false
+        files: '\.rs$'
+
+      - id: pre-merge-pyO3
+        name: PyO3 Boundary Validator (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate all #[pyfunction] decorators return JSON strings only.
+          Uses bash regex pattern matching (fast, <50ms).
+          For semantic analysis, Claude Code hooks use pydantic_edit.py (in .claude/settings.json).
+        entry: .claude/hooks/pre-merge-pyO3.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      - id: pre-merge-dag
+        name: Workspace DAG Validator (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate crate dependency graph follows the allowed DAG.
+          Uses cargo tree + bash checks (fast, <100ms).
+          For semantic analysis, Claude Code hooks validate in pydantic_edit.py.
+        entry: .claude/hooks/pre-merge-dag.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      - id: pre-merge-schema-sync
+        name: Schema Sync Checker (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate Python↔Rust schema alignment at JSON boundary.
+          Uses bash grep patterns (fast, <50ms).
+          For full semantic validation, Claude Code hooks use pydantic_edit.py.
+        entry: .claude/hooks/pre-merge-schema-sync.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 60
+
+      # NOTE: the `pre-merge-perf-baseline` hook was removed. It required speedboat
+      # evidence artifacts (feedback.json / results_index.json / results_feedback.json
+      # with regression_smoke + scaling_10k scenarios) from the quick_validation system
+      # that the benchmark-experience rebuild REPLACED. Perf-regression is now gated by
+      # the dedicated benchmark CI job (`python -m benchmark.cli gate`, geomean speedup
+      # vs lmfit + max |Δr²|), which is too heavy (release build + 136 cases) for pre-commit.
+
+      - id: ruff-docstring-check
+        name: Ruff docstring checks
+        description: Run Ruff to validate Google-style docstrings (D-codes) on project sources.
+        entry: uv run ruff check python tests --select D
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      # NOTE: `validate-docstrings-script` was removed 2026-07-14. It invoked
+      # .claude/skills/docstring-enforcer/scripts/validate_docstrings.py, which
+      # no longer exists — that skill was folded into the 7-skill consolidation
+      # (CLAUDE.md "Skill catalog") and `ruff-docstring-check` above (D-codes,
+      # project-wide via pyproject.toml's extend-select) already covers every
+      # check it did (the same reasoning that dropped the separate GitHub
+      # "Docstring Check" workflow 2026-07-12, see ci.yml). The hook was
+      # silently failing every run (`No such file or directory`) until caught
+      # by the andon-loop-style CI investigation that added this note.
+
+      # NOTE: `validate-scenarios` and `validate-model-stub` were removed. They
+      # validated artifacts from a SUPERSEDED architecture: YAML benchmark
+      # scenarios (the rebuild moved to Python CaseSpec/CaseFamily in
+      # python/extras/bench/cases.py) and a `ModelKernel`/`fn evaluate` Rust stub
+      # (the real kernels implement the `Model` trait with `fn eval`). They ran
+      # against non-existent formats and failed every CI run. The generator skills
+      # under .claude/skills/{benchmark-scenario-generator,rust-model-scaffolder}/
+      # still ship their own example validators for ad-hoc use.
+
+      - id: self-heal-automation
+        name: Self-heal automation metadata
+        description: |
+          [GIT PRE-COMMIT] Validate and safely heal automation metadata drift for hooks/skills/agents/instructions.
+          Applies deterministic safe fixes only and writes run evidence under .spectrafit_reports/self-heal/.
+        entry: uv run python scripts/self_heal_automation.py --mode fix-safe
+        language: system
+        stages: [pre-commit, pre-push]
+        files: '^(\.claude/hooks/|\.claude/settings\.json|\.claude/agents/|\.claude/skills/|\.claude/instructions/)'

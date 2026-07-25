@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "description": "CLI Tool Registry with Validator Mappings for spectrafit-core",
+  "validators": {
+    "edit": {
+      "path_bash": "./.claude/validators/validate-edit.sh",
+      "path_python": "./.claude/validators/pydantic_edit.py",
+      "recommended": "python",
+      "description": "Validates edit tool inputs before execution (native Python + Pydantic)",
+      "checks": [
+        "Path traversal detection (no .. or absolute paths)",
+        "File existence check",
+        "PyO3 boundary validation for Rust #[pyfunction] returns (String/Result<String> only)",
+        "Cargo.toml DAG dependency validation (types→models→graph→solver)",
+        "Schema file Pydantic v2 compliance (no Any/Dict/List loose typing)",
+        "Schema migration auditor rules compliance"
+      ],
+      "implementation": "Pydantic BaseModel with field_validators",
+      "timeout": "10s",
+      "exit_codes": {
+        "0": "allow",
+        "1": "deny"
+      }
+    },
+    "create": {
+      "path_bash": "./.claude/validators/validate-create.sh",
+      "path_python": "./.claude/validators/pydantic_create.py",
+      "recommended": "python",
+      "description": "Validates create tool inputs before execution (native Python + Pydantic)",
+      "checks": [
+        "Parent directory existence",
+        "Path traversal detection (no .. or absolute paths)",
+        "File non-existence (create is for new files only)",
+        "Python AST syntax validation (ast.parse)",
+        "Rust file brace/paren/bracket balance check",
+        "Markdown frontmatter validation (for instructions/agents)",
+        "Pydantic v2 schema compliance for Python files"
+      ],
+      "implementation": "Pydantic BaseModel with AST parser integration",
+      "timeout": "10s",
+      "exit_codes": {
+        "0": "allow",
+        "1": "deny"
+      }
+    },
+    "bash": {
+      "path_bash": "./.claude/validators/validate-bash.sh",
+      "path_python": "./.claude/validators/pydantic_bash.py",
+      "recommended": "python",
+      "description": "Validates bash commands before execution (native Python + Pydantic)",
+      "dangerous_patterns": [
+        "rm -rf (destructive recursive delete)",
+        "git push --force (force push)",
+        "sudo (privilege escalation)",
+        "fork bomb: ():(){:|:&};:",
+        "pipe to sh: | sh (code injection)",
+        "backtick substitution: `...` (unvalidated code execution)"
+      ],
+      "warnings": [
+        "long_running_operation: cargo build/test, npm install, etc.",
+        "network_operation: curl, wget, git clone/fetch",
+        "side_effects_detected: git reset, git clean, kill, truncate"
+      ],
+      "implementation": "Pydantic BaseModel with regex-based pattern detection",
+      "timeout": "10s",
+      "exit_codes": {
+        "0": "allow",
+        "1": "deny",
+        "2": "ask (dangerous but confirmable)"
+      }
+    }
+  },
+  "audit_trail": {
+    "location": "./.claude/audit/validation-decisions.jsonl",
+    "format": "newline-delimited JSON",
+    "schema": {
+      "timestamp": "ISO 8601 timestamp",
+      "agent": "Agent name or 'cli-direct'",
+      "tool": "Tool name (edit, create, bash, etc.)",
+      "path": "File path or command",
+      "decision": "allow|deny",
+      "reason": "Human-readable explanation",
+      "violations": "Array of violation codes"
+    }
+  },
+  "error_handling": {
+    "validator_crash": "Block operation (fail-safe)",
+    "validator_timeout": "Block operation (>10s → error)",
+    "error_log_location": "./.claude/audit/validation-errors.log"
+  },
+  "integration_points": {
+    "pre_tool_execution": "Before any agent tool executes, check tool_registry for applicable validator",
+    "post_validation": "Log decision to audit trail at .claude/audit/validation-decisions.jsonl",
+    "error_handling": "If validator crashes/times out, log to .claude/audit/validation-errors.log and block operation"
+  }
+}

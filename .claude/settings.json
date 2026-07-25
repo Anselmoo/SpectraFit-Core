@@ -1,0 +1,316 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__find_symbol",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__find_referencing_symbols",
+      "mcp__serena__find_declaration",
+      "mcp__serena__find_implementations",
+      "mcp__serena__get_diagnostics_for_file",
+      "mcp__serena__list_memories",
+      "mcp__serena__read_memory",
+      "mcp__serena__write_memory",
+      "mcp__serena__edit_memory",
+      "mcp__serena__delete_memory",
+      "mcp__serena__rename_memory",
+      "mcp__serena__onboarding",
+      "mcp__serena__initial_instructions",
+      "mcp__serena__get_current_config",
+      "mcp__serena__activate_project",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__replace_content",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__rename_symbol",
+      "mcp__serena__safe_delete_symbol",
+      "mcp__serena__insert_before_symbol",
+      "mcp__serena__insert_after_symbol",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "mcp__github__search_repositories",
+      "mcp__github__search_code",
+      "mcp__github__search_issues",
+      "mcp__github__search_pull_requests",
+      "mcp__github__search_commits",
+      "mcp__github__get_file_contents",
+      "mcp__github__get_commit",
+      "mcp__github__list_commits",
+      "mcp__github__list_branches",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_issues",
+      "mcp__github__list_releases",
+      "mcp__github__list_tags",
+      "mcp__github__pull_request_read",
+      "mcp__github__issue_read",
+      "mcp__github__get_latest_release",
+      "mcp__github__get_me",
+      "mcp__analyzer__ruff-check",
+      "mcp__analyzer__ty-check",
+      "mcp__analyzer__vulture-scan",
+      "mcp__rrt__rrt_health",
+      "mcp__rrt__rrt_drift",
+      "mcp__rrt__rrt_tree"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard-ledger-freshness.sh\"",
+            "description": "WARN: sweep docs/superpowers/ledgers for stale OPEN trunk ledgers (branch merged/deleted) and lying DoD checkboxes; LEDGER_STRICT=block to harden. Reaper for the semantic-debugging skill."
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/git-hygiene-session.sh\"",
+            "description": "WARN (exit 0): session-start git hygiene — (1) check_branch_freshness: warn if HEAD is behind @{upstream} or base lags local main (fail-open on offline/fetch-error); (2) prune_worktrees: prune stale registrations, auto-remove merged worktrees, flag unmerged/locked ones. GIT_HYGIENE_OFF=1 to silence; GIT_HYGIENE_PRUNE_OFF=1 for warn-only prune.",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard-test-hygiene.sh\"",
+            "description": "WARN (tier 1): test-run hygiene — nudges foreground / 2>&1-captured / unscoped-slow pytest|vitest|cargo-test runs toward `uv run poe run_bg <task>` (detaches → .pytest_logs/, tail it) so long tests don't hang and block memory. TEST_HYGIENE_MODE=block to harden; TEST_HYGIENE_OFF=1 to silence.",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard-branch-freshness.sh\"",
+            "description": "WARN (tier 1): before `git push`, `glab mr create`, or `gh pr create` — runs check_branch_freshness to warn if HEAD is behind @{upstream}, base lags local main, OR base lags gitlab/main directly (2026-07-14: closed a false-negative where a stale local main masked real divergence from the canonical gitlab remote, causing duplicate work vs. a concurrent session). Fail-open on offline/fetch-error. GIT_HYGIENE_OFF=1 to silence.",
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard-memory-hazards.sh\"",
+            "description": "BLOCKING (exit 2): memory-hazard guard — blocks workspace-wide cargo (use -p <crate>), raw 46MB .spectrafit_reports/**/{results,audit}.json loads via cat/jq/python-open/Read (use the live API or KB sidecars), and unbounded spc-bench run/poe benchmark (use --reps 1 or the cheap run_audit/inject path). Single-process loads, KB sidecars, cargo -p, du/wc are allowed; MEM_GUARD_OFF=1 bypasses.",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/protect-nist-fixtures.sh\"",
+            "description": "BLOCKING (exit 2): guard tests/fixtures/nist_strd/ against accidental edits — verbatim NIST StRD certified data; only update via nist-strd-runner skill + fresh itl.nist.gov fetch (cf. Cycle 16 / Eckerle4, Cycle 16.C/D/E)",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-render-boundary.sh\"",
+            "description": "Block frontend/backend boundary violations on Edit: no template engines in Python benchmark exporters, no Pydantic/Python in TSX files",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-pydantic-native.sh\"",
+            "description": "Block dict-key contract access in benchmark/test Python files on Edit; require typed Pydantic accessors",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-match-dispatch.sh\"",
+            "description": "Block if/elif == dispatch chains on a discriminator in python/extras + tests Python files on Edit; require match/case",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-pydantic-only.sh\"",
+            "description": "Block @dataclass / NamedTuple in python/benchmark/ Python files on Edit; require Pydantic BaseModel",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/frontend-soft-freeze.sh\"",
+            "description": "Soft-freeze frontend/ on Edit: block exported-symbol deletions and table-header removals; additive changes allowed",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-render-boundary.sh\"",
+            "description": "Block frontend/backend boundary violations on Write: no template engines in Python benchmark exporters, no Pydantic/Python in TSX files",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-pydantic-native.sh\"",
+            "description": "Block dict-key contract access in benchmark/test Python files on Write; require typed Pydantic accessors",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-match-dispatch.sh\"",
+            "description": "Block if/elif == dispatch chains on a discriminator in python/extras + tests Python files on Write; require match/case",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-pydantic-only.sh\"",
+            "description": "Block @dataclass / NamedTuple in python/benchmark/ Python files on Write; require Pydantic BaseModel",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/frontend-soft-freeze.sh\"",
+            "description": "Soft-freeze frontend/ on Write: block full rewrites of existing files; new file creation allowed",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-serena-first.sh\"",
+            "description": "WARN (tier 1, SERENA_FIRST_MODE=warn): nudge to mcp__serena__find_symbol when Grep pattern looks like a code symbol (fn/struct/impl/class/def + identifier). Flip to block via SERENA_FIRST_MODE=block in tier 2. See .claude/skills/INDEX.yaml § serena_first.",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|EnterPlanMode|TaskCreate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AAG_FIRST_MODE=block bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/suggest-ai-agent-guidelines.sh\"",
+            "description": "HYBRID thinking-warning (AAG_FIRST_MODE=block here): before an Agent dispatch, EnterPlanMode, or TaskCreate that looks strategy/architecture/governance/physics-shaped, route the planning through mcp__ai-agent-guidelines__<tool> first. Hard-stops (exit 2 → message reaches the model) only on the four highest-leverage lanes: enterprise-strategy, system-design, policy-govern, physics-analysis. Other lanes stay warn-mode (decorative). Suppressed when scope is clearly narrow (rename/typo/lint/single-file). Rationale: warn-mode stderr never reaches the model context, so the previous default (=warn) was a silent no-op for AI behavior.",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit(*.rs)|Write(*.rs)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/cargo-check-on-rust-edit.sh\"",
+            "description": "Non-blocking warn (exit 0): run `cargo check --workspace --quiet` after editing a Rust file under crates/**/src/ to catch cross-crate breakage at edit time (~3 s warm cache) rather than at maturin develop / pytest time (cf. Cycle 21 / FitResultSpec)",
+            "timeout": 65
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(DECISIONS.md)|Write(DECISIONS.md)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/audit-decisions-topic-index.sh\"",
+            "description": "Non-blocking warn (exit 0): compare new ADR headers added in this edit against new topic-index lines; warn with bucket suggestions when an ADR lacks an index entry (cf. Cycle 7 topic-index, 12+ un-indexed ADRs since Cycle 16)",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(*contract.py)|Write(*contract.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/contract-sync-reminder.sh\"",
+            "description": "Non-blocking reminder (exit 0) to regenerate bench.schema.json + web/src/contract.ts after editing python/benchmark/contract.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(*models.py)|Write(*models.py)|Edit(*types.rs)|Write(*types.rs)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-modeltype-parity.sh\"",
+            "description": "Non-blocking warn (exit 0) when Python ModelType and Rust ModelTypeStr drift (a member on one side without a matching variant on the other)",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(*.rs)|Write(*.rs)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -n 'pub ' \"${tool_input.file_path}\" | grep -v '///' | grep -v 'pub(' | grep -v '^--$' | head -10 || true",
+            "description": "Surface pub items without leading doc-comment in an edited .rs file (informational, non-blocking)",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit(*schemas*.py)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Schema file edited. Verify serde/Pydantic alias parity and add a round-trip test if fields were added or renamed. Use the python-stream skill (it absorbs the schemas specialist) for a full audit."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(*pytest*)",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "pytest run completed. If there were failures, use the python-stream skill (TDD dispatch) to classify and route each failure to the correct stream."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(*pytest*)|Bash(*benchmark*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -f .claude/hooks/enforce-perf-accuracy.sh ] && exec bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/enforce-perf-accuracy.sh\" || true",
+            "description": "Blocks (exit 2) when spectrafit is > 2x slower than lmfit or fit accuracy regresses, by parsing the newest benchmark/quick-validation results.json (script owned by U10). Defensive: the [ -f … ] guard makes it a silent no-op until the script lands, and `exec` preserves the script's exit 2 so the block propagates once it exists.",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/suggest-discovery-enrichment.sh\"",
+            "description": "Non-blocking (exit 0): after a bug/issue-pattern Grep, suggest BPDD-MAP enrichment trio — mcp__github__search_issues + search_code + get_file_contents, context7, WebSearch. DISCOVERY_ENRICHMENT_MODE=off to silence. Complements enforce-serena-first (PreToolUse/symbol patterns).",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/decisions-adr-reminder.sh\"",
+            "description": "Conditional DECISIONS.md ADR reminder — exit 2 (feed back) ONLY when the tree has uncommitted changes to a behavioural/architectural surface (crates/spectrafit_core/benchmark/frontend/CI) and DECISIONS.md was not updated; silent (exit 0) on clean/idle turns and doc/skill-only edits. Replaces the unconditional prompt that looped on idle turns.",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+[package]
+name = "spectrafit-dogleg"
+version = "0.1.0"
+edition = "2021"
+description = "Powell's dogleg trust-region method on the faer-native trust-region framework"
+
+[dependencies]
+spectrafit-trust-region = { workspace = true }
+faer = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+spectrafit-types = { workspace = true }

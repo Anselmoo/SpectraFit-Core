@@ -1,0 +1,13 @@
+[package]
+name = "spectrafit-builder"
+version = "0.1.0"
+edition = "2021"
+description = "Typed Rust DSL for building spectrafit FitGraphSpec without hand-writing JSON."
+
+[dependencies]
+spectrafit-types  = { workspace = true }
+spectrafit-models = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+approx     = { workspace = true }
