@@ -8,7 +8,7 @@ pyo3 = { version = "0.22", features = ["extension-module"] }
 numpy = { version = "0.22" }
 
 # Linear algebra + LM solver
-nalgebra = "0.34"
+nalgebra = "0.35"
 levenberg-marquardt = "0.15"
 # Pure-Rust SIMD linear algebra (no BLAS/C dep) — backs the faer-native
 # trust-region core in crates/spectrafit-trust-region.
@@ -22,7 +22,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Error handling
-thiserror = "1"
+thiserror = "2"
 
 # Math functions (erfc, etc.)
 libm = "0.2"
