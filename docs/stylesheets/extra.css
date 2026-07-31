@@ -1,0 +1,32 @@
+/*
+ * spectrafit-core docs — SpectraFit Design System re-skin manifest.
+ *
+ * Pure @import manifest: every rule lives in one of the modular files under
+ * docs/stylesheets/{tokens,typography,components,pages,utilities}/; nothing
+ * is defined directly in this file. Order matters — tokens first, then
+ * typography, then components (which consume both), then page-level layout,
+ * then utilities last so their guards (focus rings, reduced-motion) can
+ * override anything above them.
+ *
+ * No theme/{light,dark}.css split: both [data-md-color-scheme] blocks'
+ * actual rules live entirely in tokens/palette.css — a separate light/dark
+ * file pair would have shipped as empty scaffolding with zero rules, the
+ * same "no file for zero current content" bar every other module below was
+ * held to (see the components/ list — mermaid.css, tabs.css, etc. were
+ * excluded for the identical reason).
+ */
+@import "tokens/palette.css";
+@import "typography/type.css";
+@import "components/header.css";
+@import "components/nav.css";
+@import "components/code.css";
+@import "components/admonitions.css";
+@import "components/tables.css";
+@import "components/buttons.css";
+@import "components/headerlinks.css";
+@import "pages/hero.css";
+@import "pages/layout.css";
+@import "pages/section-hero.css";
+@import "utilities/scrollbar.css";
+@import "utilities/focus.css";
+@import "utilities/motion.css";

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>
+<linearGradient id="lg-base" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#4FA8FF"></stop><stop offset="60%" stop-color="#0A84FF"></stop><stop offset="100%" stop-color="#0768D1"></stop></linearGradient>
+<radialGradient id="lg-glint" cx="30%" cy="24%" r="55%"><stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"></stop><stop offset="40%" stop-color="#FFFFFF" stop-opacity="0.3"></stop><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"></stop></radialGradient>
+<linearGradient id="lg-floor" x1="0" y1="0" x2="0" y2="1"><stop offset="60%" stop-color="#050B20" stop-opacity="0"></stop><stop offset="100%" stop-color="#050B20" stop-opacity="0.32"></stop></linearGradient>
+<linearGradient id="lg-glyph" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFFFFF"></stop><stop offset="100%" stop-color="#DCE6FF"></stop></linearGradient>
+<clipPath id="lg-squircle"><rect x="2" y="2" width="60" height="60" rx="16.5"></rect></clipPath>
+<filter id="lg-blur-soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4"></feGaussianBlur></filter>
+<filter id="lg-blur-lg" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+<filter id="lg-drop" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#031030" flood-opacity="0.55"></feDropShadow></filter>
+</defs>
+<g clip-path="url(#lg-squircle)">
+<rect x="2" y="2" width="60" height="60" fill="url(#lg-base)"></rect>
+<g filter="url(#lg-blur-lg)" opacity="0.5"><path d="M8 52C13 52 18 14 24 12C29 10 31 24 34 27C37 30 39 23 44 18C50 12 53 52 58 52" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-width="7"></path></g>
+<rect x="2" y="2" width="60" height="60" fill="url(#lg-floor)"></rect>
+<ellipse cx="20" cy="16" rx="20" ry="13" fill="url(#lg-glint)" filter="url(#lg-blur-soft)" transform="rotate(-18 20 16)"></ellipse>
+<g filter="url(#lg-drop)"><path d="M8 52C13 52 18 14 24 12C29 10 31 24 34 27C37 30 39 23 44 18C50 12 53 52 58 52" fill="none" stroke="url(#lg-glyph)" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"></path></g>
+</g>
+<rect x="2.5" y="2.5" width="59" height="59" rx="16" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="1"></rect>
+<rect x="2.5" y="2.5" width="59" height="59" rx="16" fill="none" stroke="#031030" stroke-opacity="0.18" stroke-width="1" transform="translate(0 0.6)"></rect>
+<circle cx="49" cy="49" r="10.5" fill="url(#lg-base)" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="2.5"></circle>
+<circle cx="49" cy="49" r="3" fill="#FFFFFF"></circle>
+</svg>

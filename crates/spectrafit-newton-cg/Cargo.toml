@@ -1,0 +1,13 @@
+[package]
+name = "spectrafit-newton-cg"
+version = "0.1.0"
+edition = "2021"
+description = "Matrix-free Newton-CG (Steihaug–Toint truncated CG) trust-region method on the faer-native framework"
+
+[dependencies]
+spectrafit-trust-region = { workspace = true }
+faer = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+spectrafit-types = { workspace = true }

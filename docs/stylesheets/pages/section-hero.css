@@ -1,0 +1,95 @@
+/*
+ * Section-landing hero — a compact identity banner for a top-level section's
+ * index page, distinct from the homepage's full .sf-hero (no hero art, no
+ * light/dark image-swap machinery — text and color only). Piloted on
+ * docs/tutorials/gallery/index.md, then rolled out ([2026-07-31]
+ * cupertino-council pass, Decision C) to the other 5 section-index pages.
+ * Reuses the same token fallback pattern as every other file in this tree —
+ * see docs/stylesheets/tokens/palette.css for where --space-* and
+ * --radius-* are actually defined (not just assumed via fallback).
+ */
+.sf-section-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  padding-bottom: var(--space-4, 16px);
+  margin-bottom: var(--space-4, 16px);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Puts the section's own icon directly in the page content, not only the
+   sidebar — a real user reported never seeing the sidebar-only icon at
+   their viewport depth. Same Lucide icon the page's own `icon:`
+   frontmatter already wires into the nav; this duplicates it visibly
+   in-page rather than replacing that mechanism. */
+.sf-section-hero__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg, 16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(150deg, var(--md-primary-fg-color), var(--md-accent-fg-color));
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--md-accent-fg-color) 60%, transparent);
+  margin-bottom: var(--space-1, 4px);
+}
+
+.sf-section-hero__icon svg {
+  width: var(--space-5, 24px);
+  height: var(--space-5, 24px);
+  fill: none;
+  stroke: var(--md-primary-bg-color); /* was a hardcoded #ffffff — matches
+     .sf-button--primary's token for foreground content on a
+     brand-color/brand-gradient background (components/buttons.css) */
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Breadcrumb-style parent-section label — only meaningful when the page has
+   a real parent distinct from its own title (e.g. gallery/index.md's
+   "Tutorials" eyebrow above its "Gallery" title). A top-level section-index
+   page IS its own nav category, so it has no distinct parent to name here;
+   a fresh-eyes tribunal review caught the 5-page rollout repeating the H1
+   verbatim in this slot (pure ornament, not breadcrumb) — those 5 pages
+   omit this element entirely rather than manufacture a fake category. */
+.sf-section-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  border-radius: var(--radius-full, 999px);
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sf-section-hero__title {
+  margin: 0;
+}
+
+.sf-section-hero__tagline {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--md-default-fg-color--light);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+/* [2026-07-31] cupertino-council pass, Decision A: the one sanctioned reuse
+   of .sf-button outside the homepage hero — a single optional "where to go
+   first" CTA per section-hero, always .sf-button--secondary, never
+   --primary (that role stays reserved for the homepage's own Quickstart
+   button, per Apple HIG's single-most-likely-action guidance). Reuses
+   .sf-button/.sf-button--secondary as-is (components/buttons.css); no new
+   button styling is introduced here. No margin-top here: .sf-section-hero's
+   own `gap: var(--space-2, 8px)` already spaces every child uniformly — an
+   earlier version of this rule redundantly added a second 8px on top of
+   that gap (flex gap and a child's own margin both apply), giving this one
+   gap double the others; a tribunal review caught it. */
+.sf-section-hero__action {
+  width: fit-content;
+}

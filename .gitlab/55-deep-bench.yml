@@ -1,0 +1,115 @@
+# Deep benchmark — reps-ladder study (manual / scheduled only; never on push).
+#
+# Option C of the publication-uncertainty plan: run the REAL benchmark at
+# reps ∈ {1, 2, 5, 10, 25, 50, 100} in a parallel matrix, then merge the seven
+# runs into variance-vs-N data (`python -m oracles.cli stability`) for the paper's
+# measurement-uncertainty section and promote the N=100 pair as the canonical
+# publication run. Each matrix cell has its OWN workspace, so the
+# `allocate_run_dir` run_NNN counter cannot collide across concurrent cells.
+#
+# Cost model (GWDG runners are budget-conscious; ~30-60 min/job is the normal
+# ceiling). From run_023 (139 cases × 6 backends) the per-rep timed-solve cost
+# is the sum of per-(case,backend) median solve times ≈ 66 s/rep locally
+# (lmfit 16 s + scipy-ls trio 48 s + spectrafit 1.2 s + jax 0.5 s). Only the
+# timed solve repeats with --reps; build + warmup + MC + featured cases are a
+# fixed ~10-15 min overhead. Estimates per cell (local-equivalent hardware):
+#   reps=1   ≈ 12 min      reps=25  ≈ 40 min
+#   reps=10  ≈ 25 min      reps=50  ≈ 70 min
+#   reps=100 ≈ 2 h  (≈ 15 min fixed + 100 × 66 s timed)
+# GWDG shared runners can be ~1.5-2× slower than local, so reps=100 may
+# approach the 2 h timeout below. If it times out, the operator should split
+# the top rung (e.g. re-run with a project-level runner) — do NOT silently
+# lower the rung; the N=100 run is the citation-grade number.
+benchmark:deep:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - when: never
+  timeout: 2h
+  parallel:
+    matrix:
+      - BENCH_REPS: ["1", "2", "5", "10", "25", "50", "100"]
+  # Same wiring as build:report_html (50-build.yml): inherit `.venv/` from the
+  # setup job's artifact (caches are local-only on GWDG runners — artifacts ARE
+  # cross-runner), pull the warm cache buckets, and rebuild the PyO3 extension
+  # before benchmarking (the wheel is the subject under benchmark; without it
+  # spectrafit is absent from the roster).
+  needs:
+    - job: setup
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+    - key: "rust-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .cargo/
+      policy: pull
+  script:
+    - |
+      set -e
+      UV_CACHE_DIR=.uv-cache uv run --no-sync maturin develop --release
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m oracles.cli run --reps "$BENCH_REPS" --mc 4
+      mkdir -p "artifacts/deep/reps-${BENCH_REPS}"
+      cp .spectrafit_reports/benchmark/*/results.json \
+        "artifacts/deep/reps-${BENCH_REPS}/results.json"
+      cp .spectrafit_reports/benchmark/*/manifest.json \
+        "artifacts/deep/reps-${BENCH_REPS}/manifest.json"
+      ls -lh "artifacts/deep/reps-${BENCH_REPS}/"
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/deep/
+    when: always
+
+# Merge step — collects all seven matrix cells' artifacts (needing the matrix
+# job by its base name waits for ALL cells), runs `python -m oracles.cli stability` over
+# the reps ladder, and promotes the reps-100 pair as the canonical publication
+# run. Pure JSON aggregation: no maturin rebuild needed (the stability command
+# never imports the compiled wheel — `spectrafit_core` imports in the engine
+# are lazy, function-local).
+#
+# NOTE for web-triggered pipelines: every cell is `when: manual` there — play
+# ALL seven cells (or use "Run all manual jobs"); this merge job blocks on the
+# full matrix and the verdict is meaningless over a partial ladder.
+benchmark:deep:merge:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - when: never
+  needs:
+    - job: setup
+      artifacts: true
+    - job: benchmark:deep
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      set -e
+      ls -lh artifacts/deep/
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m oracles.cli stability artifacts/deep --out artifacts/deep
+      # Promote the N=100 run as the canonical publication pair.
+      mkdir -p artifacts/deep/canonical
+      cp artifacts/deep/reps-100/results.json artifacts/deep/canonical/results.json
+      cp artifacts/deep/reps-100/manifest.json artifacts/deep/canonical/manifest.json
+      cat artifacts/deep/stability.md
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/deep/stability.json
+      - artifacts/deep/stability.md
+      - artifacts/deep/canonical/
+    when: always

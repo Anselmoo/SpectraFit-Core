@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SpectraFit Benchmarks</title>
+    <!-- Kare: spectral-peak favicon — kills the load 404 + provides brand glyph -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- SpectraFit Design System v3.2: sans-only (no serif display) — Fraunces
+         dropped, JetBrains Mono added as the primary mono face (--font-mono).
+         IBM Plex Sans + JetBrains Mono are self-hosted (see
+         src/style/fonts.css + src/style/fonts/*.woff2) so the offline
+         report.html bundle never reaches out to Google's font CDN. -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

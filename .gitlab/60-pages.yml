@@ -1,0 +1,98 @@
+# Deploy + preview stages. `pages` is reserved by GitLab Pages: output MUST go
+# to `public/`. Publishes the Zensical docs at `/` (the primary content — same
+# layout as the GitHub Pages mirror, so root-relative hrefs resolve on both),
+# the rustdoc API reference at `/rust-api/`, the coverage atlas ("gap
+# analysis") at `/reports/coverage-atlas.html`, the web bundle at `/web/`, and
+# (when a benchmark run exists in the artifact tree) the self-contained report
+# at `/report.html`.
+#
+# build:report_html:bundle (50-build.yml) is an optional need so
+# artifacts/report.html is downloaded when this pipeline produced one.
+# build:report_html:bundle runs on the SAME .rules_full_only cadence as
+# build:report_html itself (every MR, every push to $CI_DEFAULT_BRANCH, every
+# tag) — replacing the old weekly/refresh split (2026-07-31) — so a fresh
+# report.html is normally available whenever `pages` also runs. Two known
+# gaps remain: (a) build:report_html's correctness gate failing upstream
+# skips build:report_html:bundle via `needs:`, and (b) a `web`-sourced
+# pipeline manually triggered against a non-default ref (pages's own
+# `CI_PIPELINE_SOURCE == "web"` rule matches regardless of ref;
+# .rules_full_only's branch clause does not). GitLab Pages deploys replace
+# the ENTIRE published `public/` tree on every deploy (no incremental merge),
+# so on those gaps the script falls back to fetching
+# build:report_html:bundle's last successful main-branch artifact directly
+# via the GitLab jobs-artifacts API (job artifacts persist independently of
+# any particular pipeline and are addressable by job name + ref) — the same
+# idiom build:docs (65-docs.yml) uses for its own manifest.json fetch. Only
+# one producer job now, so no more freshest-of-two-jobs date comparison. The
+# `|| true` guards on fallible commands ensure Pages deploy never fails
+# outright over optional content.
+
+pages:
+  stage: pages
+  needs:
+    - job: coverage:atlas
+      optional: true
+    - job: build:web
+      optional: true
+    - job: build:report_html:bundle
+      optional: true
+    - job: build:docs
+      optional: true
+  script:
+    - |
+      mkdir -p public/web public/reports
+      cp -r site/. public/. 2>/dev/null || echo "No docs site/ found — skipping"
+      cp coverage-atlas.html public/reports/coverage-atlas.html || true
+      cp -r web/dist/. public/web/ 2>/dev/null || true
+      if [ -f artifacts/report.html ]; then
+        cp artifacts/report.html public/report.html
+        echo "Copied benchmark report.html -> public/report.html ($(du -h public/report.html | cut -f1))"
+      else
+        echo "No benchmark report.html in this pipeline — fetching build:report_html:bundle's last main-branch artifact"
+        curl --fail --location --silent --show-error \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/jobs/artifacts/$CI_DEFAULT_BRANCH/raw/artifacts/report.html?job=build:report_html:bundle" \
+          --output public/report.html \
+          && echo "Fetched build:report_html:bundle's report.html -> public/report.html ($(du -h public/report.html | cut -f1))" \
+          || echo "No prior report.html available either — skipping"
+      fi
+      if [ -d target/doc ]; then
+        mkdir -p public/rust-api
+        cp -r target/doc/. public/rust-api/
+        echo "Copied rustdoc -> public/rust-api/"
+      else
+        echo "No target/doc found — skipping rustdoc copy"
+      fi
+  artifacts:
+    paths:
+      - public/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+# MR-only — reviewers download the bundle directly from the pipeline without
+# triggering a Pages deploy.
+preview-artifacts:
+  stage: preview
+  needs:
+    - job: coverage:atlas
+      optional: true
+    - job: build:web
+      optional: true
+    - job: build:docs
+      optional: true
+  script:
+    - |
+      mkdir -p preview/web preview/reports
+      cp -r site/. preview/. 2>/dev/null || true
+      cp coverage-atlas.html preview/reports/coverage-atlas.html || true
+      cp -r web/dist/. preview/web/ 2>/dev/null || true
+  artifacts:
+    name: "preview-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 7 days
+    when: always
+    paths:
+      - preview/
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

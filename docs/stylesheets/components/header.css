@@ -1,0 +1,37 @@
+/*
+ * Header — scroll-shadow transition tuning.
+ *
+ * "header.autohide" is NOT enabled in zensical.toml's [theme] features list
+ * (an earlier task in this plan removed it) — the header is pinned and does
+ * not hide on scroll. What remains active is Material/Zensical's own
+ * `.md-header--shadow` class, toggled by the theme's core JS independent of
+ * autohide: it adds a `box-shadow` once the page scrolls past the top,
+ * regardless of the pinned/autohide setting. Material's own compiled CSS
+ * only transitions `transform` on that class, not `box-shadow` itself, so
+ * the box-shadow would otherwise pop in/out abruptly; the rule below adds
+ * that missing transition so the scroll shadow eases in instead. Confirmed
+ * via a local `poe docs_build` (site/index.html renders the standard
+ * `.md-header` markup with no autohide JS wiring; no config error, no
+ * missing asset).
+ *
+ * "announce.dismiss" was evaluated too (see zensical.org's
+ * docs/setup/header.md via context7) and deliberately NOT added: Material's
+ * `announce` block is empty by default — dismissible behavior only attaches
+ * to content injected by overriding `{% block announce %}` in a
+ * `main.html` theme override. This repo's overrides/main.html now DOES
+ * define that block (a beta-status disclosure line), and the built site
+ * does render `<aside class="md-banner">` markup for it — so a real bar
+ * exists today for "announce.dismiss" to attach a dismiss button to. Add
+ * the feature when a dismissible announcement (as opposed to a persistent
+ * disclosure) is actually wanted.
+ */
+
+/* Smooth the header's scroll-triggered box-shadow (Material's own
+   `.md-header--shadow` class) — its default transition only covers
+   `transform`, so without this the shadow would pop in/out abruptly on a
+   content-dense docs site; ease it out. `transform` is kept in the list too
+   since it's harmless and covers any other transform-driven header state
+   Material's JS may still toggle. */
+.md-header {
+  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s;
+}

@@ -1,0 +1,69 @@
+/*
+ * Navigation — styling for a subset of the 11 navigation.* and toc.*
+ * features now enabled in zensical.toml: navigation.footer, navigation.indexes,
+ * navigation.instant (+ .prefetch), navigation.path, navigation.tabs
+ * (+ .sticky), navigation.sections, navigation.top, navigation.tracking,
+ * and toc.follow. (An earlier task in this plan started this
+ * file at 6 of those — sections, indexes, instant/.prefetch, path, top,
+ * tracking — then a later task added navigation.tabs, navigation.tabs.sticky,
+ * and toc.follow on top.)
+ *
+ * navigation.instant and navigation.tracking are pure JS behaviors (instant
+ * SPA-style page swaps + URL hash sync on scroll) with no Material markup of
+ * their own to style; navigation.instant's reduced-motion guard for its page
+ * transition lives in utilities/motion.css, not here. The rules below target
+ * the real markup the other four original features render (verified against a local
+ * `poe docs_build`'s site output (all generated HTML files): `.md-nav__item--section`
+ * (navigation.sections), `.md-nav__link--index` (navigation.indexes),
+ * `.md-path` / `.md-path__item` / `.md-path__link` (navigation.path, present
+ * on both traditional nested pages and new section-index pages — see
+ * site/getting-started/installation/ and site/tutorials/gallery/index.html),
+ * and `.md-top` (navigation.top).
+ *
+ * navigation.tabs/.sticky and toc.follow render fine on Material's own
+ * default styling with no bespoke rule of theirs needed here today —
+ * navigation.footer likewise (Material's built-in prev/next footer links).
+ * If that changes, add their rules to this file rather than a new one, to
+ * keep nav-feature styling in one place.
+ */
+
+/* navigation.sections — top-level section groups in the primary sidebar read
+   as distinct groups, not one long flat list. */
+.md-nav__item--section > .md-nav__link {
+  font-weight: 600;
+  color: var(--md-default-fg-color--light);
+}
+
+/* navigation.indexes — a section that links straight to its own index page
+   (e.g. "Tutorials" -> tutorials/gallery/index.md) gets the same link
+   treatment as any other nav link, just distinguished by being clickable at
+   the section-title level; no extra visual noise needed beyond the
+   pointer cursor Material already sets. */
+.md-nav__link--index {
+  font-weight: 600;
+}
+
+/* navigation.path — breadcrumb trail above the content on nested pages,
+   tinted with the brand accent so it doesn't read as plain gray chrome. */
+.md-path {
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-path__link {
+  color: var(--md-accent-fg-color);
+}
+
+.md-path__link:hover {
+  text-decoration: underline;
+}
+
+/* navigation.top — "back to top" pill button, brand-colored on hover so it
+   reads as an affordance rather than static chrome. */
+.md-top {
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.md-top:hover {
+  color: var(--md-accent-fg-color);
+}

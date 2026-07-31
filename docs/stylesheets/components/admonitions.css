@@ -1,0 +1,38 @@
+/*
+ * Admonitions — brand-styles both admonition types actually used in the
+ * docs today: `!!! note` (7 files) and `!!! warning` (2 files, both in
+ * docs/tutorials/gallery/, verified via `grep -rln '^!!! ' docs --include="*.md"`).
+ * .note reuses the accent brand color already defined for links/buttons;
+ * .warning uses the dedicated --status-warning token from
+ * docs/stylesheets/tokens/palette.css so it reads as "this site's warning
+ * treatment," not Material's uncustomized default orange.
+ */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-left-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: var(--md-accent-fg-color--transparent);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-left-color: var(--status-warning, #ff9500);
+}
+
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary {
+  background-color: color-mix(in srgb, var(--status-warning, #ff9500) 12%, transparent);
+}
+
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before {
+  background-color: var(--status-warning, #ff9500);
+}

@@ -1,0 +1,53 @@
+/*
+ * Content-grid re-proportioning.
+ *
+ * Targets Zensical's OWN internal selector (.md-grid), not a documented
+ * public API — Zensical exposes no CSS custom property or config knob for
+ * grid/sidebar width (confirmed by grepping the installed theme's compiled
+ * CSS and its bootstrap zensical.toml reference; see the design pipeline
+ * that produced this value for the exact check). This is a known, accepted
+ * fragility (flagged by that pipeline's cupertino-longevity pass): if a
+ * Zensical upgrade renames/restructures this class, this rule silently
+ * stops applying rather than erroring — re-verify with a real
+ * getComputedStyle check (not just a visual glance) after any Zensical
+ * version bump. This CSS layer has already hit that same "looks fine in
+ * source, isn't applying" risk twice for an unrelated reason too: a stray
+ * comment-close sequence — asterisk immediately followed by slash — inside
+ * a CSS comment ends it early and silently drops the rule that follows.
+ *
+ * 80rem (up from Zensical's default 61rem) was chosen after a real build
+ * spike measured the resulting content:chrome ratio shift. The shipped
+ * layout has TWO fixed-width sidebar panes: the primary navigation sidebar
+ * on the left, and the secondary table-of-contents sidebar on the right.
+ * The wider grid hands its extra width to .md-content, balanced between
+ * the two sidebars and the center prose column — see the nav.css header
+ * comment for the full feature roster that enabled this layout.
+ *
+ * That wider .md-content, left unchecked, let body prose run to roughly
+ * 200 characters per line at a 1920px viewport — well past any comfortable
+ * reading measure (45-75ch is comfortable; ~90ch is usually treated as a
+ * hard ceiling). The grid widening and the prose-measure cap below are two
+ * separate, both-intentional decisions, not a contradiction: the grid
+ * stays wide (headings/tables/code blocks/admonitions use the full width),
+ * while paragraph and list text is capped to a readable line length.
+ */
+.md-grid {
+  max-width: 80rem;
+}
+
+/* Prose-measure cap — see the header comment above. 75ch matches this same
+   codebase's own convention (hero.css's .sf-hero__motto caps at 42ch for
+   the same reason); 75ch suits body copy specifically since it reads less
+   dense than a hero tagline. Headings/tables/code/admonitions are meant to
+   stay unconstrained so the wider grid still pays off outside plain prose
+   — but a plain descendant selector doesn't know the difference between a
+   top-level paragraph and one nested inside an admonition box, so this
+   rule explicitly excludes both (admonitions render as .admonition, their
+   collapsible cousins as details). Without this exclusion, an admonition
+   box renders full-width while the text inside it wraps at 75ch anyway,
+   leaving a visible gap on the right — confirmed live and is the actual
+   bug this scoping fixes. */
+.md-typeset p:not(.admonition p, details p),
+.md-typeset li:not(.admonition li, details li) {
+  max-width: 75ch;
+}

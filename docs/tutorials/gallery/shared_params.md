@@ -1,0 +1,56 @@
+# Shared Parameters Across Peaks
+
+## Context
+
+**When to use this pattern.** You have multiple peaks in a single spectrum and want to enforce that some parameters are identical across peaks. For example, two Lorentzian peaks that must share the same line width (σ), or three multiplet lines with identical broadening.
+
+There are **two equivalent ways** to express a parameter tie — choose whichever reads most naturally in your code:
+
+| Surface | How to declare | When to use |
+|---|---|---|
+| `ExprEdge` (graph-level) | Add an `ExprEdge` to `FitGraph.expr_edges` | When building or composing graphs programmatically; best for complex, multi-edge topologies. |
+| `Parameter.expr` (per-param) | Set `expr="source_node.param"` on the target `Parameter` | When building a node inline and the tie is a simple identity; no separate edge list needed. |
+
+Both surfaces compile to the **same** dependency-ordered tied-plan, so the fit result is **numerically identical** regardless of which surface you use. The LM-family solvers (`lm`, `trf`, `geodesic`, `dogleg`, `newton-cg`, `irls`) apply the tied-plan on every iteration. The `global` (differential-evolution) solver searches with the tied parameters held at their seed values and then applies the tie in its post-search LM refinement, so its **final result** is tie-correct. (`solver="varpro"` does not fit tied graphs at all — it rejects them; see MODELS.md.) Setting the same target parameter via **both** surfaces simultaneously raises a `DuplicateExprTarget` error.
+
+## Quick example — using ExprEdge (graph-level)
+
+The full script below builds and fits the `ExprEdge` form, verifies the tie
+holds, then — in its "Equivalent form" section — re-solves the same problem
+with `Parameter.expr` and asserts the two surfaces agree to within `1e-6`, so
+both forms are demonstrated (and kept honest against each other) in one run
+rather than only asserted in prose.
+
+```python
+--8<-- "shared_params.py"
+```
+
+## What just happened
+
+1. **Data creation** — we synthesized two overlapping Gaussians: peak1 at center=0 with amplitude=3, peak2 at center=2.5 with amplitude=2, both with σ=0.6.
+
+2. **Graph definition** — we built a `FitGraph` with two `GAUSSIAN` nodes, plus one `ExprEdge`:
+   - `expr_edges[0]` ties `peak2.sigma` to `peak1.sigma`, meaning throughout the fit, `peak2.sigma` is automatically updated to match `peak1.sigma`.
+   - This reduces the degrees of freedom by 1 (peak1.sigma is a free variable; peak2.sigma is dependent).
+
+3. **Fit execution** — the optimizer adjusts the 5 free variables (peak1 amplitude, center, sigma; peak2 amplitude, center) and the tie constraint is enforced at each iteration.
+
+4. **Result inspection** — the `parameters` dict includes both `peak1.sigma` and `peak2.sigma`, but they are **numerically identical** because the tie is enforced. In the output above, both report ~0.6 (the true value).
+
+5. **Tie verification** — we confirm that the difference between `peak1.sigma` and `peak2.sigma` is negligible (< 1e-14 machine epsilon).
+
+## Equivalent form — using Parameter.expr (per-parameter)
+
+The same tie can be declared entirely inside the target `Parameter` itself, without adding an `ExprEdge` to the graph. The fit result is numerically identical — see the `graph_expr` / `result_expr` section of the script above (the second half of `shared_params.py`, after the "Equivalent form" comment), which re-solves the same data with `expr="peak1.sigma"` set directly on `peak2.sigma`'s `Parameter` and no `expr_edges` at all.
+
+## Equivalence guarantee
+
+`ExprEdge` and `Parameter.expr` are two syntax forms for the same constraint: both are compiled into the same dependency-ordered tied-plan that the solver evaluates on every iteration. The parity test `tests/parity/test_param_expr_surface_parity.py::test_param_expr_matches_expr_edge` asserts that recovered parameters and chi² agree to `rel=1e-6` across the two surfaces.
+
+**Do not use both at once.** Targeting the same parameter with both a `Parameter.expr` and a matching `ExprEdge` raises a `DuplicateExprTarget` error at compilation time.
+
+## See also
+
+- **Related examples**: `fitting.md` (basic single-fit), `multi_dataset.md` (per-slice shared parameters).
+- **Test reference**: `tests/unit/spectrafit_core/test_fit.py::test_fit_accepts_expr_edges` (ExprEdge end-to-end), `tests/unit/spectrafit_core/test_fit.py::test_fit_honors_parameter_expr` (Parameter.expr end-to-end), `tests/parity/test_param_expr_surface_parity.py::test_param_expr_matches_expr_edge` (equivalence invariant).
+- **API docs**: `ExprEdge`, `FitGraph`, `Parameter`.

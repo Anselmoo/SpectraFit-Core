@@ -1,0 +1,20 @@
+/*
+ * Reduced-motion guard — navigation.instant's SPA-style page swaps and any
+ * transitions this manifest adds (the header's scroll-shadow transform/
+ * box-shadow ease in components/header.css — now guarding Material's own
+ * scroll-triggered `.md-header--shadow` class, not header.autohide, which
+ * this repo no longer enables; .sf-button's hover transform) should not
+ * animate for users who've asked the OS not to animate things.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .md-header,
+  .sf-button,
+  .md-top,
+  .md-typeset .headerlink {
+    transition: none !important;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,19 @@
+/*
+ * Heading permalink glyph — `toc.permalink = true` in zensical.toml appends
+ * an `<a class="headerlink">` to every heading sitewide (verified in
+ * site/index.html: `<a class="headerlink" href="#..." title="Permanent
+ * link">` on every h1/h2/h3). Material hides it until the heading is
+ * hovered; at rest it stays the default gray (matches Material's own
+ * behavior) and only the hover/focus-visible state ties its color to the
+ * brand accent, so it reads as "this site's link" once you're pointed at
+ * it, not stock chrome.
+ */
+.md-typeset .headerlink {
+  color: var(--md-default-fg-color--lighter);
+  transition: color 0.15s;
+}
+
+.md-typeset .headerlink:hover,
+.md-typeset .headerlink:focus-visible {
+  color: var(--md-accent-fg-color);
+}

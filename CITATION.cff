@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+message: "If you use spectrafit-core, please cite it as below."
+title: "spectrafit-core: a self-auditing benchmark for a Rust curve-fitting kernel"
+abstract: >-
+  A high-performance numerical curve-fitting framework (Rust kernel + Pydantic
+  schemas) shipped with a self-auditing cross-backend benchmark that audits its
+  own credibility against independent oracles (lmfit, JAX, scipy) and NIST StRD
+  certified values.
+type: software
+authors:
+  - given-names: Anselm
+    family-names: Hahn
+    email: anselm.hahn@gmail.com
+repository-code: "https://github.com/Anselmoo/spectrafit-core"
+url: "https://github.com/Anselmoo/spectrafit-core"
+license: MIT
+version: 0.1.0a1
+date-released: 2026-06-13
+keywords:
+  - curve-fitting
+  - spectroscopy
+  - Levenberg-Marquardt
+  - trust-region
+  - benchmark
+  - reproducibility
+# The forthcoming journal article. Represented as `in-preparation` so the
+# citation makes no claim it cannot yet support (no DOI / journal / year until
+# the paper is accepted). On acceptance, set `status` (submitted → in-press →
+# published) and ADD `journal`, `year`, `volume`, `doi` with the real values.
+preferred-citation:
+  type: article
+  title: "spectrafit-core: a self-auditing cross-backend benchmark for a Rust curve-fitting kernel"
+  status: in-preparation
+  authors:
+    - given-names: Anselm
+      family-names: Hahn
+      email: anselm.hahn@gmail.com

@@ -1,0 +1,87 @@
+/*
+ * Brand palette tokens — systemBlue/systemIndigo (light + dark).
+ *
+ * zensical.toml's [[theme.palette]] blocks set primary/accent = "custom",
+ * Material/Zensical's documented escape hatch for exact brand hex (see
+ * <https://zensical.org/docs/setup/colors/>). "custom" tells the theme not
+ * to apply any [data-md-color-primary=<slug>] / [data-md-color-accent=<slug>]
+ * built-in swatch — these --md-*-fg-color overrides, scoped under Material's
+ * own [data-md-color-scheme] toggle attribute, become the only source of
+ * truth. No new toggle JS needed: the existing light/dark toggle already
+ * stamps that attribute.
+ *
+ * --light/--dark/--transparent variants are included because Material's own
+ * CSS references them (confirmed via a local `poe docs_build` +
+ * `grep -o 'var(--md-primary-fg-color--dark...' site/assets/stylesheets/**`
+ * — --dark and --accent--transparent are both consumed by the shipped
+ * theme CSS). Derived as tints/shades of the base hex, matching the same
+ * color-mix tint/shade pattern web/src/style/tokens.css uses for --blue-200/
+ * --blue-400.
+ */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #007aff; /* systemBlue (light) */
+  --md-primary-fg-color--light: color-mix(in srgb, #007aff 75%, white);
+  --md-primary-fg-color--dark: color-mix(in srgb, #007aff 85%, black);
+  --md-primary-fg-color--darker: color-mix(in srgb, #007aff 70%, black);
+  --md-accent-fg-color: #5856d6; /* systemIndigo (light) */
+  --md-accent-fg-color--transparent: color-mix(in srgb, #5856d6 10%, transparent);
+  --md-typeset-a-color: #007aff;
+  --status-warning: #ff9500; /* systemOrange (light) — moved from :root; see
+     the slate block below for the matching dark value. Unlike
+     --status-success/--status-danger (still in :root, genuinely
+     scheme-invariant), --status-warning always needed a scheme-specific
+     value — the slate override already existed, the light one just hadn't
+     been given its own home yet. */
+}
+
+[data-md-color-scheme="slate"] {
+  --status-warning: #ff9f0a; /* systemOrange (dark) */
+  --md-primary-fg-color: #0a84ff; /* systemBlue (dark) */
+  --md-primary-fg-color--light: color-mix(in srgb, #0a84ff 75%, white);
+  --md-primary-fg-color--dark: color-mix(in srgb, #0a84ff 85%, black);
+  --md-primary-fg-color--darker: color-mix(in srgb, #0a84ff 70%, black);
+  --md-accent-fg-color: #5e5ce6; /* systemIndigo (dark) */
+  --md-accent-fg-color--transparent: color-mix(in srgb, #5e5ce6 10%, transparent);
+  --md-typeset-a-color: #0a84ff;
+}
+
+/*
+ * Spacing/radius scale — mirrors web/src/style/tokens.css:104-112's numeric
+ * values exactly (same 8px-base scale, same named radius steps), without
+ * importing that file directly (the docs build intentionally doesn't share a
+ * build-time pipeline with web/ — see the prior session's cupertino-longevity/
+ * cupertino-integrate pass). Spacing and radius, plus --status-success/
+ * --status-danger below, are genuinely scheme-independent — they don't
+ * change between light and dark, unlike the brand primary/accent tokens
+ * above. --status-warning is the exception: systemOrange genuinely has
+ * distinct light/dark values, so it lives in the scheme-scoped blocks
+ * above instead (a fresh-eyes review caught a stray, contradicting light
+ * value that had drifted into this block — don't reintroduce it here).
+ *
+ * Every existing `var(--space-N, <fallback>)` call site across this CSS tree
+ * already hardcodes these exact same numbers as its fallback — this block
+ * makes those fallbacks non-load-bearing instead of removing them, since a
+ * working fallback chain has already mattered once in this codebase (a
+ * stray comment-close sequence — asterisk immediately followed by slash —
+ * inside a CSS comment ends it early and silently drops the rule that
+ * follows).
+ */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+  --status-success: #34c759; /* systemGreen */
+  --status-danger: #ff3b30; /* systemRed */
+}

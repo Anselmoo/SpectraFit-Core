@@ -1,0 +1,12 @@
+[package]
+name = "spectrafit-models"
+version = "0.1.0"
+edition = "2021"
+description = "The Model trait plus the full 34-kernel lineshape catalog with analytical/FD Jacobians."
+
+[dependencies]
+spectrafit-types = { workspace = true }
+libm = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
