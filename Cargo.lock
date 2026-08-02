@@ -602,6 +602,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
 
 [[package]]
+name = "glam"
+version = "0.33.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f22fb22f065b308be0d8724e3706c7fa3fc2a6c7d6899df4cad7860e7a75436"
+
+[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -695,7 +701,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8be7a65739a815308eef33a6d8c78e435a7317305d5b0af0c8c465a2d7ac6fc6"
 dependencies = [
  "cfg-if",
- "nalgebra",
+ "nalgebra 0.34.2",
  "num-traits",
  "rustc_version",
 ]
@@ -795,7 +801,27 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "simba",
+ "simba 0.9.1",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.35.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adc43a60c217b0c6ff46e47f26911015ad8d2e5a8be1af668c67e370d99a4346"
+dependencies = [
+ "approx",
+ "glam 0.30.10",
+ "glam 0.31.1",
+ "glam 0.32.1",
+ "glam 0.33.2",
+ "matrixmultiply",
+ "nalgebra-macros",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "simba 0.10.0",
  "typenum",
 ]
 
@@ -809,11 +835,11 @@ dependencies = [
  "blas-src",
  "lapack",
  "lapack-src",
- "nalgebra",
+ "nalgebra 0.34.2",
  "num-complex",
  "num-traits",
- "simba",
- "thiserror",
+ "simba 0.9.1",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1395,6 +1421,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "safe_arch"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a52ec151f024d703f9fd65abb7cbe81e7cdb39f18917a3a37e3014470dc7c59"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1489,7 +1524,19 @@ dependencies = [
  "num-complex",
  "num-traits",
  "paste",
- "wide",
+ "wide 0.7.33",
+]
+
+[[package]]
+name = "simba"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f45c644a9f3a386f9288625d9f0c1e999e1acf07a37df35d0516c7f199d9cb2"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "wide 1.6.0",
 ]
 
 [[package]]
@@ -1520,7 +1567,7 @@ dependencies = [
  "spectrafit-graph",
  "spectrafit-solver",
  "spectrafit-types",
- "thiserror",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1538,13 +1585,13 @@ name = "spectrafit-graph"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.35.0",
  "rayon",
  "serde",
  "serde_json",
  "spectrafit-models",
  "spectrafit-types",
- "thiserror",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1583,7 +1630,7 @@ dependencies = [
  "approx",
  "faer",
  "levenberg-marquardt",
- "nalgebra",
+ "nalgebra 0.35.0",
  "rayon",
  "serde",
  "serde_json",
@@ -1593,7 +1640,7 @@ dependencies = [
  "spectrafit-newton-cg",
  "spectrafit-types",
  "spectrafit-varpro",
- "thiserror",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1603,7 +1650,7 @@ dependencies = [
  "approx",
  "faer",
  "spectrafit-types",
- "thiserror",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1612,7 +1659,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1620,12 +1667,12 @@ name = "spectrafit-varpro"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra",
+ "nalgebra 0.35.0",
  "serde_json",
  "spectrafit-graph",
  "spectrafit-models",
  "spectrafit-types",
- "thiserror",
+ "thiserror 2.0.19",
  "varpro",
 ]
 
@@ -1685,7 +1732,7 @@ dependencies = [
  "byteorder",
  "enum-as-inner",
  "libc",
- "thiserror",
+ "thiserror 1.0.69",
  "walkdir",
 ]
 
@@ -1701,7 +1748,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09a43598840e33d5b0331f38c5e30d13bb11c11210a4b58f0d9b18a5a5eefcd9"
+dependencies = [
+ "thiserror-impl 2.0.19",
 ]
 
 [[package]]
@@ -1713,6 +1769,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43cbfe0cf76104d42a574802844187e84a305e531ed54455f11fbde0f10541cd"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1811,10 +1878,10 @@ checksum = "d8c411a97c8b24ada2024ed6e69f7b48badc029f6bd5e74679d34bffb4a0bd9e"
 dependencies = [
  "distrs",
  "levenberg-marquardt",
- "nalgebra",
+ "nalgebra 0.34.2",
  "nalgebra-lapack",
  "num-traits",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -1849,7 +1916,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
 dependencies = [
  "bytemuck",
- "safe_arch",
+ "safe_arch 0.7.4",
+]
+
+[[package]]
+name = "wide"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be99e8317aa9f08e7d16e13033ca43faab59ab582b1d0feab7b385424c42f8b1"
+dependencies = [
+ "bytemuck",
+ "safe_arch 1.1.0",
 ]
 
 [[package]]
