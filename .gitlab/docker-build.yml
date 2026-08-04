@@ -1,0 +1,92 @@
+# Baked CI image build job (Cycle 31, Kaniko variant).
+#
+# Runs in the `.pre` stage so it completes before any pipeline stage uses the
+# image. Triggered automatically when Dockerfile.ci changes; can also be
+# triggered manually (allow_failure: true so a broken trigger doesn't block
+# an unrelated pipeline).
+#
+# Why Kaniko (not docker:dind):
+#   GWDG GitLab shared runners are UNPRIVILEGED — the dind service container
+#   cannot start the Docker daemon (no /sys/kernel/security mount, no
+#   /lib/modules, AppArmor blocks privileged mode). Pipeline #11 confirmed:
+#   `mount: permission denied (are you root?)` + `Cannot connect to the
+#   Docker daemon at tcp://docker:2376`. Kaniko builds OCI images in
+#   userspace — no daemon, no privileged container, no socket. The
+#   trade-off vs dind is a slightly slower build (no caching layers across
+#   builds without --cache-repo) and no BuildKit features; both are fine
+#   for a ~8 min image-build job that fires only on Dockerfile.ci changes.
+#
+# Bootstrap: on the VERY FIRST run the registry has no image. Kaniko
+# tolerates this — `--cache=true --cache-repo <repo>/cache` will simply
+# write fresh layers without trying to read non-existent ones.
+#
+# Rollback: re-push a known-good previous tag as :latest:
+#   docker pull "$CI_REGISTRY_IMAGE/ci:<previous-sha>"
+#   docker tag  "$CI_REGISTRY_IMAGE/ci:<previous-sha>" \
+#               "$CI_REGISTRY_IMAGE/ci:latest"
+#   docker push "$CI_REGISTRY_IMAGE/ci:latest"
+# Then re-run the pipeline — jobs will pick up the rolled-back image.
+#
+# Required CI/CD prerequisites (set in GWDG GitLab project settings):
+#   • Container Registry → Enabled (Settings → General → Visibility, project
+#     features, permissions). $CI_REGISTRY_IMAGE is only defined when this
+#     feature is on; otherwise expands empty and Kaniko's --destination
+#     becomes "/ci:latest" → "invalid reference format".
+#   • Built-in $CI_JOB_TOKEN handles registry auth (no PAT needed).
+
+variables:
+  IMAGE: "$CI_REGISTRY_IMAGE/ci:latest"
+  CACHE_REPO: "$CI_REGISTRY_IMAGE/ci/cache"
+
+build:ci-image:
+  stage: .pre
+  image:
+    # Kaniko --debug image ships `/busybox/sh`, which GitLab CI needs as the
+    # script-runner shell. The non-debug image has no shell and the job fails
+    # before script execution.
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  before_script:
+    - |
+      # Kaniko reads registry credentials from a docker config JSON at
+      # /kaniko/.docker/config.json. $CI_JOB_TOKEN authenticates against
+      # $CI_REGISTRY automatically — no PAT, no secret to rotate.
+      mkdir -p /kaniko/.docker
+      AUTH=$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 | tr -d '\n')
+      printf '{"auths":{"%s":{"auth":"%s"}}}\n' "$CI_REGISTRY" "$AUTH" \
+        > /kaniko/.docker/config.json
+  script:
+    - |
+      # --cache + --cache-repo persists layer cache to a dedicated registry
+      # subpath (CACHE_REPO), so rebuilds reuse unchanged layers (apt deps,
+      # rust toolchain) without needing a privileged daemon. First run
+      # writes the cache; subsequent runs read+update it.
+      # --snapshot-mode time: mtime-only filesystem snapshots instead of the
+      # default content-hashed `redo` mode. Pipeline #13 cache analysis
+      # showed the rustup layer's `redo` snapshot walked ~300 MB of
+      # toolchain binaries and consumed ~86 s of the 124 s layer build —
+      # more than two-thirds of the cost. For clean installers (apt,
+      # rustup, curl-extracted tarballs) there is no scenario where
+      # content changes without mtime changing, so `time` is safe and
+      # cuts the snapshot pass to <5 s.
+      /kaniko/executor \
+        --context "$CI_PROJECT_DIR" \
+        --dockerfile ".gitlab/docker/Dockerfile.ci" \
+        --destination "$IMAGE" \
+        --build-arg "LLVM_COV_VERSION=v0.8.7" \
+        --build-arg "RUST_VERSION=1.96.0" \
+        --build-arg "PLAYWRIGHT_VERSION=1.60.0" \
+        --cache=true \
+        --cache-repo "$CACHE_REPO" \
+        --cache-ttl 168h \
+        --snapshot-mode time \
+        --use-new-run
+  rules:
+    # Auto-trigger when the Dockerfile changes (covers dep bumps, new tools).
+    - changes:
+        - .gitlab/docker/Dockerfile.ci
+        - .gitlab/docker-build.yml
+    # Manual trigger with allow_failure so an accidental mis-trigger doesn't
+    # block pipelines that don't depend on a fresh image.
+    - when: manual
+      allow_failure: true

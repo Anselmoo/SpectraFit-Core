@@ -1,0 +1,13 @@
+[package]
+name    = "spectrafit-types"
+version = "0.1.0"
+edition = "2021"
+description = "Shared serde IR types (ModelTypeStr, FitGraphSpec, ParameterSpec, CoreError) for the spectrafit-core workspace."
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = { workspace = true }
+
+[lints]
+workspace = true

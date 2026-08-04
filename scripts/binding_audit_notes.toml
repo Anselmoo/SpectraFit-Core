@@ -1,0 +1,33 @@
+# Human-authored one-line descriptions for the Rust <-> Python PyO3 binding
+# audit, checked by scripts/audit_bindings.py.
+#
+# Keyed by the bare grepped identifier (PyO3 fn name or Solver variant name).
+# audit_bindings.py fails loudly if a name grepped from
+# crates/spectrafit-core/src/lib.rs or crates/spectrafit-solver/src/dispatch.rs
+# has no entry here (add one line), and equally loudly if an entry here no
+# longer matches anything grepped from source (remove the stale entry).
+#
+# This file is the sole CI-enforced source of truth for binding coverage.
+# docs/reference/rust/binding-audit.md is an optional, non-gated human-readable
+# rendering of this same data — regenerate it with `uv run poe
+# audit_bindings_regen`, but CI never reads or depends on it.
+
+[pyfunctions]
+fit = "Pydantic-validated FitGraph + MeasurementData + FitOptions -> fit result JSON."
+fit_arrays = "Array fast path for fit(): flat x/y/sigma buffers instead of MeasurementInput."
+fit_arrays_numpy = "Zero-copy numpy variant of fit_arrays for hot loops."
+evaluate = "Forward model evaluation: graph + params + data -> JSON array of values."
+evaluate_components = "Per-component decomposition of the fitted model -> JSON object keyed by node id."
+model_type_wire_strings = "Canonical model-type wire strings generated from the model manifest; pins the Python ModelType enum to the Rust source."
+
+[solver_variants]
+Lm = "Default faer Levenberg-Marquardt."
+LmLegacy = "nalgebra levenberg-marquardt parity oracle, retained for regression comparison."
+Trf = "Trust-Region-Reflective (Coleman-Li bound scaling on the faer LM core)."
+Geodesic = "Geodesic acceleration on the faer LM core."
+Dogleg = "Powell's dogleg trust-region method."
+NewtonCg = "Matrix-free Newton-CG (Steihaug-Toint) trust-region method."
+Irls = "Iteratively-reweighted least squares (robust loss); weight fn selectable via 'irls:<name>'."
+Global = "Differential Evolution (global search); DE seed pinned at 0."
+Varpro = "Variable Projection (separable nonlinear least squares)."
+Auto = "Chooses VarPro or the faer LM family from the graph shape at run time."

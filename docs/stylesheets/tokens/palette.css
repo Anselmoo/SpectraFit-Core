@@ -1,0 +1,242 @@
+/*
+ * Brand palette tokens — systemBlue/systemIndigo (light + dark).
+ *
+ * zensical.toml's [[theme.palette]] blocks set primary/accent = "custom",
+ * Material/Zensical's documented escape hatch for exact brand hex (see
+ * <https://zensical.org/docs/setup/colors/>). "custom" tells the theme not
+ * to apply any [data-md-color-primary=<slug>] / [data-md-color-accent=<slug>]
+ * built-in swatch — these --md-*-fg-color overrides, scoped under Material's
+ * own [data-md-color-scheme] toggle attribute, become the only source of
+ * truth. No new toggle JS needed: the existing light/dark toggle already
+ * stamps that attribute.
+ *
+ * --dark/--darker/--transparent variants are kept because they have real
+ * consumers; --light was removed because it did not.
+ *
+ * The previous version of this comment claimed all of --light/--dark/
+ * --transparent were referenced by "Material's own CSS", confirmed by grep.
+ * That was checked against the wrong bundle. Against the `modern` variant this
+ * site actually ships:
+ *     var(--md-primary-fg-color--light)        0 occurrences
+ *     var(--md-primary-fg-color--dark)         0 occurrences
+ *     var(--md-accent-fg-color--transparent)   6 occurrences
+ * --dark survives only because components/buttons.css:29 consumes it directly,
+ * and --transparent because the theme does. The claim held for the `classic`
+ * bundle. Re-grep the bundle named in site/index.html, not whichever one is
+ * on disk, if this is ever revisited.
+ *
+ * Derived as tints/shades of the base hex, matching the same color-mix
+ * tint/shade pattern web/src/style/tokens.css uses for --blue-200/--blue-400.
+ */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #007aff; /* systemBlue (light) */
+  --md-primary-fg-color--dark: color-mix(in srgb, #007aff 85%, black);
+  --md-primary-fg-color--darker: color-mix(in srgb, #007aff 70%, black);
+  --md-accent-fg-color: #5856d6; /* systemIndigo (light) */
+  --md-accent-fg-color--transparent: color-mix(in srgb, #5856d6 10%, transparent);
+  /* NOT #007aff (systemBlue-light, the --md-primary value above): as link
+     TEXT that is 4.02:1 on white, below AA's 4.5:1. This is a shade of the
+     same blue at 5.59:1. The chrome/primary token keeps #007aff — it is
+     used for fills and large type, where 4.02:1 clears both 3:1 and
+     AA-Large, so only the body-text role needed the darker value. */
+  --md-typeset-a-color: #0064d2;
+  /* NOT systemOrange #ff9500: at 2.20:1 on white it fails even the 3:1
+     non-text bar (WCAG 1.4.11), and every consumer here is non-text — an
+     admonition border-left and a masked icon fill (components/
+     admonitions.css:27,37). #cc7700 is the same hue (35deg) darkened to
+     3.38:1. Deliberately NOT Apple's increased-contrast orange #c93400
+     (5.28:1): that is red-shifted to ~14deg and collides with
+     --status-danger #ff3b30 (3deg), which would make warning and danger
+     admonitions hard to tell apart — an over-correction, since no consumer
+     needs 4.5:1. See the slate block for the matching dark value. */
+  --status-warning: #cc7700; /* systemOrange, darkened (light) — see above;
+     the slate block below for the matching dark value. Unlike
+     --status-success/--status-danger (still in :root, genuinely
+     scheme-invariant), --status-warning always needed a scheme-specific
+     value — the slate override already existed, the light one just hadn't
+     been given its own home yet. */
+
+  /* ------------------------------------------------------------------
+   * Per-solver identity colors — the docs-side half of the benchmark
+   * vocabulary the dashboard already teaches (web/src/style/tokens.css
+   * :81-92). Same token NAMES so a reader who learns "spectrafit is blue,
+   * jax is pink" on the dashboard reads the same thing here.
+   *
+   * These are scheme-SCOPED, not :root, per this file's own rule above:
+   * they alias Apple system colors, which have genuinely distinct light
+   * and dark hexes — the same reason --status-warning and
+   * --md-accent-fg-color live in these blocks. tokens.css carries only
+   * the DARK hexes because the dashboard is dark-only by design; copying
+   * those onto a white page would be a contrast bug, not a port.
+   *
+   * TWO tokens per solver, because one is not enough on a light
+   * background:
+   *   --c-<id>        identity color. Fills, swatches, chart strokes.
+   *     NOT guaranteed AA as text.
+   *   --c-<id>-text   AA-safe (>=4.5:1) foreground for labels and body
+   *     text in this scheme. Sometimes equals --c-<id>; often darker.
+   *
+   * There was a third, --c-<id>-soft (a .16 tint for fills). It was added
+   * speculatively and never consumed: 6 declarations in
+   * web/src/style/tokens.css and 12 here, zero `var()` references on either
+   * side. Removed from this file. The six in tokens.css are equally unused
+   * and were left alone only because this branch does not touch web/ —
+   * they should go the same way. If a tinted fill is ever wanted, note that
+   * no .16 tint in either scheme reaches 3:1 against the page and no alpha
+   * fixes that, so it can never be the sole carrier of meaning; pair it with
+   * a border in --c-<id>-text, as components/solver.css already does.
+   *
+   * Contrast measured against the real backgrounds: #FFFFFF here, and
+   * #0B0C0F in slate (Zensical's `modern` theme variant, which
+   * zensical.toml does not override — NOT the classic ~#1e1e1e).
+   * ------------------------------------------------------------------ */
+  --c-spectrafit: #007aff; /* systemBlue (light) — 4.02:1, fill/stroke only */
+  --c-spectrafit-text: #0064d2; /* 5.59:1 */
+  --c-lmfit: #34c759; /* systemGreen (light) — 2.22:1, fill only */
+  --c-lmfit-text: #217e38; /* 5.11:1. NOTE Apple's own increased-contrast
+     green #248a3d computes to 4.40:1 and fails AA — do not substitute it. */
+  --c-jax: #ff2d55; /* systemPink (light) — 3.65:1, borders/large text only */
+  --c-jax-text: #d30f45; /* 5.35:1 */
+  --c-scipy-ls-lm: #32ade6; /* systemCyan (light) — 2.54:1, fill only.
+     Pairs with the dashboard's #64d2ff, which is systemCyan-dark in
+     iOS 15+ (it was systemTeal-dark pre-iOS 15; Apple re-cut the ramp). */
+  --c-scipy-ls-lm-text: #0071a4; /* 5.39:1 */
+  --c-scipy-ls-trf: #5856d6; /* systemIndigo (light) — 5.65:1, AA as text */
+  --c-scipy-ls-trf-text: #5856d6; /* already passes; no darker variant needed */
+  --c-scipy-ls-dogbox: #ffcc00; /* systemYellow (light) — 1.51:1. Fill ONLY:
+     fails even the 3:1 non-text bar (WCAG 1.4.11), so it may not be a
+     border, chart stroke, or axis line either — it needs a separate
+     boundary drawn in -text. */
+  --c-scipy-ls-dogbox-text: var(--md-default-fg-color); /* deliberately NOT a
+     yellow. Every AA-passing darkening of #ffcc00 (#907300, #8a6d00) reads
+     olive/brown, stops meaning "yellow", and collides with orange. Label
+     dogbox in body ink and let the swatch carry the identity. */
+}
+
+[data-md-color-scheme="slate"] {
+  --status-warning: #ff9f0a; /* systemOrange (dark) */
+  --md-primary-fg-color: #0a84ff; /* systemBlue (dark) */
+  --md-primary-fg-color--dark: color-mix(in srgb, #0a84ff 85%, black);
+  --md-primary-fg-color--darker: color-mix(in srgb, #0a84ff 70%, black);
+  /* NOT systemIndigo-dark #5e5ce6: it is 3.86:1 on slate #0B0C0F, and this
+     token IS used as foreground text (components/buttons.css:46,
+     pages/hero.css:170,205), so AA's 4.5:1 applies. #7d7aff is Apple's
+     increased-contrast indigo-dark, 5.68:1.
+
+     This deliberately breaks the exact hex match with the dashboard's
+     --system-indigo. That is the correct trade: the dashboard sits on pure
+     black and is dark-only, whereas this token carries body text on slate.
+     The shared *vocabulary* is preserved where it matters — the solver
+     identity token --c-scipy-ls-trf below still carries #5e5ce6 verbatim,
+     so a jax/scipy swatch is the same colour on both surfaces; only the
+     text-bearing brand accent diverges, and only in dark. */
+  --md-accent-fg-color: #7d7aff; /* systemIndigo, increased contrast (dark) */
+  --md-accent-fg-color--transparent: color-mix(in srgb, #7d7aff 10%, transparent);
+  --md-typeset-a-color: #0a84ff;
+
+  /* Per-solver identity — dark half. These ARE the dashboard's hexes
+   * (web/src/style/tokens.css:81-92) verbatim, because both surfaces are
+   * dark here; that is the whole point of the shared vocabulary.
+   * Contrast is against slate #0B0C0F. Only indigo needs a -text variant:
+   * it is the one inverse offender, failing in dark rather than light. */
+  --c-spectrafit: #0a84ff; /* systemBlue (dark) — 5.37:1 */
+  --c-spectrafit-text: #0a84ff;
+  --c-lmfit: #30d158; /* systemGreen (dark) — 9.69:1 */
+  --c-lmfit-text: #30d158;
+  --c-jax: #ff375f; /* systemPink (dark) — 5.56:1 */
+  --c-jax-text: #ff375f;
+  --c-scipy-ls-lm: #64d2ff; /* systemCyan (dark) — 11.38:1 */
+  --c-scipy-ls-lm-text: #64d2ff;
+  --c-scipy-ls-trf: #5e5ce6; /* systemIndigo (dark) — 3.87:1, FAILS AA as
+     text on slate. Kept as the identity color so the swatch still matches
+     the dashboard; labels must use -text below. */
+  --c-scipy-ls-trf-text: #7d7aff; /* 5.69:1 */
+  --c-scipy-ls-dogbox: #ffd60a; /* systemYellow (dark) — 13.87:1 */
+  --c-scipy-ls-dogbox-text: #ffd60a; /* unlike light, yellow is fine here */
+}
+
+/*
+ * Spacing/radius scale — mirrors web/src/style/tokens.css:104-112's numeric
+ * values exactly (same 8px-base scale, same named radius steps), without
+ * importing that file directly (the docs build intentionally doesn't share a
+ * build-time pipeline with web/ — see the prior session's cupertino-longevity/
+ * cupertino-integrate pass). Spacing and radius, plus --status-success/
+ * --status-danger below, are genuinely scheme-independent — they don't
+ * change between light and dark, unlike the brand primary/accent tokens
+ * above. --status-warning is the exception: systemOrange genuinely has
+ * distinct light/dark values, so it lives in the scheme-scoped blocks
+ * above instead (a fresh-eyes review caught a stray, contradicting light
+ * value that had drifted into this block — don't reintroduce it here).
+ *
+ * Every existing `var(--space-N, <fallback>)` call site across this CSS tree
+ * already hardcodes these exact same numbers as its fallback — this block
+ * makes those fallbacks non-load-bearing instead of removing them, since a
+ * working fallback chain has already mattered once in this codebase (a
+ * stray comment-close sequence — asterisk immediately followed by slash —
+ * inside a CSS comment ends it early and silently drops the rule that
+ * follows).
+ */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+  --status-success: #34c759; /* systemGreen */
+  --status-danger: #ff3b30; /* systemRed */
+
+  /* Type families. Scheme-invariant, so :root is correct per the rule above.
+   *
+   * These are the variables the theme itself consumes (`aside,body,input`,
+   * `.md-tooltip`, `--md-mermaid-font-family` for --md-text-font; `code,kbd,pre`
+   * and code annotations for --md-code-font). Setting them here is what makes
+   * the self-hosted faces in docs/fonts/ actually govern the whole page.
+   *
+   * Previously these were left at Zensical's injected defaults and fought
+   * selector-by-selector in typography/type.css, which covered `.md-typeset`,
+   * `.md-header`, `.md-nav` and `.sf-hero` but nothing else — so body, the
+   * footer nav, the skip link and both tooltip types still rendered Inter, and
+   * Inter was still downloaded from Google for them. `font = false` in
+   * zensical.toml removes that injection; these two lines replace it.
+   *
+   * The families must stay in sync with the @font-face blocks in
+   * typography/type.css and with --font-body/--font-mono in
+   * web/src/style/tokens.css; tests/parity/test_design_token_parity.py holds
+   * the numeric side of that contract. */
+  --md-text-font: "IBM Plex Sans";
+  --md-code-font: "JetBrains Mono";
+
+  /* Layout widths. The dashboard has had --layout-prose / --layout-content /
+   * --layout-nav since its reskin; docs/ had no width token at all, and the
+   * homepage showed it — header at left 0, nav tabs at 8, hero content at 16,
+   * article at 266. Four edges, one page.
+   *
+   * --layout-grid replaces a literal `80rem` that was duplicated in
+   * pages/layout.css and pages/hero.css, with a comment in the latter admitting
+   * the two had to be "updated together".
+   *
+   * The other two MIRROR constants compiled into the Zensical theme, which we
+   * cannot read at runtime. They are stated here, in rem, with their measured
+   * values so the mirroring is visible rather than buried in a magic number:
+   *   --layout-sidebar  .md-sidebar width, measured 242px at root 20px = 12.1rem
+   *   --layout-gutter   .md-content__inner horizontal margin, measured 24px = 1.2rem
+   * Their sum is the article's inline-start inset, which is what the hero has
+   * to match. Keeping them in rem (not px) is what makes this survive the
+   * theme's own root font-size bump to 137.5% at 100em — both sides scale
+   * together. If Zensical ever changes either constant these must follow; the
+   * measurement above is the check. */
+  --layout-grid: 80rem;
+  --layout-sidebar: 12.1rem;
+  --layout-gutter: 1.2rem;
+  --layout-content-inset: calc(var(--layout-sidebar) + var(--layout-gutter));
+}

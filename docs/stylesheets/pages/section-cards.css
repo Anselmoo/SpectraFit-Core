@@ -1,0 +1,89 @@
+/*
+ * Section card grid — one card per leaf page in a section-index (see
+ * overrides/section-index.html, which renders `page.meta.cards`).
+ *
+ * [cupertino-council pass, 2026-08-01]. Reference grounding: Apple's own HIG
+ * Foundations/Patterns landing pages (developer.apple.com/design/
+ * human-interface-guidelines/{foundations,patterns} — verified live via
+ * browser, not assumed) use a 3-column grid of gradient-tile cards, one
+ * signature color per top-level section, title below the tile, no
+ * description text in the card.
+ *
+ * Council's color verdict (the load-bearing decision of this pass): ONE
+ * consistent brand gradient for every card in every section, NOT Apple's
+ * literal per-section rainbow. This project's own color rule — brand color
+ * as a scarce accent, never a repeated field — already governs the header,
+ * tabs, and every button on this site; a distinct saturated color per
+ * section would be the single largest reversal of that rule, applied to
+ * what could become the most-repeated surface on the site. Apple's rainbow
+ * earns its keep at HIG's scale (60+ topics, 4 top-level categories) as a
+ * wayfinding aid; at this site's scale (6 sections, ~32 pages) the
+ * differentiation job is already done by icon choice, not color. The
+ * gradient reused below is not new: it's the exact
+ * `linear-gradient(150deg, var(--md-primary-fg-color), var(--md-accent-fg-color))`
+ * pages/section-hero.css's `.sf-section-hero__icon` already uses — the
+ * small inline badge and the big clickable cards below it read as one
+ * material, not two competing color systems.
+ *
+ * Responsive by construction (auto-fit/minmax), not by breakpoint —
+ * matches the "cap the container, don't enumerate children" discipline
+ * pages/layout.css's `.md-typeset > *` rule already established this
+ * session; there's no fixed 3-column breakpoint to fall out of sync here.
+ */
+.sf-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-5, 24px);
+  margin-top: var(--space-6, 32px);
+}
+
+.sf-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+/* Tog: the whole tile is one click target, so the whole tile must show one
+   unambiguous hover/focus state — a lift, not a new shadow (this component
+   already has exactly one light source, spent on the icon tile's own
+   box-shadow below; a second, hover-only shadow would contradict it, Ive's
+   named anti-pattern for drop-shadows with no consistent light source). */
+.sf-card:hover,
+.sf-card:focus-visible {
+  transform: translateY(-2px);
+}
+
+.sf-card:hover .sf-card__icon,
+.sf-card:focus-visible .sf-card__icon {
+  opacity: 0.92;
+}
+
+.sf-card__icon {
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg, 16px);
+  background: linear-gradient(150deg, var(--md-primary-fg-color), var(--md-accent-fg-color));
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--md-accent-fg-color) 60%, transparent);
+  transition: opacity 0.15s ease;
+}
+
+.sf-card__icon svg {
+  width: 30%;
+  height: 30%;
+  fill: none;
+  stroke: var(--md-primary-bg-color);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sf-card__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--md-default-fg-color);
+}

@@ -1,0 +1,78 @@
+/*
+ * Solver identity swatch — the docs-side consumer of the per-solver colour
+ * tokens in tokens/palette.css.
+ *
+ * Emitted by docs/_render_benchmark_summary.py into the per-backend comparison
+ * table on the performance page. Each instance sets two custom properties
+ * inline:
+ *
+ *   --sf-solver       the identity colour, e.g. var(--c-jax)
+ *   --sf-solver-edge  the AA-safe text variant, e.g. var(--c-jax-text)
+ *
+ * Why two and not one: several identity colours are deliberately NOT safe as a
+ * boundary on a light background. systemYellow (--c-scipy-ls-dogbox) is 1.51:1
+ * on white — it fails even WCAG 1.4.11's 3:1 non-text bar, so a dot filled with
+ * it and nothing else would have no discernible edge. Drawing the ring in the
+ * -text variant gives every swatch a boundary that clears 3:1 regardless of how
+ * light its fill is. See the rationale block in tokens/palette.css for the
+ * per-colour ratios.
+ *
+ * Fallbacks are the theme's own default ink rather than a hardcoded hex, so an
+ * unknown solver id (one added to the engine before the palette) degrades to a
+ * visible neutral dot instead of an invisible transparent one.
+ */
+
+.sf-solver-dot {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin-right: var(--space-1, 4px);
+  border-radius: var(--radius-full, 999px);
+  background: var(--sf-solver, var(--md-default-fg-color--light));
+  /* Ring, not a shadow: it must survive forced-colours mode, where box-shadow
+     is dropped but border is preserved. */
+  border: 1px solid var(--sf-solver-edge, var(--md-default-fg-color));
+  /* Optical alignment with the adjacent inline `code` span rather than the
+     text baseline — a pure baseline sit reads low against monospace caps. */
+  vertical-align: baseline;
+  position: relative;
+  top: 0.04em;
+  /* Decorative: the backend id is written out beside it in text, so the dot
+     carries no information of its own and must not be announced. */
+  speak: never;
+}
+
+@media (forced-colors: active) {
+  /* The fill is a brand colour the OS will override anyway; keep the ring so
+     the swatch stays a visible shape rather than vanishing into the page. */
+  .sf-solver-dot {
+    border-color: CanvasText;
+  }
+}
+
+/*
+ * Numeric table columns — benchmark digits set in mono so they align in
+ * columns, as they do on the dashboard.
+ *
+ * The dashboard sets its whole "Measured medians across the suite" table in
+ * JetBrains Mono; the docs table showed the SAME numbers in proportional sans,
+ * where 1 and 0 have different advances and the columns go ragged. Same data,
+ * two typographic systems.
+ *
+ * Scoped to `.sf-numeric` — a wrapper the renderer emits — rather than
+ * `.md-typeset table`, because most docs tables are prose (the 11-crate table,
+ * the model-formula table, the API reference) and read better in sans. The
+ * first column is excluded: it holds the backend id, which is already inline
+ * `code` and therefore mono via --md-code-font.
+ *
+ * `tabular-nums` is the load-bearing half. The family alone is not enough —
+ * JetBrains Mono is monospaced so it would align anyway, but stating the
+ * feature keeps the alignment true if the family is ever changed to a
+ * proportional face with tabular figures.
+ */
+.sf-numeric table td:not(:first-child),
+.sf-numeric table th:not(:first-child) {
+  font-family: var(--md-code-font), ui-monospace, "SFMono-Regular", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}

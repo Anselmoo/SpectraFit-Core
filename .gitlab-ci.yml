@@ -1,0 +1,79 @@
+# GitLab CI — primary pipeline for spectrafit-core (GitLab MPCDF is the
+# primary development host and CI source of truth).
+# Remote: https://gitlab.mpcdf.mpg.de/anhahn/spectrafit-core.git
+#
+# GitHub (Anselmoo/spectrafit-core) carries a public, history-free snapshot
+# mirror of `main`, republished automatically on every push to the default
+# branch by the `publish:github` job in .gitlab/70-publish.yml (not manual —
+# that's the separate `publish:github:fast` job). GitHub does run its own CI
+# (lint/review workflows fire on PRs, including Dependabot's — see
+# .github/workflows/) but it does not gate `main`: the mirror is periodically
+# force-pushed as a fresh snapshot, discarding prior GitHub-side history and
+# any commits/PRs made there in the meantime.
+#
+# Cross-language coverage design (fused on GitHub, split on GitLab MPCDF):
+#   Fused goal: instrumented build + both `cargo test` AND `pytest` write
+#   profile data to same directory, so PyO3 boundary (crates/spectrafit-core)
+#   appears in Rust coverage even when exercised through Python tests. This
+#   pattern is live in .github/workflows/ci.yml (build-and-test job).
+#
+#   On GitLab MPCDF: combined instrumented build + pytest exceeded GWDG's
+#   3600 s runner maximum_timeout (pipelines 807234/807266/807290). Split into
+#   test:python:rust-cov (instrumented, cargo test) + test:python:pytest
+#   (uninstrumented, pytest). Trade-off: Python-driven Rust coverage lost.
+#   Recoverable when GWDG raises runner maximum_timeout to ≥ 7200 s
+#   (runners 80579/80750); see .gitlab/30-test.yml lines 8–26 for details.
+#
+# File layout — `.gitlab/` carries one yaml per stage-group so every job sits in
+# a small focused file with `|` block scalars (no `: ` ambiguity in shell strings).
+#
+# Required CI/CD variables (set in GitLab MPCDF project settings):
+#   None for the core pipeline. If you add release-artifact upload later,
+#   use $CI_JOB_TOKEN (built-in) — do NOT commit any PAT or API key here.
+#   GITHUB_TOKEN — a GitHub fine-grained PAT (repo: Anselmoo/spectrafit-core,
+#   permission: Contents read/write), masked + protected + hidden, used only
+#   by the manual publish:github job in .gitlab/70-publish.yml.
+
+stages:
+  - setup
+  # `ext` sits between setup and lint because build:ext:release / build:ext:dev
+  # (.gitlab/50-build.yml) compile the PyO3 extension ONCE per profile and
+  # publish `_core*.so` as an artifact that consumers in `test` AND `build`
+  # pull via `needs:`. GitLab requires a `needs:` target to live in the current
+  # or a PRIOR stage, so these producers cannot sit in `build` (index 4) while
+  # test:python:pytest consumes them from `test` (index 2) — that combination
+  # creates a pipeline with ZERO jobs and no yaml_errors, which `glab ci lint`
+  # reports as valid and only `ci/lint?dry_run=true` catches.
+  - ext
+  - lint
+  - test
+  - coverage
+  - build
+  - pages
+  - preview
+  - publish
+
+# Pipeline-creation rules (F13 follow-up, 2026-06-27): run the full pipeline for
+# merge requests AND branch pushes/tags. The middle `when: never` clause prevents
+# a duplicate *branch* pipeline while an MR is open for that branch — the MR
+# pipeline covers it — so the full CI gates every MR without double-running.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+
+include:
+  - local: .gitlab/docker-build.yml
+  - local: .gitlab/00-defaults.yml
+  - local: .gitlab/10-setup.yml
+  - local: .gitlab/20-lint.yml
+  - local: .gitlab/30-test.yml
+  - local: .gitlab/40-coverage.yml
+  - local: .gitlab/50-build.yml
+  - local: .gitlab/55-deep-bench.yml
+  - local: .gitlab/65-docs.yml
+  - local: .gitlab/60-pages.yml
+  - local: .gitlab/70-publish.yml
