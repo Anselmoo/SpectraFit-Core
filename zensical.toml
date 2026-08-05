@@ -1,0 +1,330 @@
+# ============================================================================
+# spectrafit-core documentation site — built with Zensical
+# (https://zensical.org). See docs/contributor-guide/architecture.md for the
+# broader project structure; this file only configures the docs site itself.
+#
+# NOTE: config keys are declared at the TOP LEVEL (site_name, nav, [theme],
+# [markdown_extensions.*], [[plugins]]) rather than nested under a [project]
+# table. Zensical's own bootstrap template nests everything under [project],
+# and both forms parse without error — but empirically, on the installed
+# 0.0.51 build, the [project]-nested form silently breaks the mkdocstrings
+# markdown-extension wiring: the plugin loads, no error/warning is raised
+# (even with `zensical build --strict`), but `::: spectrafit_core.xxx`
+# directives render as literal text instead of real API docs. Verified by
+# bisecting a minimal repro (bare keys -> renders; [project]-nested,
+# otherwise identical -> does not). Keep this file in the flat form.
+# ============================================================================
+
+site_name = "SpectraFit-Core"
+site_description = "A Rust-accelerated, Python-first spectral fitting library — solvers, model composition, and a benchmark/verification harness."
+site_author = "spectrafit-core contributors"
+# site_url intentionally unset until the GitLab Pages docs URL is finalized
+# (see .gitlab/60-pages.yml — the new `build:docs` job wires this).
+
+# Drives the repo icon/link in the header on both published mirrors.
+# 2026-08-04 correction: this comment used to claim "GitHub Pages and GitLab
+# Pages both serve the docs from their domain root" — false for GitHub.
+# GitLab Pages serves this project at its own unique per-project domain
+# (spectrafit-core-<hash>.pages.mpcdf.de, no subpath) via
+# `is_unique_domain_enabled`, so root-absolute links there are correct — but
+# GitHub Pages serves Anselmoo/SpectraFit-Core as an ordinary PROJECT page
+# under /SpectraFit-Core/ (no CNAME/custom domain configured), so a
+# root-absolute link 404s there. CI-assembled links (report.html, rust-api/,
+# web/, reports/ — see tests/audit/test_audit_built_site_links.py's
+# `_CI_ASSEMBLED`) must be page-relative (`../report.html` etc.), not
+# root-absolute, to work on both. Confirmed live: all four root-absolute
+# forms 404'd on GitHub Pages before this fix.
+# Zensical auto-derives repo_name ("GitHub") and the header icon from the host.
+repo_url = "https://github.com/Anselmoo/spectrafit-core"
+# Backs content.action.edit/.view below. GitHub is a disposable, periodically
+# force-pushed mirror (see contributor-guide/github-mirror-workflow.md) — but
+# a non-collaborator clicking "Edit this page" gets GitHub's own fork+PR flow,
+# not a direct commit to the mirror, so the edit itself isn't at risk from the
+# next squash-push (user-confirmed 2026-08-01: only a maintainer with direct
+# push access could race the mirror, and that's already a known, accepted
+# risk of using GitHub as a mirror at all, not a new one this introduces).
+edit_uri = "edit/main/docs/"
+
+copyright = """
+Copyright &copy; 2026 spectrafit-core contributors
+"""
+
+extra_css = [
+  "stylesheets/extra.css",
+  # Vendored KaTeX stylesheet (woff2-only font subset, trimmed from the
+  # upstream npm `katex` package's dist/katex.min.css — see
+  # docs/fonts/katex/LICENSE for provenance). Kept separate from the
+  # extra.css @import manifest since it's third-party, not a manifest module.
+  "stylesheets/katex.min.css",
+]
+
+# Vendored KaTeX (not a MathJax/KaTeX CDN script) + a small init script that
+# subscribes to Zensical's `document$` instant-navigation observable so math
+# re-renders on every client-side page swap, not just the first page load.
+# Order matters: katex.min.js defines the `katex` global auto-render.min.js
+# needs; katex-init.js calls the `renderMathInElement` global auto-render
+# defines.
+extra_javascript = [
+  "javascripts/katex.min.js",
+  "javascripts/katex-auto-render.min.js",
+  "javascripts/katex-init.js",
+  # Replaces Zensical's own bundled mermaid.run() auto-render, which was
+  # found to reliably corrupt every diagram on a page with 3+ Mermaid
+  # fences (see docs/javascripts/mermaid-init.js's header comment for the
+  # full root-cause writeup and how this was diagnosed).
+  "javascripts/mermaid-init.js",
+]
+
+nav = [
+  { "Home" = "index.md" },
+  { "Why spectrafit-core" = "why-spectrafit-core.md" },
+  { "Getting Started" = [
+    "getting-started/index.md",
+    { "Installation" = "getting-started/installation.md" },
+    { "Quickstart" = "getting-started/quickstart.md" },
+  ] },
+  { "Tutorials" = [
+    "tutorials/gallery/index.md",
+    { "Single-dataset fitting" = "tutorials/gallery/fitting.md" },
+    { "N-D fitting" = "tutorials/gallery/3d_fitting.md" },
+    { "Multi-dataset joint fitting" = "tutorials/gallery/multi_dataset.md" },
+    { "Shared / tied parameters" = "tutorials/gallery/shared_params.md" },
+    { "VarPro vs. Levenberg-Marquardt" = "tutorials/gallery/varpro_vs_lm.md" },
+    { "Parameter confidence intervals" = "tutorials/gallery/confidence_intervals.md" },
+    { "Advanced: spectrafit vs. lmfit (4-peak)" = "tutorials/gallery/spectrafit_vs_lmfit_moderate.md" },
+    { "Extra: spectrafit vs. lmfit (8-peak, tied)" = "tutorials/gallery/spectrafit_vs_lmfit_complex.md" },
+    { "Holding a parameter fixed" = "tutorials/gallery/fixed_params.md" },
+    { "Sigma-weighted fitting" = "tutorials/gallery/weighted_fitting.md" },
+    { "Bounded fitting with trf" = "tutorials/gallery/bounded_fitting.md" },
+    { "Robust fitting against outliers" = "tutorials/gallery/robust_fitting.md" },
+    { "Escaping local minima with the global solver" = "tutorials/gallery/global_optimizer.md" },
+  ] },
+  { "How-to guides" = [
+    "how-to/index.md",
+    { "Choosing a solver" = "how-to/choosing-a-solver.md" },
+    { "Adding a model" = "how-to/adding-a-model.md" },
+  ] },
+  { "Reference" = [
+    "reference/index.md",
+    { "Python: core API" = "reference/python/core-api.md" },
+    { "Python: shape factories" = "reference/python/shape-factories.md" },
+    { "Rust: crate overview" = "reference/rust/overview.md" },
+    { "Rust <-> Python binding audit" = "reference/rust/binding-audit.md" },
+    { "Model formulas" = "reference/models/index.md" },
+  ] },
+  { "Explanation" = [
+    "explanation/index.md",
+    { "Model composition (DAG IR)" = "explanation/model-composition-dag.md" },
+    { "Parameter model" = "explanation/parameter-model.md" },
+    { "Solver selection" = "explanation/solver-selection.md" },
+  ] },
+  # Moved from position 2 (previously right after Home, before onboarding) —
+  # Diataxis-aligned order below runs onboarding -> tutorials -> how-to ->
+  # reference -> explanation first; Performance is a proof/credibility page,
+  # not onboarding content, so it now sits after the content spine.
+  { "Performance" = "performance/index.md" },
+  { "Contributor Guide" = [
+    "contributor-guide/index.md",
+    { "Setup" = "contributor-guide/setup.md" },
+    { "Architecture" = "contributor-guide/architecture.md" },
+    { "GitHub mirror workflow" = "contributor-guide/github-mirror-workflow.md" },
+    { "Benchmark engine (internal)" = "contributor-guide/benchmark-engine.md" },
+    { "Web dashboard" = "contributor-guide/web-dashboard.md" },
+    { "Code of Conduct" = "contributor-guide/code-of-conduct.md" },
+  ] },
+  { "Glossary" = "glossary.md" },
+  { "Release Notes" = "release-notes/changelog.md" },
+  { "Security" = "security.md" },
+  { "Limitations" = "limitations.md" },
+]
+
+[theme]
+language = "en"
+# `false` suppresses Zensical's Google Fonts block entirely (base.html's
+# `{% if config.theme.font != false %}`). Without it, the `modern` variant
+# defaults to {text = "Inter", code = "JetBrains Mono"} and every page emits a
+# `preconnect` to fonts.gstatic.com plus a stylesheet request to
+# fonts.googleapis.com — on a site that already self-hosts those exact OFL
+# faces in docs/fonts/, byte-identical to web/src/style/fonts/.
+#
+# It also injected `:root{--md-text-font:"Inter"}`, which is why `document.body`
+# and everything the per-selector overrides in stylesheets/typography/type.css
+# missed — the footer nav, the skip link, both tooltip variants — rendered in
+# Inter while the article rendered in IBM Plex Sans. The families are now set as
+# tokens in stylesheets/tokens/palette.css instead, so the cascade has a single
+# source rather than a default that must be out-fought selector by selector.
+font = false
+# Shared brand mark: a glass-inspired squircle mark (systemBlue/systemIndigo
+# gradient background, a frosted backdrop layer, an off-axis specular
+# glint, a lifted foreground glyph, plus a small corner badge marking this
+# specifically as the spectrafit-core variant) used by the benchmark
+# dashboard's favicon (web/public/favicon.svg, kept byte-identical — see
+# DECISIONS.md's icon-redesign entry), also referenced in docs/images/ so
+# both sites maintain visual identity.
+#
+# Deliberately described as "glass-inspired," not "Liquid Glass" in Apple's
+# literal technical sense: real Liquid Glass is a dynamic material the
+# system renders at draw time (Icon Composer + OS-level specular/
+# refraction, confirmed via Apple's own live HIG documentation) — a static
+# SVG favicon has no equivalent pipeline, so this is a static aesthetic
+# approximation of that material's spirit, not an implementation of it.
+#
+# theme.logo and theme.favicon are genuinely separate, independently
+# settable keys (confirmed via Zensical's own docs) — deliberately kept
+# identical here rather than diverged: the icon already reads correctly
+# at both header-logo scale and 16px favicon scale, and a second asset
+# would just be a third variant to keep in sync across dashboard + docs +
+# browser tab for a difference that doesn't currently need one.
+favicon = "images/favicon.svg"
+logo = "images/favicon.svg"
+custom_dir = "overrides"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  # Thin progress bar during instant-nav page loads — instant navigation
+  # otherwise gives zero feedback while the next page fetches (a real gap:
+  # Tog's "no silent state change" principle), and this is Zensical's own
+  # documented answer to exactly that, not a new mechanism of our own.
+  "navigation.instant.progress",
+  "navigation.path",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "toc.follow",
+  "search.highlight",
+  # header.autohide and announce.dismiss were evaluated and deliberately NOT
+  # added (see docs/stylesheets/components/header.css's header comment) —
+  # don't re-add without re-litigating those reasons. search.suggest and
+  # search.share were checked against Zensical's own docs (2026-08-01, three
+  # separate queries) and don't appear to exist in the current build at all
+  # — not Material-parity gaps worth chasing yet, just unimplemented.
+]
+
+[[theme.palette]]
+scheme = "default"
+# "custom" is Material/Zensical's documented escape hatch for exact brand hex
+# (see <https://zensical.org/docs/setup/colors/>): it signals the theme that
+# --md-primary-fg-color/--md-accent-fg-color will be supplied via CSS, rather
+# than picking the nearest named color slug. The actual systemBlue/systemIndigo
+# hex values live in docs/stylesheets/tokens/palette.css, scoped under
+# Material's own [data-md-color-scheme] toggle attribute.
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[theme.palette]]
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+# ----------------------------------------------------------------------------
+# Markdown extensions
+# ----------------------------------------------------------------------------
+[markdown_extensions.abbr]
+[markdown_extensions.admonition]
+[markdown_extensions.attr_list]
+[markdown_extensions.def_list]
+[markdown_extensions.footnotes]
+[markdown_extensions.md_in_html]
+[markdown_extensions.toc]
+permalink = true
+[markdown_extensions.pymdownx.betterem]
+[markdown_extensions.pymdownx.caret]
+[markdown_extensions.pymdownx.details]
+# emoji + keys: Zensical's own documented defaults (see the header comment's
+# audit note), added here since they were previously absent — audited
+# 2026-07-26 against <https://zensical.org/docs/setup/extensions/about/>.
+# `pymdownx.emoji` also backs Material's `:material-...:`/`:lucide-...:` icon
+# shortcode syntax, so it's needed the first time a page reaches for one, not
+# just for literal emoji. `emoji_generator`/`emoji_index` mirror Zensical's
+# own default (twemoji index, SVG generator) rather than upstream Material's.
+[markdown_extensions.pymdownx.emoji]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+[markdown_extensions.pymdownx.keys]
+[markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+[markdown_extensions.pymdownx.inlinehilite]
+[markdown_extensions.pymdownx.magiclink]
+[markdown_extensions.pymdownx.mark]
+[markdown_extensions.pymdownx.smartsymbols]
+[markdown_extensions.pymdownx.superfences]
+# Do NOT rename `class = "mermaid"`: Zensical's own bundled JS only injects
+# the mermaid.js <script> tag (from unpkg.com) at all when it detects an
+# element with the literal class "mermaid" on the page -- renaming it (tried
+# and reverted, see DECISIONS.md's [2026-08-02] mermaid entry) silently
+# skips loading mermaid.js entirely, which is worse than the race it was
+# meant to avoid. docs/javascripts/mermaid-init.js instead captures each
+# element's original fence source synchronously, before polling for
+# `window.mermaid`, so mermaid's own `startOnLoad` auto-run racing ahead of
+# it can no longer corrupt the source text we render from.
+custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" }
+]
+[markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+[markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+[markdown_extensions.pymdownx.tilde]
+# Enabled 2026-08-02: reference/models/index.md's 34 model formulas moved
+# from unicode-glyph approximations to real LaTeX ($...$), the first
+# consumer. `generic = true` emits MathJax/KaTeX-compatible \(...\) / \[...\]
+# markup (Zensical's own default for this extension) rather than a
+# MathJax-Preview-specific format. Rendered by vendored KaTeX (docs/fonts/katex/,
+# docs/javascripts/katex*.js — see extra_javascript below and
+# docs/stylesheets/components/katex.css), not a MathJax CDN script: this repo
+# already self-hosts its body/code fonts specifically to avoid third-party
+# font/script requests (see theme.font = false above), and a CDN math script
+# would be the first exception to that. cupertino-council pass on record in
+# docs/stylesheets/components/katex.css's own header comment.
+[markdown_extensions.pymdownx.arithmatex]
+generic = true
+# pymdownx.snippets: lets thin pages (security.md, limitations.md, the
+# release-notes/changelog.md mirror, and the gallery .md/.py pairing) include
+# content from repo-root files and from the gallery scripts themselves
+# instead of hand-copying prose that then drifts (see the fitting.md/
+# fitting.py copy-paste-drift precedent this replaces).
+[markdown_extensions.pymdownx.snippets]
+base_path = [".", "docs/tutorials/gallery"]
+check_paths = true
+# auto_append: injects docs/includes/abbreviations.md's `*[TERM]: definition`
+# tooltip lines into every page (markdown_extensions.abbr, enabled above,
+# renders them as dotted-underline hover text) without a per-page snippet import.
+auto_append = ["docs/includes/abbreviations.md"]
+
+# ----------------------------------------------------------------------------
+# Plugins
+# ----------------------------------------------------------------------------
+# NOT enabled (deliberately, checked 2026-08-02): a Material-style `tags`
+# plugin. The installed Zensical build has no such plugin — `zensical/extensions/`
+# ships autorefs/context/emoji/glightbox/links/macros/mkdocstrings/preview/search
+# only, and `config.py`'s `_convert_plugins` special-cases just `search`,
+# `offline`, and `mike`. `templates/partials/tags.html` exists (a verbatim,
+# unmodified copy of Material's template, gated on `{% if tags %}`) but nothing
+# in Zensical ever populates `tags`, so it would silently render nothing.
+# Building a custom tags plugin for this is disproportionate to the ask;
+# revisit only if Zensical ships one upstream. `abbr` (below) already covers
+# the term-tooltip use case at a fraction of the effort.
+[[plugins]]
+search = {}
+
+[[plugins]]
+mkdocstrings = {}

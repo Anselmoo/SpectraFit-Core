@@ -1,0 +1,79 @@
+/*
+ * Admonitions — brand-styles the two types actually used in the docs today:
+ * `!!! note` (7 files) and `!!! warning` (2 files, both in
+ * docs/tutorials/gallery/, verified via `grep -rln '^!!! ' docs --include="*.md"`).
+ * .note reuses the accent brand colour already defined for links/buttons;
+ * .warning uses the dedicated --status-warning token from
+ * docs/stylesheets/tokens/palette.css.
+ *
+ * ---------------------------------------------------------------------------
+ * This file now follows the modern variant's model instead of fighting it.
+ * That model, read out of the shipped bundle rather than assumed:
+ *
+ *   .md-typeset .admonition, .md-typeset details
+ *       { background-color: #448aff1a; border-radius: .4rem; padding: 0 .8rem }
+ *   .md-typeset .admonition-title, .md-typeset summary
+ *       { font-weight: 700; margin-bottom: 1em; margin-top: .6rem }
+ *   .md-typeset .<type> > .admonition-title::before  { background-color: <hue>; mask-image: … }
+ *   .md-typeset .<type> > .admonition-title::after   { color: <hue> }
+ *
+ * Three things follow, all of which the previous version of this file got wrong:
+ *
+ * 1. There is NO border anywhere. `border-left-color` therefore computed
+ *    against `border-style: none` at width 0 and painted nothing. Measured on
+ *    a live note: `border-left: 0px none`. Two of this file's six rules were
+ *    no-ops.
+ * 2. The block tint is ONE hardcoded blue for EVERY type — the theme
+ *    distinguishes note from warning by icon colour alone. Left unoverridden,
+ *    a `!!! warning` renders with a *blue* block.
+ * 3. There is no title strip. The previous version added one, so it painted a
+ *    second, darker band over an already-tinted block — a surface the theme's
+ *    design does not have.
+ *
+ * Net effect before this change, measured on a live note: block #448aff
+ * (Material), icon #5856d6 (ours), chevron #448aff (Material), plus our own
+ * strip. Four surfaces, three colours, two design systems, one component.
+ *
+ * Now the block tint carries the type, the icon and chevron agree with it, and
+ * the strip is gone — the theme already separates the title with
+ * `font-weight: 700` and `margin-bottom: 1em`, so the strip was decoration laid
+ * over a structure that already worked.
+ *
+ * ::before and ::after take DIFFERENT properties and are not interchangeable:
+ * ::before is a masked shape tinted via `background-color`, ::after is a glyph
+ * coloured via `color`. Overriding only one is how the chevron kept Material's
+ * hue while the icon took ours.
+ * ---------------------------------------------------------------------------
+ */
+
+/* --- note ---------------------------------------------------------------- */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  background-color: color-mix(in srgb, var(--md-accent-fg-color) 10%, transparent);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .note > .admonition-title::after,
+.md-typeset .note > summary::after {
+  color: var(--md-accent-fg-color);
+}
+
+/* --- warning ------------------------------------------------------------- */
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  background-color: color-mix(in srgb, var(--status-warning, #cc7700) 10%, transparent);
+}
+
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before {
+  background-color: var(--status-warning, #cc7700);
+}
+
+.md-typeset .warning > .admonition-title::after,
+.md-typeset .warning > summary::after {
+  color: var(--status-warning, #cc7700);
+}

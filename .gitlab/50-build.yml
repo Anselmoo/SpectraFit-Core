@@ -1,0 +1,376 @@
+# Build stage — production web bundle.
+#
+# Cycle 31: declare the per-job cache bucket the build needs. The Cycle 31
+# baked image carries node + npm, but web/node_modules is a project-tree
+# artifact populated by `setup` (10-setup.yml) into the `web-*` cache
+# bucket. Pipeline #13 surfaced the gap — `build:web` ran `npm run build`
+# without web/node_modules in the working tree and died with
+# `sh: 1: tsc: not found` (the build script invokes `tsc --noEmit && vite
+# build`, where `tsc` lives in `web/node_modules/.bin/`). Mirrors the cache
+# wiring `test:web` already has in `30-test.yml`.
+
+# Compile the PyO3 extension ONCE per pipeline (release profile) and publish
+# it as an artifact instead of every release-profile consumer re-running
+# `maturin develop --release` itself. Design:
+# .superpowers/specs/2026-08-01-ci-compile-wallclock-design.md — a full
+# pipeline paid 7 cold Rust compiles (one per job, every one producing a
+# byte-identical `.so`); this job (+ build:ext:dev below) cuts that to 5 on a
+# full MR/main pipeline and 7 -> 1 on a scheduled `benchmark:deep` pipeline.
+# Consumers: build:report_html, build:report_html:solo (both below) and
+# every benchmark:deep matrix cell (.gitlab/55-deep-bench.yml).
+#
+# Rules must cover EVERY consumer's trigger set: `.rules_full_only` (the two
+# build:report_html* jobs) PLUS the schedule/web clauses benchmark:deep uses.
+# No `when: manual` on the schedule/web clauses here even though
+# benchmark:deep's OWN matrix cells are `when: manual` on a web-triggered
+# pipeline — this job must already have produced the artifact by the time a
+# maintainer plays those manual cells, or the manual cells block on a
+# needs: dependency that never ran.
+build:ext:release:
+  rules:
+    - !reference [.rules_full_only, rules]
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  stage: ext
+  # ci-job-timeout-declaration: --release compiles the whole workspace
+  # (~7 min warm, pipeline 363865). Same 2h headroom as every other
+  # compiling job (test:python:rust-cov, benchmark:deep, build:report_html*).
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      UV_CACHE_DIR=.uv-cache uv run --no-sync maturin develop --release
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — maturin develop --release did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - python/spectrafit_core/_core*.so
+
+# Same shape as build:ext:release above, dev profile (`maturin develop`, no
+# `--release`). Consumers are test:python:pytest (.gitlab/30-test.yml) and
+# build:docs (.gitlab/65-docs.yml), both already `.rules_full_only` — no rules
+# widening needed here, unlike build:ext:release's schedule/web consumer.
+build:ext:dev:
+  rules: !reference [.rules_full_only, rules]
+  stage: ext
+  # ci-job-timeout-declaration: dev-profile compile (~5 min warm, pipeline
+  # 363865). Same 2h headroom as build:ext:release above and every other
+  # compiling job in this pipeline.
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      UV_CACHE_DIR=.uv-cache uv run --no-sync maturin develop
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — maturin develop did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - python/spectrafit_core/_core*.so
+
+build:web:
+  rules: !reference [.rules_full_only, rules]
+  stage: build
+  # Cycle 31 hotfix 7: depend on `setup` (not just test:web) so we inherit its
+  # web/node_modules/ ARTIFACT — GWDG runners have no shared cache server
+  # ("Failed to extract cache" in pipeline #16 when build:web landed on a
+  # runner that hadn't seen the web-* cache). Artifacts ARE cross-runner;
+  # cache on GWDG is local-only. test:web stays in needs because we still
+  # want stage ordering enforced.
+  needs:
+    - job: setup
+      artifacts: true
+    - job: test:web
+      artifacts: false
+  cache:
+    - key: "web-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - web/node_modules/
+      policy: pull
+  script:
+    - |
+      cd web && npm run build
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - web/dist/
+
+# Benchmark regression gate — runs a REAL benchmark via
+# `python -m oracles.cli run --reps 1 --mc 4` (low-rep / low-mc so it lands
+# inside the GWDG runner budget) and BLOCKS the pipeline on regression
+# (speed/accuracy/self-perf vs. baseline). This is the correctness gate and
+# stays on every MR/push pipeline unchanged — 2026-07-26 docs-overhaul cycle
+# split OFF the HTML bundling + Playwright walk into a separate job
+# (`build:report_html:bundle`, below `build:report_html:solo`) that reuses
+# THIS job's already-computed results.json via `needs:` instead of re-running
+# maturin + the benchmark a second time (2026-07-31 fix — the prior
+# weekly/refresh split still redundantly re-ran the full benchmark to get
+# there; see .gitlab/50-build.yml git history for the superseded jobs).
+build:report_html:
+  rules: !reference [.rules_full_only, rules]
+  stage: build
+  # Real benchmark run + gate (the compile moved to build:ext:release,
+  # pulled in via `needs:` above). No longer bundles report.html or runs the
+  # Playwright walk (moved to build:report_html:bundle below, which reuses
+  # this job's results via `needs:` instead of re-running the benchmark) —
+  # but a real pipeline run (2026-07-26) showed the benchmark run itself
+  # (oracles.cli run --reps 1 --mc 4, nested-adequacy fitting across the full
+  # case catalog) already exceeds 1h on its own, so cutting the timeout to 1h
+  # here was wrong — restored to the original 2h budget.
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:release
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  # The PyO3 extension is compiled ONCE per pipeline by build:ext:release
+  # (.gitlab/50-build.yml) and pulled in here via `needs: artifacts: true` —
+  # this job no longer runs `maturin develop --release` itself. See
+  # .superpowers/specs/2026-08-01-ci-compile-wallclock-design.md. Required-
+  # artifact guard (exemplar: .gitlab/40-coverage.yml:25-30): fail loudly and
+  # name the producer rather than silently falling back to a local
+  # `maturin develop --release`, which would mask a broken producer and
+  # reintroduce the compile this design removes.
+  script:
+    - |
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:release did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli run --reps 1 --mc 4
+      # Collect artifacts BEFORE the blocking gate below: the gate call aborts
+      # the script (set -e) on a non-zero exit, and without capturing
+      # results/manifest first, a red gate would upload nothing despite
+      # `artifacts: when: always` — same fix build:report_html:solo already
+      # applies for the same reason.
+      mkdir -p artifacts
+      cp .spectrafit_reports/benchmark/*/results.json artifacts/results.json
+      cp .spectrafit_reports/benchmark/*/manifest.json artifacts/manifest.json
+      ls -lh artifacts/
+      # Primary-pipeline gate enforcement: assert the four axes (speed/accuracy/
+      # regressions/self-perf) on the run just produced. BLOCKING — a regressed or
+      # slower-than-baseline run reds the pipeline here instead of shipping a green
+      # build with a broken headline. Mirrors GitHub ci.yml `regression-gate`.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli gate
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/results.json
+      - artifacts/manifest.json
+      # Full run tree (not just the flattened copies above) so
+      # build:report_html:bundle can resolve it via
+      # oracles.reports.latest_results("benchmark") after pulling this job's
+      # artifacts through `needs:` — no maturin/benchmark re-run required.
+      - .spectrafit_reports/index.json
+      - .spectrafit_reports/benchmark/
+    when: always
+
+# Fast, spectrafit-only companion to build:report_html: skips lmfit/jax/
+# scipy-ls-* entirely (oracles.cli run --backends spectrafit) so a push gets
+# an absolute correctness signal (did spectrafit itself fail to converge on
+# any case) without waiting on the full multi-backend comparison. Parallel
+# job, NOT a replacement — build:report_html (the full comparative gate)
+# still runs on every push. Separate report category (spectrafit_solo) and a
+# separate artifacts-solo/ directory so outputs never collide with
+# build:report_html's artifacts/results.json + artifacts/manifest.json.
+build:report_html:solo:
+  rules: !reference [.rules_full_only, rules]
+  stage: build
+  # Same 2h budget as its sibling build:report_html for consistency: the case
+  # catalog walked is unchanged — only the backend fan-out shrinks (spectrafit
+  # only). Previously relying on the GitLab project default was an unexplained
+  # inconsistency with its siblings, not a deliberate choice.
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:release
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  # The PyO3 extension is compiled ONCE per pipeline by build:ext:release
+  # (.gitlab/50-build.yml) and pulled in here via `needs: artifacts: true` —
+  # this job no longer runs `maturin develop --release` itself. See
+  # .superpowers/specs/2026-08-01-ci-compile-wallclock-design.md. Required-
+  # artifact guard (exemplar: .gitlab/40-coverage.yml:25-30): fail loudly and
+  # name the producer rather than silently falling back to a local
+  # `maturin develop --release`, which would mask a broken producer and
+  # reintroduce the compile this design removes.
+  script:
+    - |
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:release did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli run \
+        --backends spectrafit --reps 1 --mc 4 --category spectrafit_solo
+      # Collect the run's artifacts BEFORE the blocking gate below: the gate call
+      # aborts the script on a non-zero exit, and without capturing results/manifest
+      # first, a red solo gate would upload nothing — leaving no evidence to debug
+      # from. `when: always` on the artifacts: block (below) is the other half of
+      # this fix; both matter together.
+      mkdir -p artifacts-solo
+      cp .spectrafit_reports/spectrafit_solo/*/results.json artifacts-solo/results.json
+      cp .spectrafit_reports/spectrafit_solo/*/manifest.json artifacts-solo/manifest.json
+      ls -lh artifacts-solo/
+      # BLOCKING: absolute correctness gate. No baseline comparison exists for
+      # a single-backend run, so this reduces to the regressions axis (did
+      # spectrafit fail to converge on any case) — the speed/accuracy axes
+      # trivially pass (baseline_solver_id defaults to "spectrafit" itself:
+      # speedup=1.0, |Δr²|=0 by construction — see
+      # oracles.cli._resolve_run_backends).
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -m oracles.cli gate \
+        --category spectrafit_solo
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts-solo/results.json
+      - artifacts-solo/manifest.json
+    when: always
+
+# Fast bundle + Playwright companion to build:report_html: consumes the
+# ALREADY-COMPUTED results.json/manifest.json + .spectrafit_reports/ tree
+# produced by build:report_html above (via `needs: artifacts: true`) instead
+# of re-running maturin + the real benchmark a second time in the same
+# pipeline. Runs on the SAME cadence as build:report_html (.rules_full_only —
+# every MR + every push to $CI_DEFAULT_BRANCH + every tag), replacing the old
+# build:report_html:weekly / build:report_html:refresh split (2026-07-31),
+# which both redundantly re-ran the full ~1h+ benchmark a second time in the
+# same pipeline where build:report_html had already paid that cost once.
+#
+# `poe bundle_report_only` needs neither the compiled Rust extension nor a
+# fresh benchmark run — it only reads an on-disk results.json (located via
+# `oracles.reports.latest_results`, which walks `.spectrafit_reports/
+# index.json`) and re-bundles it into report.html via web's Vite build. No
+# maturin, no `oracles.cli run`, no rust-* cache pull here.
+#
+# UV_NO_SYNC=1: `poe bundle_report_only` / `poe report_e2e` shell out to a
+# bare `uv run python -c ...` (no --no-sync of their own) to resolve the
+# latest run path. Without this, that bare `uv run` would notice the local
+# spectrafit-core project package isn't installed in .venv (setup's
+# `uv sync --no-install-project` deliberately skips it) and try to build it
+# via maturin on the fly — defeating the point of this job. UV_NO_SYNC=1
+# makes every nested `uv run` skip that check, same effect as the explicit
+# --no-sync flag used everywhere else in this file.
+build:report_html:bundle:
+  rules: !reference [.rules_full_only, rules]
+  stage: build
+  # No maturin, no benchmark re-run — just a Vite bundle + one Playwright
+  # spec. 30m comfortably covers npm ci + tsc + vite build + the chromium
+  # binary fetch + report-ux.spec.ts, with headroom.
+  timeout: 30m
+  variables:
+    UV_NO_SYNC: "1"
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:report_html
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+    - key: "web-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - web/node_modules/
+      policy: pull
+  script:
+    - |
+      # Required-artifact guard (exemplar: .gitlab/40-coverage.yml). This job
+      # bundles build:report_html's run tree and never produces one itself, so
+      # an absent tree must name that job rather than surface as a glob that
+      # expanded to nothing three commands later.
+      test -d .spectrafit_reports/benchmark || {
+        echo "ERROR .spectrafit_reports/benchmark/ missing — build:report_html did not emit it."
+        echo "ERROR This job only bundles that run; it never produces one itself."
+        exit 1
+      }
+      # `find -maxdepth 1 -mindepth 1`, not `ls -1 | wc -l` (SC2012): `ls` output
+      # is unparseable for names with newlines, and the run directories are
+      # generated. Caught by scripts/shellcheck_ci.py.
+      echo ".spectrafit_reports/benchmark/ OK: $(find .spectrafit_reports/benchmark -maxdepth 1 -mindepth 1 -type d | wc -l) run(s)"
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync poe bundle_report_only
+      mkdir -p artifacts
+      cp .spectrafit_reports/benchmark/*/report.html artifacts/report.html
+      cp .spectrafit_reports/benchmark/*/results.json artifacts/results.json
+      cp .spectrafit_reports/benchmark/*/manifest.json artifacts/manifest.json
+      ls -lh artifacts/
+      # Skip-graceful if Playwright is unavailable on the image (the spec
+      # self-skips when REPORT_HTML_PATH is empty, so an upstream chromium
+      # failure becomes a skipped test, not a red job that blocks the upload).
+      # Install the chromium browser AND its system libraries (libnspr4,
+      # libnss3, libatk*, …). `--with-deps` runs `playwright install-deps`
+      # under the hood (apt, needs root — available in the Debian-bookworm CI
+      # image). Without the system libs the chromium binary launch crashes
+      # with `libnspr4.so: cannot open shared object file`, which is a hard
+      # launch failure, NOT a clean skip — so it would red the BLOCKING gate
+      # below. The baked CI image (.gitlab/docker/Dockerfile.ci) also installs
+      # these libs; this in-step `--with-deps` is the belt-and-suspenders path
+      # that works even on a runner whose image predates that change.
+      (cd web && npx playwright install --with-deps chromium >/dev/null 2>&1 || true)
+      # Value-bearing render gate: BLOCKING (Invariant 0 / andon-strict). The spec
+      # (web/tests/e2e/report-ux.spec.ts) was rewritten 2026-06-14 against the
+      # current Standing/Verification/Evidence shell (it had been stale vs the old
+      # Suite/Case tabs and only surfaced once the chromium-deps fix let it run);
+      # all 4 assertions pass locally against the bundle. Chromium + its system
+      # deps are provisioned just above, so a genuine render regression — the
+      # shell failing to mount, plots not rendering on Evidence, or the subject
+      # solver missing — is the only way this step goes red.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync poe report_e2e
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/report.html
+      - artifacts/results.json
+      - artifacts/manifest.json
+      - web/playwright-report/
+    when: always

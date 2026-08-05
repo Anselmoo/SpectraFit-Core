@@ -1,0 +1,206 @@
+# Docs site build — Zensical (see zensical.toml at repo root, docs/ for
+# source). Separate from `build:web` (the benchmark dashboard) and from the
+# `pages` job's coverage-atlas publish — this job owns ONLY the documentation
+# site + generated Rust API docs.
+#
+# `docs` is a `[dependency-groups]` entry (not a `[project.optional-dependencies]`
+# extra), so it's installed via `uv sync --group docs`, not `--extra docs`.
+# mkdocstrings needs the real compiled `spectrafit_core` extension importable
+# to introspect docstrings; the PyO3 extension is compiled ONCE per pipeline
+# and pulled in here via `needs:` instead of this job running
+# `maturin develop` itself. See
+# .superpowers/specs/2026-08-01-ci-compile-wallclock-design.md.
+#
+# 2026-08-04 correction: this job used to pull build:ext:dev (dev profile —
+# reasoned "docs builds don't need the optimized binary, just an importable
+# one"). True for mkdocstrings/rustdoc, but this job ALSO regenerates the
+# tutorial gallery's timing-comparison images
+# (docs/tutorials/gallery/_render.py), which measure spectrafit-core against
+# lmfit — and a dev-profile (no LTO, no codegen-units=1, debug assertions on)
+# build is dramatically slower than release for compute-heavy Rust code.
+# Confirmed live: spectrafit_vs_lmfit_complex.py measured spectrafit 5.8x
+# FASTER than lmfit locally (release build, 6.7ms vs 38.8ms) but the
+# dev-profile-built docs pipeline published spectrafit as 2.1x SLOWER
+# (217.77ms vs 102.19ms) — a 32x slowdown for spectrafit specifically (lmfit,
+# pure Python/SciPy and unaffected by the Rust build profile, only varied
+# ~2.6x, consistent with ordinary CI-vs-local machine noise). The gallery's
+# own advertised speed claims were being generated from an unoptimized
+# build. Switched to build:ext:release instead — its `rules:` (.rules_full_only
+# plus schedule/web) are already a strict superset of build:ext:dev's
+# (.rules_full_only only), so build:ext:release is guaranteed to already be
+# running in every pipeline this job runs in (build:report_html and
+# benchmark:deep already consume it) — this adds zero marginal compile cost,
+# it's a consumer reassignment, not a new compile. build:ext:dev job itself
+# stays (test:python:pytest still consumes it).
+#
+# `cargo doc --workspace --no-deps` is treated as a hard gate on
+# `missing_docs` warnings: 7 of 11 crates already enforce
+# `#![warn(missing_docs)]`; the trust-region family (4 crates) was brought up
+# to the same bar as part of the docs-overhaul cycle, so any regression here
+# (a new pub item landing without a doc comment) should fail this job, not
+# silently ship an incomplete rustdoc page.
+build:docs:
+  rules: !reference [.rules_full_only, rules]
+  stage: build
+  # ci-job-timeout-declaration: pulls the compiled extension from
+  # build:ext:release (~7 min warm, only ~2 min more than dev — see the
+  # 2026-08-04 correction above for why dev was wrong here) but also runs
+  # `cargo doc --workspace`, the gallery renderer, a full `zensical build`,
+  # and lychee over ~3200 links -- the same 2h headroom as every other job
+  # that touches the Rust toolchain.
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:release
+      artifacts: true
+    # build:report_html deliberately NOT listed here (even as an optional
+    # need): it can take up to its 2h timeout budget, and any `needs` entry —
+    # optional or not — still makes GitLab wait for it to finish before
+    # build:docs can start. That wait previously raced setup's artifact TTL
+    # and made build:docs fail with missing_dependency_failure before ever
+    # running (pipeline 362092, job 5076994), and it gated `pages` (which
+    # needs build:docs) behind the slowest job in the whole pipeline. The
+    # script below always uses the curl fallback further down — fetching the
+    # last successful main-branch build:report_html's manifest.json via the
+    # GitLab API — so the "Current performance" docs page is at most one
+    # pipeline behind instead of blocking the docs+pages build on freshness.
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      UV_CACHE_DIR=.uv-cache uv sync --no-install-project --group docs
+      # Required-artifact guard (exemplar: .gitlab/40-coverage.yml:25-30). The
+      # compile moved to build:ext:dev (.gitlab/50-build.yml) — no silent
+      # `maturin develop` fallback here, which would mask a broken producer
+      # and reintroduce the compile this design removes.
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:dev did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+
+      # Rust API docs + missing_docs gate. grep for "missing_docs" specifically
+      # (not any warning) so unrelated dependency/deprecation warnings from
+      # crates.io deps don't fail this job.
+      cargo doc --workspace --no-deps 2>&1 | tee cargo-doc.log
+      if grep -qi "missing_docs" cargo-doc.log; then
+        echo "ERROR cargo doc reported missing_docs warnings — see above"
+        exit 1
+      fi
+
+      # Regenerate the gallery PNGs before building the site (zensical embeds
+      # them via docs/tutorials/gallery/index.md's thumbnail grid).
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python docs/tutorials/gallery/_render.py
+
+      # "Current performance" docs page: build:docs no longer needs
+      # build:report_html (that wait raced setup's artifact TTL — see the
+      # `needs:` comment above), so it always fetches the last successful
+      # main-branch build:report_html's manifest.json via the GitLab
+      # jobs-artifacts API — the same fallback `pages` (60-pages.yml) already
+      # uses for report.html. Never fails the build:
+      # docs/_render_benchmark_summary.py renders a "no data yet" placeholder
+      # when no manifest is found either.
+      echo "Fetching the last successful build:report_html run's manifest.json"
+      curl --fail --location --silent --show-error \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/jobs/artifacts/$CI_DEFAULT_BRANCH/raw/artifacts/manifest.json?job=build:report_html" \
+        --output /tmp/benchmark-manifest.json \
+        && export BENCHMARK_MANIFEST_PATH=/tmp/benchmark-manifest.json \
+        || echo "No manifest.json available yet — performance page will render its no-data placeholder"
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python docs/_render_benchmark_summary.py
+
+      # PYTHONPATH=python is now required: this job no longer runs `maturin
+      # develop` itself (moved to build:ext:dev), so mkdocstrings can't
+      # resolve `spectrafit_core` through the editable-install `.pth` +
+      # dist-info that `maturin develop` used to create in `.venv` — it must
+      # resolve through the source tree instead, exactly like every other
+      # consumer of the compiled extension already does. Omitting this would
+      # be a quiet failure (empty API pages, green build) were it not for the
+      # autodoc smoke test just below.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync zensical build --clean
+
+      # Autodoc smoke test: at least one rendered API page must have real
+      # mkdocstrings output, not an empty/degraded page (guards against the
+      # mkdocstrings/zensical compat-shim version-mismatch risk).
+      if ! grep -rl "doc-contents" site/reference/python/ >/dev/null 2>&1; then
+        echo "ERROR No rendered mkdocstrings output under site/reference/python/ — autodoc smoke test failed"
+        exit 1
+      fi
+
+      # Internal link-check — hard gate over site/ (our authored content)
+      # only. target/doc/ (generated rustdoc) is deliberately excluded: its
+      # internal cross-links use bare-directory hrefs without a trailing
+      # slash (e.g. `spectrafit_dogleg/spectrafit_trust_region`) that lychee
+      # doesn't auto-resolve to `.../index.html` even though the file exists
+      # and any browser follows it fine — a lychee/rustdoc link-format quirk,
+      # not a real broken link, confirmed by checking the target files exist
+      # on disk. rustdoc is trusted, third-party-generated output; site/ is
+      # what we actually write and is where a real broken link matters.
+      # --root-dir is required because zensical emits root-relative hrefs
+      # (e.g. `/reference/models/`) which lychee can't resolve against a
+      # local directory without being told what "root" means.
+      # lychee is pre-baked in the CI image (.gitlab/docker/Dockerfile.ci), the
+      # same way cargo-llvm-cov is — the docs build no longer spends ~2-3 min
+      # per job on `cargo install lychee --locked`, compiling it from source.
+      #
+      # --exclude the CI-ASSEMBLED paths. These exist in the DEPLOYED tree but
+      # never in a local `site/` build, because `pages` (.gitlab/60-pages.yml)
+      # assembles them from other jobs' artifacts: rustdoc -> public/rust-api/,
+      # coverage atlas -> public/reports/, web bundle -> public/web/, benchmark
+      # bundle -> public/report.html. Linking to them is correct; resolving
+      # them HERE is impossible, because this job runs before `pages`.
+      #
+      # This is the same list `tests/audit/test_audit_built_site_links.py`
+      # keeps as `_CI_ASSEMBLED` — the two gates run over the same `site/` and
+      # MUST agree about which paths are exempt. They did not: the pytest gate
+      # skipped `/rust-api/` while lychee failed on it, so build:docs went red
+      # on `main` from 2026-08-01 (pipeline 363801: "[ERROR]
+      # file:///builds/.../site/rust-api | File not found") the moment
+      # 58835d2 rewrote docs/reference/rust/overview.md:7 to a root-absolute
+      # link. Keep the two lists in sync; any addition here should correspond
+      # to a real `cp` in 60-pages.yml.
+      lychee --offline --no-progress --root-dir "$(pwd)/site" \
+        --exclude '^file:.*/site/rust-api(/|$)' \
+        --exclude '^file:.*/site/reports(/|$)' \
+        --exclude '^file:.*/site/web(/|$)' \
+        --exclude '^file:.*/site/report\.html$' \
+        site/ || (echo "ERROR broken internal link(s) found — see lychee output above" && exit 1)
+
+      # Second, narrower link gate.
+      #
+      # lychee above is NOT broken and did NOT miss the 17 dead section-index
+      # cards — pipeline 363794 on main shows it catching exactly them
+      # ("3220 Total, 529 Unique, 2896 OK, 17 Errors") and failing this job.
+      # The cards reached main anyway, so the gap was never detection; it was
+      # that a red build:docs did not stop the merge.
+      #
+      # This is kept alongside rather than instead of lychee for two reasons:
+      # it names the failing thing in the language of the source
+      # ("1 of 17 section cards are dead", pointing at the front-matter that
+      # produced it, not at a resolved file:// URL two directories away), and
+      # it runs in-process in under a second where lychee needs a multi-minute
+      # Rust toolchain install first. It is mutation-tested against the exact
+      # original bug shape (a page-relative `.md` link where zensical publishes
+      # directory urls).
+      #
+      # It must run HERE rather than in test:python:pytest: the test skips
+      # unless site/ exists, and no pytest job builds the docs. Keeping it in
+      # the pytest jobs is what made it silently skip in every pipeline.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        pytest tests/audit/test_audit_built_site_links.py -q
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - site/
+      - target/doc/

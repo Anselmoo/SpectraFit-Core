@@ -1,0 +1,27 @@
+/*
+ * Reduced-motion guard.
+ *
+ * This file used to also disable transitions on .md-header, .sf-button,
+ * .md-top and .md-typeset .headerlink under prefers-reduced-motion. That was
+ * removed as provably redundant: the theme already ships
+ *
+ *   @media (prefers-reduced-motion){*,:after,:before{transition:none!important}}
+ *
+ * which is a strict superset — it covers those four selectors plus .sf-card,
+ * .sf-card__icon and everything else, including any surface added later.
+ * Enumerating children of a rule the theme applies universally is the same
+ * anti-pattern pages/layout.css and pages/hero.css both document fighting.
+ *
+ * What remains is NOT currently redundant, but it is currently INERT, and the
+ * distinction is worth stating so nobody deletes it as dead: no rule in the
+ * modern theme sets `scroll-behavior: smooth`, and neither does anything under
+ * docs/ or overrides/. The benchmark dashboard does
+ * (web/src/style/tokens.css `html { scroll-behavior: smooth; }`), so this
+ * guards the case where that lands on the docs side too — at which point a
+ * `*` selector at (0,0,0) would lose to `html` without the !important.
+ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+  }
+}

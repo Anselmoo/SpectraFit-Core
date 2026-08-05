@@ -1,0 +1,29 @@
+/*
+ * Scrollbar styling — this library's docs are code-heavy (fenced code
+ * blocks, wide parameter tables); a thin, brand-tinted scrollbar on
+ * horizontally-scrolling content reads more intentional than the browser
+ * default. Webkit-only (`::-webkit-scrollbar`) plus the standardized
+ * `scrollbar-width`/`scrollbar-color` for Firefox; no JS, no dependency.
+ */
+.md-typeset pre > code,
+.md-typeset table:not([class]) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-default-fg-color--lighter) transparent;
+}
+
+.md-typeset pre > code::-webkit-scrollbar,
+.md-typeset .md-typeset__scrollwrap::-webkit-scrollbar {
+  height: var(--space-2, 8px);
+  width: var(--space-2, 8px);
+}
+
+.md-typeset pre > code::-webkit-scrollbar-thumb,
+.md-typeset .md-typeset__scrollwrap::-webkit-scrollbar-thumb {
+  background-color: var(--md-default-fg-color--lighter);
+  border-radius: var(--radius-full, 999px);
+}
+
+.md-typeset pre > code::-webkit-scrollbar-thumb:hover,
+.md-typeset .md-typeset__scrollwrap::-webkit-scrollbar-thumb:hover {
+  background-color: var(--md-accent-fg-color);
+}

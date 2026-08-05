@@ -1,0 +1,269 @@
+/*
+ * Homepage hero — styles for the hero section rendered by
+ * `overrides/home.html` (the docs homepage template). These exact class
+ * names are load-bearing for that markup:
+ * `.sf-hero` / `.sf-hero__content` / `.sf-hero__motto` / `.sf-hero__media` /
+ * `.sf-hero__status`. Do not rename.
+ *
+ * Spacing/radius/color tokens mirror the SpectraFit Design System
+ * (web/src/style/tokens.css's --space-* / --radius-lg and the
+ * systemBlue/systemIndigo brand hex already set in tokens/palette.css) so
+ * the docs hero and the benchmark dashboard read as one design system, not
+ * two coincidentally-similar ones. Local fallback values (e.g.
+ * `var(--space-6, 32px)`) are used throughout since the docs build doesn't
+ * import web/src/style/tokens.css directly.
+ */
+
+.sf-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-7, 48px);
+  /* Same outer bound as .md-grid in pages/layout.css — now one token rather
+     than two literals that had to be "updated together". */
+  max-width: var(--layout-grid, 80rem);
+  margin-inline: auto;
+  padding: var(--space-8, 64px) var(--space-4, 16px);
+}
+
+/* Align the hero's content with the article column below it.
+ *
+ * The hero is rendered by overrides/home.html OUTSIDE .md-grid/.md-content, so
+ * it never subtracts the sidebar the article does. Left alone it is effectively
+ * full-bleed, and the homepage stacked four different left edges: header 0,
+ * nav tabs 8, hero content 16, article 266.
+ *
+ * Gated at 76.25em because that is exactly where the theme promotes
+ * .md-sidebar--primary from a drawer to a static column and gives
+ * .md-content__inner its 1.2rem margin. Below that breakpoint the sidebar is
+ * not in flow, the article has no such inset, and adding one here would create
+ * the very misalignment this rule exists to remove.
+ *
+ * This still mirrors a theme constant by hand — see --layout-sidebar in
+ * tokens/palette.css. The durable fix would be the theme exposing its own
+ * layout metrics; until then the token makes the dependency explicit and
+ * greppable instead of a bare number in a padding shorthand. */
+@media screen and (min-width: 76.25em) {
+  .sf-hero {
+    padding-inline-start: var(--layout-content-inset, 13.3rem);
+  }
+}
+
+.sf-hero__content {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  /*
+   * [cupertino-council pass, 2026-08-01, round 3]: the reading-measure cap
+   * used to live only on .sf-hero__motto (max-width: 42ch). Measured live:
+   * the motto's own right edge landed ~130px short of .sf-hero__lockup's
+   * and .sf-hero__proof's (both plain block children with no cap of their
+   * own, so they fill .sf-hero__content's full flex-basis) — the exact same
+   * "cap one child, leave its siblings uncapped" mistake already fixed
+   * twice in layout.css, just inside a different component. Moved the cap
+   * to the container itself so every child — lockup, status, motto,
+   * proof-strip — shares one right edge by construction.
+   *
+   * rem, not ch: ch resolves against the font-size of the element IT'S
+   * applied to, and .sf-hero__content's own font-size (10px, inherited) is
+   * roughly half of .sf-hero__motto's (21px, its own explicit 1.05rem) — so
+   * porting "42ch" straight onto the container would have resolved to
+   * ~230px, far narrower than intended. 26.5rem is 42ch measured at the
+   * motto's actual rendered width (529px) converted to the root-relative
+   * unit, so it reproduces the original measure regardless of which
+   * element's local font-size it's evaluated against.
+   */
+  max-width: 26.5rem;
+}
+
+.sf-hero__motto {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+}
+
+.sf-hero__media {
+  flex: 1 1 360px;
+  aspect-ratio: 1600 / 480;
+  max-height: 380px;
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+  background: var(--md-code-bg-color);
+}
+
+/* Hero media content: the spectral-field art fills the frame. There are two
+ * wordmark variants (onDark / onLight, see overrides/home.html), each paired
+ * with its matching hero art so the wordmark stays legible against either
+ * background; the active pair is toggled by [data-md-color-scheme] below.
+ *
+ * [cupertino-council pass, 2026-08-01]: .sf-hero__lockup moved from its own
+ * full-width row after .sf-hero__media into .sf-hero__content as a small
+ * kicker above the status pill (see overrides/home.html) — the brand name
+ * was already in the header on every page, so a disconnected fourth row
+ * earned nothing (Jobs), and its own margin-top on top of the parent
+ * flex's gap produced accidental double-spacing (Ive). It now takes its
+ * spacing entirely from .sf-hero__content's own `gap` below — no margin
+ * of its own. */
+.sf-hero__media-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Default to the dark variant (matches the site's pre-existing single-image
+   behavior); flip to light only when the light color scheme is active. The
+   wordmark--light/--dark selectors are intentionally NOT scoped under
+   .sf-hero__media — the wordmark now lives in the sibling .sf-hero__lockup
+   row below the art (see .sf-hero__lockup), not inside .sf-hero__media. */
+.sf-hero__media .sf-hero__media-img--light,
+.sf-hero__wordmark--light {
+  display: none;
+}
+
+[data-md-color-scheme="default"] .sf-hero__media .sf-hero__media-img--dark,
+[data-md-color-scheme="default"] .sf-hero__wordmark--dark {
+  display: none;
+}
+
+[data-md-color-scheme="default"] .sf-hero__media .sf-hero__media-img--light,
+[data-md-color-scheme="default"] .sf-hero__wordmark--light {
+  display: block;
+}
+
+.sf-hero__lockup {
+  /* Now a child of .sf-hero__content (a `flex-direction: column` container
+     with its own `gap`) — no flex-basis/margin needed; it takes its
+     spacing from that gap like every other child in the column. */
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.sf-hero__wordmark {
+  /* Smaller than the old full-width-row treatment (was 2rem) — this is a
+     kicker above the status pill now, not a standalone brand moment. */
+  width: auto;
+  height: 1.35rem;
+}
+
+/* Homepage proof strip — generated by docs/_render_benchmark_summary.py from the
+   latest benchmark manifest.json, included by overrides/home.html. Backs the motto's
+   "self-auditing benchmark" claim with the actual verified numbers, right where a
+   first-time visitor lands. Pass/fail is a status signal, not a brand one, so it uses
+   its own semantic green/red rather than routing through the systemBlue/systemIndigo
+   brand tokens in tokens/palette.css. */
+.sf-hero__proof {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  font-size: 0.85rem;
+}
+
+.sf-hero__proof-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  border-radius: var(--radius-full, 999px);
+  font-weight: 600;
+}
+
+.sf-hero__proof-badge--pass {
+  background: color-mix(in srgb, var(--status-success, #34c759) 15%, transparent);
+  color: color-mix(in srgb, var(--status-success, #34c759) 70%, black);
+}
+
+.sf-hero__proof-badge--fail {
+  background: color-mix(in srgb, var(--status-danger, #ff3b30) 15%, transparent);
+  color: color-mix(in srgb, var(--status-danger, #ff3b30) 70%, black);
+}
+
+.sf-hero__proof-badge--pending {
+  background: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color--light);
+}
+
+.sf-hero__proof-metric {
+  color: var(--md-default-fg-color--light);
+}
+
+.sf-hero__proof-link {
+  color: var(--md-accent-fg-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sf-hero__proof-link:hover {
+  text-decoration: underline;
+}
+
+/* Direct child of .sf-hero (flex-wrap: wrap), not of .sf-hero__content —
+   6 buttons wrap unevenly (4-then-2) when confined to .sf-hero__content's
+   ~320px column; a full hero-width row lets them wrap symmetrically
+   instead. No margin-top of its own: .sf-hero's own `gap` (above) already
+   spaces this row from .sf-hero__content/.sf-hero__media — an earlier
+   version doubled that spacing by also adding a margin here (the same
+   Ive-caught pattern .sf-hero__lockup had). */
+.sf-hero__actions {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+}
+.sf-hero__actions svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.sf-hero__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  border-radius: var(--radius-full, 999px);
+  background: var(--md-accent-fg-color--transparent);
+  color: var(--md-accent-fg-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+/* 44.984375em matches Zensical's own compiled theme's general
+   mobile-content-reflow breakpoint (confirmed by grepping the actually-
+   linked site/assets/stylesheets/modern/main.*.min.css after a clean docs
+   build — this is the "modern" bundle, not "classic"; the two differ). It
+   is NOT a sidebar breakpoint: at this width the theme reflows code-block
+   margins, footer nav labels, and tabbed-content labels, nothing
+   sidebar-related. Using the same value here just keeps the hero's own
+   padding step aligned with the same general mobile-compaction threshold
+   the rest of the theme already uses — a correction of an earlier, wrong
+   claim that this was "where the nav switches from a mobile drawer to
+   tablet/desktop chrome" (that transition is real, but happens at a
+   different, wider breakpoint: 76.234375em, per
+   `.md-sidebar--primary{left:-12.1rem}`). */
+@media (max-width: 44.984375em) {
+  .sf-hero {
+    padding: var(--space-6, 32px) var(--space-4, 16px);
+  }
+}
+
+/* 59.984375em matches Zensical's own compiled breakpoint for
+   `.md-sidebar--secondary` going `position: fixed` — confirmed directly:
+   `.md-sidebar--secondary{bottom:1.6rem;padding:0;position:fixed;
+   right:.8rem;top:auto;width:auto;z-index:2}` inside
+   `@media screen and (max-width:59.984375em)` in the linked modern bundle.
+   That's the floating TOC-toggle button this padding exists to avoid
+   overlapping — a WIDER breakpoint than the 44.984375em an earlier fix
+   used, which only reserved space below ~720px and left a real overlap
+   window between ~720px and ~960px, where the floating button IS present
+   (docs/index.md has 3 H2s, so a secondary/TOC sidebar renders) but this
+   row had no padding reserved for it. ~40px covers the button's own
+   footprint plus its offset. */
+@media (max-width: 59.984375em) {
+  .sf-hero__actions {
+    padding-right: 40px;
+  }
+}

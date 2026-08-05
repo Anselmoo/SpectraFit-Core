@@ -1,0 +1,179 @@
+/*
+ * Mermaid diagram coloring, following the site's own light/dark palette.
+ *
+ * docs/javascripts/mermaid-init.js replaces Zensical's bundled auto-render
+ * (a DOM-batch bug left multi-diagram pages as empty SVG shells) by calling
+ * `mermaid.render()` directly per diagram — but that means Zensical's own
+ * bundled JS never gets a chance to apply ITS copy of this exact stylesheet
+ * to the resulting SVGs either. Reproduced verbatim here (selectors target
+ * mermaid's own structural class names — `.node`, `.actor`, `.edgeLabel`,
+ * etc. — assigned regardless of which mermaid theme rendered them) rather
+ * than passing `--md-mermaid-*`-derived values through mermaid's JS
+ * `themeVariables` config: that route needed a MutationObserver to force a
+ * re-render on every palette toggle and was flaky under real-world load
+ * timing (see DECISIONS.md's [2026-08-02] mermaid entry). Plain CSS custom
+ * properties already follow `[data-md-color-scheme]` on their own — no JS
+ * re-render needed when the palette changes.
+ */
+.node circle,
+.node ellipse,
+.node path,
+.node polygon,
+.node rect {
+  fill: var(--md-mermaid-node-bg-color);
+  stroke: var(--md-mermaid-node-fg-color);
+}
+.marker {
+  fill: var(--md-mermaid-edge-color);
+  stroke: var(--md-mermaid-edge-color);
+}
+.edgeLabel .label rect {
+  fill: transparent;
+}
+.flowchartTitleText {
+  fill: var(--md-mermaid-label-fg-color);
+}
+.label {
+  color: var(--md-mermaid-label-fg-color);
+  font-family: var(--md-mermaid-font-family);
+}
+.label foreignObject {
+  line-height: normal;
+  overflow: visible;
+}
+.label div .edgeLabel {
+  color: var(--md-mermaid-label-fg-color);
+}
+.edgeLabel,
+.edgeLabel p,
+.label div .edgeLabel {
+  background-color: var(--md-mermaid-label-bg-color);
+}
+.edgeLabel,
+.edgeLabel p {
+  fill: var(--md-mermaid-label-bg-color);
+  color: var(--md-mermaid-edge-color);
+}
+.edgePath .path,
+.flowchart-link {
+  stroke: var(--md-mermaid-edge-color);
+}
+.edgePath .arrowheadPath {
+  fill: var(--md-mermaid-edge-color);
+  stroke: none;
+}
+.cluster rect {
+  fill: var(--md-default-fg-color--lightest);
+  stroke: var(--md-default-fg-color--lighter);
+}
+.cluster span {
+  color: var(--md-mermaid-label-fg-color);
+  font-family: var(--md-mermaid-font-family);
+}
+g #flowchart-circleEnd,
+g #flowchart-circleStart,
+g #flowchart-crossEnd,
+g #flowchart-crossStart,
+g #flowchart-pointEnd,
+g #flowchart-pointStart {
+  stroke: none;
+}
+.actor {
+  fill: var(--md-mermaid-sequence-actor-bg-color);
+  stroke: var(--md-mermaid-sequence-actor-border-color);
+}
+text.actor > tspan {
+  fill: var(--md-mermaid-sequence-actor-fg-color);
+  font-family: var(--md-mermaid-font-family);
+}
+.actor-line {
+  stroke: var(--md-mermaid-sequence-actor-line-color);
+}
+.actor-man circle,
+.actor-man line {
+  fill: var(--md-mermaid-sequence-actorman-bg-color);
+  stroke: var(--md-mermaid-sequence-actorman-line-color);
+}
+.nodeLabel,
+.nodeLabel p {
+  color: var(--md-mermaid-label-fg-color);
+  font-family: var(--md-mermaid-font-family);
+}
+a .nodeLabel {
+  text-decoration: underline;
+}
+.messageLine0,
+.messageLine1 {
+  stroke: var(--md-mermaid-sequence-message-line-color);
+}
+.note {
+  fill: var(--md-mermaid-sequence-note-bg-color);
+  stroke: var(--md-mermaid-sequence-note-border-color);
+}
+.loopText,
+.loopText > tspan,
+.messageText,
+.noteText > tspan {
+  stroke: none;
+  font-family: var(--md-mermaid-font-family) !important;
+}
+.messageText {
+  fill: var(--md-mermaid-sequence-message-fg-color);
+}
+.loopText,
+.loopText > tspan,
+.sectionTitle {
+  fill: var(--md-mermaid-sequence-loop-fg-color);
+}
+.noteText > tspan {
+  fill: var(--md-mermaid-sequence-note-fg-color);
+}
+[id$="-arrowhead"] path {
+  fill: var(--md-mermaid-sequence-message-line-color);
+  stroke: none;
+}
+.loopLine {
+  fill: var(--md-mermaid-sequence-loop-bg-color);
+  stroke: var(--md-mermaid-sequence-loop-border-color);
+}
+.labelBox {
+  fill: var(--md-mermaid-sequence-label-bg-color);
+  stroke: none;
+}
+.labelText,
+.labelText > span {
+  fill: var(--md-mermaid-sequence-label-fg-color);
+  font-family: var(--md-mermaid-font-family);
+}
+.sequenceNumber {
+  fill: var(--md-mermaid-sequence-number-fg-color);
+}
+rect.rect {
+  fill: var(--md-mermaid-sequence-box-bg-color);
+  stroke: none;
+}
+rect.rect + text.text {
+  fill: var(--md-mermaid-sequence-box-fg-color);
+}
+[id$="-sequencenumber"],
+defs #sequencenumber {
+  fill: var(--md-mermaid-sequence-number-bg-color) !important;
+}
+[class^="activation"] {
+  fill: var(--md-mermaid-label-bg-color);
+  stroke: var(--md-mermaid-label-fg-color);
+  stroke-width: 1.5px;
+}
+text:not([class]):last-child {
+  fill: var(--md-mermaid-label-fg-color);
+}
+
+/* Also matches [data-mermaid-rendered]: mermaid-init.js drops the `mermaid`
+ * class from a container once it's rendered (a completion signal shared
+ * with Zensical's own bundled mermaid renderer, which also watches for that
+ * class) — this rule must not stop applying once that happens. */
+.mermaid,
+[data-mermaid-rendered] {
+  line-height: normal;
+  margin: 1em 0;
+}

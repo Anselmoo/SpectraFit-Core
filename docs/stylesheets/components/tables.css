@@ -1,0 +1,13 @@
+/*
+ * Numeric table columns (model parameters, benchmark figures) read as a
+ * column of numbers, not a column of left-ragged text — align digits and
+ * keep the decimal points stacked, and right-align any cell whose entire
+ * content is a single inline-code number.
+ */
+.md-typeset table:not([class]) td {
+  font-variant-numeric: tabular-nums;
+}
+
+.md-typeset table:not([class]) td:has(> code:only-child) {
+  text-align: right;
+}

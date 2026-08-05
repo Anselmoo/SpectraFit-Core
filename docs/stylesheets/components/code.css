@@ -1,0 +1,11 @@
+/*
+ * Inline/code-block numbers (fit results, CLI output) get tabular-nums so
+ * aligned columns in fenced code blocks stay aligned regardless of which
+ * digits appear. Split out of the original extra.css's single
+ * `.md-typeset code` rule; the table-cell tabular-nums + right-align rules
+ * live in components/tables.css instead, since they target a different
+ * element and have a different reason to exist.
+ */
+.md-typeset code {
+  font-variant-numeric: tabular-nums;
+}

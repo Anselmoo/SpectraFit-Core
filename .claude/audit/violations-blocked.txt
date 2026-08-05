@@ -1,0 +1,5 @@
+# Audit Trail: Violations Blocked
+# Format: [TIMESTAMP] [HOOK] VIOLATION: <reason>
+# Retention: 90 days
+
+[2026-05-06T07:11:37Z] [missing-hook] VIOLATION: Hook file not found
