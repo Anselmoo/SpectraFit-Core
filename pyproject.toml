@@ -1,0 +1,1188 @@
+[project]
+name = "spectrafit-core"
+version = "0.1.0"
+description = "High-performance numerical fitting framework: Rust kernel + Pydantic schemas"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Anselm Hahn", email = "anselm.hahn@gmail.com" }]
+maintainers = [{ name = "Anselm Hahn", email = "anselm.hahn@gmail.com" }]
+keywords = ["curve-fitting", "spectroscopy", "levenberg-marquardt", "rust", "pydantic", "benchmark"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+requires-python = ">=3.13"
+dependencies = ["numpy>=2.4.4", "pydantic>=2.13.3"]
+
+
+[project.urls]
+Homepage = "https://github.com/Anselmoo/spectrafit-core"
+Repository = "https://github.com/Anselmoo/spectrafit-core"
+Issues = "https://github.com/Anselmoo/spectrafit-core/issues"
+Changelog = "https://github.com/Anselmoo/spectrafit-core/blob/main/CHANGELOG.md"
+
+
+[project.optional-dependencies]
+
+# Benchmark engine: spectrafit is the subject (the Rust kernel via spectrafit_core);
+# lmfit + jax/optimistix are independent cross-verification oracles. The report is
+# served at runtime by the FastAPI app (oracles.api) — the single source of truth
+# the web/ React UI fetches at load time (no inlined fixture) — so fastapi + uvicorn
+# are part of the benchmark experience. jax (the heavy jaxlib wheel) is a SEPARATE extra
+# so core CI stays fast — the engine degrades gracefully to spectrafit+lmfit when jax is
+# absent (get_backends guards it).
+benchmark = [
+    "lmfit>=1.3.4",
+    "typer>=0.12",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "matplotlib>=3.8",
+]
+
+jax = [
+    "jax>=0.10.0",
+    "jaxlib>=0.10.0",
+    "optimistix>=0.0.2",
+]
+
+
+[dependency-groups]
+# Manuscript figure pipeline. Kept OUT of `dev` deliberately: matplotlib is a
+# heavy wheel that nothing in the test suite, the benchmark engine, or CI needs
+# — only `manuscript/examples/**/*.py` imports it. Declaring it as its own group
+# rather than leaving it to an ad-hoc `uv run --with matplotlib` is what makes
+# the paper's figures reproducible from a clean clone:
+#   uv sync --group manuscript && uv run --group manuscript python manuscript/examples/figures/<fig>.py
+manuscript = [
+    "matplotlib>=3.9",
+]
+
+dev = [
+    "poethepoet>=0.34",
+    "pre-commit>=4.0",
+    # `pytest-cov` covers Python-side branches; the Rust-side llvm-cov merge
+    # (CI step "Run pytest with Python + Rust coverage") wraps the same pytest
+    # call under `cargo llvm-cov` instrumentation, so a single pytest invocation
+    # contributes to BOTH `coverage.xml` (Python) AND `target/llvm-cov/lcov.info`
+    # (Rust). Local repro: `source <(cargo llvm-cov show-env --sh)` then
+    # `uv run maturin develop` and `PYTHONPATH=python uv run pytest ...` —
+    # requires `LLVM_COV` + `LLVM_PROFDATA` env vars on macOS.
+    "pytest-cov>=5.0",
+    "pytest>=8.0",
+    # pytest-xdist: shard the suite across cores (`-n auto`) so the CI pytest job
+    # fits under the GWDG 3600 s runner cap. Tests are xdist-safe — the
+    # .spectrafit_reports writers all monkeypatch.chdir(tmp_path) for isolation.
+    "pytest-xdist>=3.6",
+    # hypothesis for property-based testing, especially wire W1 (synth invariants).
+    "hypothesis>=6.88.0",
+    # FastAPI's TestClient (Starlette) needs httpx; used by tests/test_bench_api.py.
+    "httpx>=0.27",
+    "ruff>=0.6",
+    # Floor bumped to match astral-sh/ty-pre-commit's pinned 0.0.69 (see
+    # .pre-commit-config.yaml) -- keeps this project's own `ty` and the
+    # pre-commit hook's `ty` the same version, so a diagnostic doesn't
+    # flip between "needed" and "unused" depending on which one runs.
+    "ty>=0.0.69",
+    "repo-release-tools>=1.15.0",
+    # Build backend for the PyO3 extension. CI's "Build extension" steps call
+    # `uv run maturin develop` (ci.yml / benchmark.yml); without maturin in the dev
+    # group that command fails to spawn ("No such file or directory").
+    "maturin>=1.7",
+]
+docs = [
+    "zensical>=0.0.51",
+    "mkdocstrings>=1.0.6",
+    "mkdocstrings-python>=2.0.5",
+    "matplotlib>=3.8",
+    # Duplicated from the `benchmark` extra (same reasoning as matplotlib
+    # above): the tutorials/gallery/spectrafit_vs_lmfit_*.py examples import
+    # lmfit directly as an independent oracle and run as part of `poe
+    # docs_build` (via _render.py) -- without this, a docs-only sync
+    # (`uv sync --group docs`, what both CI docs jobs and `poe docs_build`
+    # actually run) would hit `ModuleNotFoundError: lmfit` mid-build.
+    "lmfit>=1.3.4",
+]
+
+
+[tool.rrt]
+primary_remote = "gitlab"
+release_branch = "release/v{version}"
+changelog_file = "CHANGELOG.md"
+
+# ---------------------------------------------------------------------------
+# ONE version group, deliberately — not `[[tool.rrt.version_groups]]`.
+#
+# rrt supports multi-component versioning: several `[[tool.rrt.version_groups]]`,
+# each with its own version_targets, changelog, and release branch, bumped
+# independently (`rrt bump patch --group backend,sdk`). This repo has three
+# plausible components — the Python package, the eleven-crate Rust workspace,
+# and the web dashboard — so the option is real and was considered.
+#
+# It is rejected for now because these three do not release independently: they
+# ship as one artifact, and a JORS software metapaper must cite exactly one
+# version, with the archived deposit's version matching the version the paper
+# describes. Splitting into groups would institutionalise precisely the drift
+# this release is fixing — pyproject at 0.1.0b1, CITATION.cff at 0.1.0a1 and the
+# crates at 0.1.0 were three components disagreeing with nobody noticing.
+#
+# Revisit when (and only when) one component genuinely gains its own cadence.
+# The concrete trigger is publishing the Rust crates to crates.io: a crates.io
+# consumer needs Rust-side versions that move on Rust-side breaking changes, not
+# on a Python docs fix. That publication is deliberately deferred for 0.1.0, so
+# the single group holds until it isn't.
+# ---------------------------------------------------------------------------
+
+# CANONICAL VERSION MUST BE SEMVER-PARSEABLE (rrt 1.14.1).
+# `rrt bump` reads the current version from the FIRST target in the group and
+# parses it with a strict semver 2.0 regex (`version/semver.py: Version.parse`).
+# PEP 440 pre-release spellings do not match it, so while this file said
+# `0.1.0b1` *every* `rrt bump` invocation — including `--dry-run` — aborted with
+# `[ERROR] Invalid semver: '0.1.0b1'`, and the repo could not bump itself at all.
+# This is the blocker already diagnosed and left open in DECISIONS.md's
+# 2026-08-08 version-targets entry ("Trade-offs"), where it forced verification
+# to fall back to the read-only `rrt release check`. Re-confirmed 2026-08-13 on
+# rrt 1.14.1 (latest on PyPI), so it is upstream behaviour, not local config.
+#
+# The 0.1.0 release resolves it incidentally — plain `0.1.0` is valid semver. If
+# a future pre-release is wanted, spell it semver-style (`0.1.1-beta.1`) rather
+# than PEP 440 style, or `rrt bump` breaks again the moment it is written here.
+[[tool.rrt.version_targets]]
+path = "pyproject.toml"
+kind = "pep621"
+ci_format = "pep440"
+
+# The Rust workspace. Previously untracked, which is exactly why the three
+# ecosystems disagreed (pyproject 0.1.0b1 / CITATION.cff 0.1.0a1 / crates
+# 0.1.0): `rrt bump` moved the Python side and left the crates behind.
+#
+# `section`/`field` rather than `kind = "cargo_toml"`: that kind targets a plain
+# `[package].version`, and this is a virtual workspace root whose version lives
+# under `[workspace.package]` and is inherited by all eleven member crates via
+# `version = { workspace = true }`. One target therefore pins the whole tree.
+# This is the same shape rrt's own autodetect emits for a workspace root
+# (repo_release_tools/config/core.py).
+#
+# `ci_format = "semver_pre"` governs `rrt ci-version apply/sync` only — verified
+# against rrt 1.14.1, where `ci_format` is read solely by the ci-version command
+# ("apply a concrete version string to all ci_format-configured targets") and is
+# never consulted by `rrt bump`. It matters because Cargo rejects PEP 440
+# pre-release spellings, so a CI dev/pre-release stamp must reach this file as
+# semver (`0.1.0-beta.1`) while pyproject.toml gets `0.1.0b1`. It does NOT make
+# `rrt bump` dialect-aware; see the CANONICAL VERSION MUST BE SEMVER note above.
+[[tool.rrt.version_targets]]
+path = "Cargo.toml"
+section = "workspace.package"
+field = "version"
+ci_format = "semver_pre"
+
+# The two citation-metadata files. Both carry a machine-read version that a
+# reader (or Zenodo, or a CodeMeta harvester) will believe. CITATION.cff had
+# already drifted to 0.1.0a1 — two bumps behind pyproject — precisely because
+# nothing tracked it. PEP 440 spelling is correct in both: CFF and CodeMeta
+# both take an opaque version string, so no semver rendering is needed.
+[[tool.rrt.version_targets]]
+path = "CITATION.cff"
+kind = "pattern"
+pattern = '^version: (\S+)$'
+
+[[tool.rrt.version_targets]]
+path = "codemeta.json"
+kind = "pattern"
+pattern = '^  "version": "([^"]+)",$'
+
+# The web dashboard. `"private": true`, so it is never npm-published, but it
+# does declare a version that the built dashboard surfaces — tracked so it stays
+# in lockstep rather than quietly becoming a fourth disagreeing number.
+# Deliberately NOT tracked: the root `package.json`. It is also `"private": true`
+# and declares no version at all, which is correct for a build-tooling wrapper
+# that is not a released artifact — npm does not require `version` on a private
+# package. The publication-readiness checklist flags its absence; that flag is
+# wrong for this file, and inventing a version to satisfy it would add a number
+# nothing consumes and everything could drift from.
+[[tool.rrt.version_targets]]
+path = "web/package.json"
+kind = "package_json"
+ci_format = "semver_pre"
+
+# The five "Status: beta (VERSION)" claims below are live, user-facing status
+# text (README status line, the docs site's hero badge + announce banner,
+# LIMITATIONS.md's beta disclosure, the installation-guide status blurb) --
+# none were previously tracked, so `rrt bump` would silently leave them
+# claiming 0.1.0b1 after a real version bump. Deliberately NOT added:
+# CHANGELOG.md (historical per-release record, must never be rewritten),
+# tests/meta/test_version_beta.py (an intentional manual regression guard
+# against an accidental alpha revert, not a live status claim), manuscript/*
+# + analysis/PREFLIGHT.md + .claude/docs/**/*.md (frozen point-in-time
+# snapshots), uv.lock (auto-synced by `uv lock`, not rrt), and
+# docs/getting-started/installation.md's two illustrative CLI-transcript
+# lines (an example wheel filename + install confirmation -- static example
+# output, not a status assertion).
+[[tool.rrt.version_targets]]
+path = "LIMITATIONS.md"
+kind = "pattern"
+pattern = '\*\*beta\*\* software \(`([^`]+)`,'
+
+[[tool.rrt.version_targets]]
+path = "README.md"
+kind = "pattern"
+pattern = '\*\*Status: beta \(`([^`]+)`\) — public sneak preview\.\*\*'
+
+[[tool.rrt.version_targets]]
+path = "docs/getting-started/installation.md"
+kind = "pattern"
+pattern = '\*\*Status: beta \(`([^`]+)`\)\.\*\*'
+
+[[tool.rrt.version_targets]]
+path = "overrides/home.html"
+kind = "pattern"
+pattern = '<span class="sf-hero__status">Status: beta \(([^)]+)\)</span>'
+
+[[tool.rrt.version_targets]]
+path = "overrides/main.html"
+kind = "pattern"
+pattern = 'Status: beta \(([^)]+)\) — public sneak preview\.'
+
+[tool.rrt.publish_targets.github]
+remote = "github"
+branch = "main"
+message = "Initial commit"
+exclude = [
+    "docs/superpowers/plans/*",
+    "docs/superpowers/specs/*",
+    "docs/superpowers/ledgers/*",
+    ".claude/audit/*.jsonl",
+    "DECISIONS.md",
+    "DECISIONS-archive.md",
+    ".claude/docs/*",
+    "docs/audit-2026-07-02-*.md",
+    "docs/cycle11-backend-card-*.png",
+    "analysis/*",
+    ".superpowers/*",
+    "superpowers/*",
+    "manuscript/draft/*",
+    "manuscript/readiness/*",
+]
+
+
+[tool.rrt.folders]
+
+# Repository folder contract, enforced by `rrt folder check` (CI + pre-commit).
+# Single source of truth for required structure; supersedes scripts/validate_repo_layout.sh.
+# `required_*` entries are enforced by `check` (a listed path that is absent fails it), so they
+# must list only committed source. Gitignored output surfaces go in `scaffold_dirs`, which
+# `scaffold` creates but `check` does NOT enforce (so a fresh checkout never flakes).
+
+[[tool.rrt.folders.templates]]
+name = "repo-root-required-files"
+description = "Root-level files required for spectrafit-core repo"
+strictness = "strict"
+exact = false
+required_files = [
+    "README.md",
+    "CHANGELOG.md",
+    "DECISIONS.md",
+    "pyproject.toml",
+    "Cargo.toml",
+    "LICENSE",
+    "CITATION.cff",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "LIMITATIONS.md",
+]
+
+[[tool.rrt.folders.templates]]
+name = "repo-root-required-dirs"
+description = "Root-level directories required for spectrafit-core repo structure"
+strictness = "strict"
+exact = false
+required_dirs = [
+    "python",
+    "python/oracles",
+    "python/oracles/backends",
+    "python/spectrafit_core",
+    "crates",
+    "crates/spectrafit-core",
+    "crates/spectrafit-core/src",
+    "crates/spectrafit-graph",
+    "crates/spectrafit-graph/src",
+    "crates/spectrafit-models",
+    "crates/spectrafit-models/src",
+    "crates/spectrafit-solver",
+    "crates/spectrafit-solver/src",
+    "crates/spectrafit-levenberg-marquardt",
+    "crates/spectrafit-levenberg-marquardt/src",
+    "crates/spectrafit-dogleg",
+    "crates/spectrafit-dogleg/src",
+    "crates/spectrafit-newton-cg",
+    "crates/spectrafit-newton-cg/src",
+    "crates/spectrafit-trust-region",
+    "crates/spectrafit-trust-region/src",
+    "crates/spectrafit-types",
+    "crates/spectrafit-types/src",
+    "crates/spectrafit-varpro",
+    "crates/spectrafit-varpro/src",
+    "tests",
+    ".github",
+    "scripts",
+    "python/oracles",
+    "python/oracles/audit",
+]
+
+# NOTE: the benchmark / quick-validation folder templates were removed in the
+# benchmark-experience rebuild (Phase 1). New engine + report-output templates
+# (.spectrafit_reports/<category>/<date>_run_NNN, python/benchmark/*) are
+# (re)introduced in Phase 4/6.
+
+# Canonical per-method solver-crate layout. Every Levenberg–Marquardt-family /
+# trust-region *method* crate follows the same skeleton so a new solver is a
+# stamp, not a bespoke decision: {Cargo.toml, src/{lib,driver,step,problem,tests}.rs}.
+[[tool.rrt.folders.templates]]
+name = "solver-crate"
+description = "Canonical per-method solver crate layout (driver/step/problem/lib/tests)"
+strictness = "loose"
+exact = false
+required_files = [
+    "Cargo.toml",
+    "src/lib.rs",
+    "src/driver.rs",
+    "src/step.rs",
+    "src/problem.rs",
+    "src/tests.rs",
+]
+
+[[tool.rrt.folders.rules]]
+name = "repo-structure"
+selector = "."
+mode = "strict"
+templates = [
+    "repo-root-required-files",
+    "repo-root-required-dirs",
+]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-levenberg-marquardt"
+selector = "crates/spectrafit-levenberg-marquardt"
+mode = "strict"
+templates = ["solver-crate"]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-dogleg"
+selector = "crates/spectrafit-dogleg"
+mode = "strict"
+templates = ["solver-crate"]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-newton-cg"
+selector = "crates/spectrafit-newton-cg"
+mode = "strict"
+templates = ["solver-crate"]
+
+
+[tool.maturin]
+python-source = "python"
+python-packages = ["spectrafit_core"]
+module-name = "spectrafit_core._core"
+features = ["pyo3/extension-module"]
+manifest-path = "crates/spectrafit-core/Cargo.toml"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py", "*_test.py"]
+# A test marked xfail that actually passes is a FAILURE: it means the feature
+# landed and the stale marker is hiding the test (zero regression protection).
+xfail_strict = true
+# Default run excludes `slow` tests (e.g. the full-history results.json round-trip:
+# ~46 MB × every run on disk OOM-kills the suite). Opt in on an ample-RAM machine
+# or CI runner with `pytest -m slow`.
+addopts = "-m 'not slow'"
+markers = [
+    "speedboat: performance assertion tests — go red on regression, green when optimization lands",
+    "slow: end-to-end checks against the real latest benchmark run (skipped when none on disk)",
+]
+
+# ---------------------------------------------------------------------------
+# Coverage — global Python floor + per-module critical-path floors.
+# Rust has had an 85 % workspace floor since the cjermain merge; Python had
+# NO floor at all, so aggregate metrics could rot freely while the gate stayed
+# green. The global floor closes the asymmetry; the per-module gates in
+# `ci.yml` enforce critical-path coverage where it actually matters
+# (engine.py + _spectrafit.py + the PyO3 boundary crate).
+# Numbers are conservative (70 %); tighten in a follow-up once measured.
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["python/spectrafit_core", "python/oracles"]
+branch = false
+parallel = false
+
+[tool.coverage.report]
+# Floor raised 85 -> 94 (2026-07-25): the original 85 % (measured baseline
+# 94.23 % on 2026-06-08, ~9 pts headroom) stopped being a meaningful gate —
+# coverage has sat around 94 % for a long time, so it wouldn't catch a real
+# regression until dropping ~9 points. 94 % keeps a small flexible band below
+# the measured baseline (room for normal fluctuation) while tracking actual
+# coverage much more closely; 95 % is the next target once coverage sits
+# comfortably above it. Keep `.gitlab/30-test.yml` and `.github/workflows/
+# ci.yml`'s `--cov-fail-under` in sync with this value; per-module floors in
+# both CI configs enforce critical-path coverage at tighter thresholds.
+fail_under = 94
+show_missing = true
+skip_empty = true
+precision = 1
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+# ---------------------------------------------------------------------------
+# Global poe environment — injected into every task
+# ---------------------------------------------------------------------------
+[tool.poe.env]
+PYTHONPATH = "python"
+
+# ---------------------------------------------------------------------------
+# Private helpers (leading _ hides from `poe --help`)
+# ---------------------------------------------------------------------------
+
+# Shared setup: sync benchmark + jax deps (full local experience) + compile extension
+[tool.poe.tasks._setup_benchmark]
+sequence = [
+    { cmd = "uv sync --extra benchmark --extra jax" },
+    # --release is REQUIRED: a debug extension runs ~20-50x slower than release, which
+    # makes spectrafit lose to pure-Python lmfit and fails the gate on a build artifact
+    # (accuracy is identical; only timing collapses). The benchmark measures release perf.
+    { cmd = "uv run --with maturin maturin develop --release" },
+]
+
+# ---------------------------------------------------------------------------
+# Developer tooling
+# ---------------------------------------------------------------------------
+
+[tool.poe.tasks.lint]
+help = "Run ruff and ty static checks"
+cmd = "ruff check . && ty check"
+
+# Mirrors .gitlab/20-lint.yml `lint:python` byte-for-byte (no autofix,
+# CI-strict). Run before `git push` to catch what GitLab would catch in CI,
+# without the ~3 min GWDG-runner round-trip. The analyzer MCP exposes the
+# same checks via `mcp__analyzer__ruff-check-ci` + `mcp__analyzer__ty-check`;
+# this poe task is the CLI fallback when the MCP is unreachable.
+[tool.poe.tasks.lint_ci]
+help = "Mirror .gitlab/20-lint.yml lint:python (no autofix, CI-strict)"
+shell = """
+  set -e
+  uv run --no-sync ruff format --check .
+  uv run --no-sync ruff check .
+  uv run --no-sync ty check python/spectrafit_core python/oracles
+  # Offline integrity check of the vendored third-party web assets (mermaid,
+  # KaTeX, GLightbox). Hash-only by default, so it adds no network dependency
+  # to the lint gate; `--check-upstream` is opt-in and warns rather than fails.
+  uv run --no-sync python scripts/check_vendored_assets.py
+"""
+
+[tool.poe.tasks.audit_latex]
+help = "Audit docs/**/*.md for unbalanced $ delimiters, bare | inside table-cell math, and drifted plain-text formula notation"
+cmd = "python scripts/audit_latex.py"
+
+[tool.poe.tasks.docstring]
+help = "Check docstrings via ruff's built-in pydocstyle (D) rules"
+cmd = "ruff check . --select D"
+
+[tool.poe.tasks.self_heal]
+help = "Auto-fix safe issues detected by self-heal automation"
+cmd = "uv run python scripts/self_heal_automation.py --mode fix-safe"
+
+[tool.poe.tasks.self_heal_check]
+help = "Dry-run self-heal and fail if any fixes are needed"
+cmd = "uv run python scripts/self_heal_automation.py --mode check --fail-on-fixes"
+
+[tool.poe.tasks.upgrade-deps]
+help = "Upgrade all lock-files (uv, cargo) then rebuild the Rust extension"
+shell = """
+  set -e
+  echo "[upgrade-deps] Upgrading Python lock-file..."
+  uv lock --upgrade
+
+  echo "[upgrade-deps] Updating Rust lock-file..."
+  cargo update || echo "[upgrade-deps] WARN: cargo update failed (non-fatal)"
+
+  echo "[upgrade-deps] Rebuilding Rust extension..."
+  uv run --with maturin maturin develop
+
+  echo "[upgrade-deps] Done. Run: uv run poe qv"
+"""
+
+# ---------------------------------------------------------------------------
+# Benchmark engine (benchmark) → run report (results.json + manifest.json).
+# The report is served at runtime by the FastAPI app (`poe serve`); the web/ UI
+# fetches it — there is no inlined HTML artifact.
+# ---------------------------------------------------------------------------
+
+[tool.poe.tasks.benchmark]
+help = "Run the benchmark engine; write results.json + manifest.json into a run dir"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python -m oracles.cli run" },
+]
+
+[tool.poe.tasks.benchmark_quick]
+help = "Fast benchmark (lean reps) for local iteration"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python -m oracles.cli run --reps 3 --mc 6" },
+]
+
+# ---------------------------------------------------------------------------
+# Background benchmark, for a workstation that can afford the wall clock.
+#
+# The citation-grade rung (reps=100) needs ~6.8 h by the cost model measured in
+# .gitlab/55-deep-bench.yml, against a 3 h GitLab project timeout and a shared
+# runner budget. A local 16-core / 32 GB box has neither limit, so the ladder
+# runs here detached instead. Rungs run SEQUENTIALLY on purpose: they would
+# otherwise contend for the cores whose seconds are the thing being measured.
+#
+#   uv run poe bench_bg                 # start (default rungs 1,2,5,10,25)
+#   uv run poe bench_bg -- --reps 100   # the citation-grade rung on its own
+#   uv run poe bench_bg_status          # alive? how far along?
+#   uv run poe bench_bg_collect         # rungs -> artifacts/deep/reps-N/
+#   uv run poe bench_bg_stop
+#
+# `bench_bg_collect` writes the same layout benchmark:deep uploads, so the
+# figure scripts consume a local ladder and a CI ladder identically.
+# ---------------------------------------------------------------------------
+[tool.poe.tasks.bench_bg]
+help = "Start a detached benchmark ladder in the background (local workstation)"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python scripts/bench_background.py start" },
+]
+
+[tool.poe.tasks.bench_bg_status]
+help = "Report whether the background benchmark is alive and which rungs finished"
+cmd = "uv run python scripts/bench_background.py status"
+
+[tool.poe.tasks.bench_bg_collect]
+help = "Copy completed background rungs into artifacts/deep/ (CI artifact layout)"
+cmd = "uv run python scripts/bench_background.py collect"
+
+[tool.poe.tasks.bench_bg_stop]
+help = "Terminate the background benchmark; completed rungs are kept"
+cmd = "uv run python scripts/bench_background.py stop"
+
+# --------------------------------------------------------------------------- #
+# Remote benchmark (terra, 16 cores / 31 GiB, idle)
+#
+# The full suite at reps=25 takes hours. On a shared CI runner that measures
+# contention as much as the solver, and the artifacts expire in 30 days; over a
+# plain ssh the job dies with the connection. These drive it on a dedicated host
+# under nohup + setsid, into a timestamped directory, and fetch it back.
+#
+# Override with REMOTE=<ssh-host> REPS=<n> MC=<n>.
+# --------------------------------------------------------------------------- #
+[tool.poe.tasks.terra_push]
+help = "Put the current branch on the benchmark host, sync deps (incl. jax), build --release"
+cmd = "bash scripts/remote_bench.sh push"
+
+[tool.poe.tasks.terra_bench]
+help = "Launch a detached benchmark run on the host (REPS=25 default); returns immediately"
+cmd = "bash scripts/remote_bench.sh bench"
+
+[tool.poe.tasks.terra_ladder]
+help = "Launch the full FAIR reps ladder (2,4,10,25,50,100) detached, with provenance per rung"
+cmd = "bash scripts/remote_bench.sh ladder"
+
+[tool.poe.tasks.terra_status]
+help = "Is the remote run alive, how long has it been going, tail of its log"
+cmd = "bash scripts/remote_bench.sh status"
+
+[tool.poe.tasks.terra_pull]
+help = "Copy the finished remote run back into .spectrafit_reports/remote/"
+cmd = "bash scripts/remote_bench.sh pull"
+
+[tool.poe.tasks.benchmark_gate]
+help = "Run the spectrafit-vs-lmfit regression gate on the latest run"
+cmd = "uv run python -m oracles.cli gate"
+
+# Cycle 27 — close the local coverage blind spot. CI enforces an 85 % floor
+# plus per-module floors (engine/fit/evaluate/graph); locally you had to
+# remember the raw pytest --cov incantation. `poe coverage` mirrors the CI
+# step exactly: same source list, same per-module floors echoed. Prints
+# both the aggregate and the four critical-path numbers so a contributor
+# sees the picture without opening `coverage-atlas.html`.
+[tool.poe.tasks.coverage]
+help = "Run pytest with coverage and echo aggregate + 4 critical-path floors"
+shell = """
+  set -e
+  PYTHONPATH=python uv run pytest -q \
+    --cov=python/spectrafit_core --cov=python/oracles \
+    --cov-report=term --cov-report=xml
+  echo ""
+  echo "── critical-path floors ─────────────────────────────────────────"
+  uv run coverage report --include='python/oracles/engine.py'        --fail-under=85
+  uv run coverage report --include='python/spectrafit_core/fit.py'        --fail-under=90
+  uv run coverage report --include='python/spectrafit_core/evaluate.py'   --fail-under=90
+  uv run coverage report --include='python/spectrafit_core/graph.py'      --fail-under=80
+"""
+
+[tool.poe.tasks.coverage_html]
+help = "Coverage with HTML report under htmlcov/ (browse module-by-module)"
+shell = """
+  set -e
+  PYTHONPATH=python uv run pytest -q \
+    --cov=python/spectrafit_core --cov=python/oracles \
+    --cov-report=term --cov-report=xml --cov-report=html
+  echo ""
+  echo "→ open htmlcov/index.html"
+"""
+
+[tool.poe.tasks.serve]
+help = "Serve the latest BenchReport over FastAPI for the web UI (http://localhost:8000)"
+cmd = "uv run --extra benchmark python -m uvicorn oracles.api:app --port 8000"
+
+[tool.poe.tasks.docs_build]
+help = "Build the Zensical docs site (site/) — run docs/tutorials/gallery/_render.py first"
+shell = """
+set -e
+uv run --group docs python docs/tutorials/gallery/_render.py
+uv run --group docs python docs/_render_benchmark_summary.py
+uv run --group docs zensical build --clean
+"""
+
+[tool.poe.tasks.docs_serve]
+help = "Serve the Zensical docs site locally with live reload"
+# Renders the generated pages first, exactly as docs_build does. Without this,
+# `docs_serve` served whatever those files happened to contain on disk while
+# `docs_build` regenerated them — so the same commit produced a different
+# performance page depending on which task you ran. Both generated targets are
+# gitignored, so on a fresh clone they don't exist at all and `zensical serve`
+# would fail the nav lookup outright.
+# `shell` (not `cmd`) so the render steps run first — but poe does NOT forward
+# bare CLI args to a shell task, so --dev-addr is declared explicitly below,
+# following the same `args`/`${var:+--flag ${var}}` pattern as bg_status.
+shell = """
+set -e
+uv run --group docs python docs/tutorials/gallery/_render.py
+uv run --group docs python docs/_render_benchmark_summary.py
+uv run --group docs zensical serve ${dev_addr:+--dev-addr ${dev_addr}}
+"""
+args = [
+    { name = "dev_addr", options = [
+        "--dev-addr",
+    ], default = "", help = "host:port to serve on, e.g. 127.0.0.1:8081 (default: zensical's own)" },
+]
+
+[tool.poe.tasks.contract_regen]
+help = "Regenerate ALL contract-derived artifacts (Python golden + web TS + web snapshot) after a contract.py change"
+shell = """
+set -euo pipefail
+uv run pytest tests/audit/test_audit_openapi_watchdog.py --update-golden -q
+( kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true )
+nohup uv run --extra benchmark python -m uvicorn oracles.api:app --port 8000 >/tmp/sf-api-regen.log 2>&1 & disown
+for i in $(seq 1 30); do curl -sf localhost:8000/openapi.json >/dev/null && break; sleep 1; done
+curl -sf localhost:8000/openapi.json >/dev/null || { echo "API did not start on :8000"; tail -20 /tmp/sf-api-regen.log; kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true; exit 1; }
+( cd web && npm run contract )
+curl -s localhost:8000/openapi.json | python3 -m json.tool > web/openapi.snapshot.json
+kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true
+echo "contract_regen done — review: git status --porcelain"
+"""
+
+[tool.poe.tasks.audit_bindings_regen]
+help = "Regenerate docs/reference/rust/binding-audit.md from lib.rs + dispatch.rs + binding_audit_notes.toml"
+shell = """
+set -eu
+uv run python scripts/audit_bindings.py --write
+echo "audit_bindings_regen done — review: git status --porcelain docs/reference/rust/binding-audit.md"
+"""
+
+[tool.poe.tasks.web_smoke]
+help = "Build the web UI and runtime-smoke the 5 views (no browser needed)"
+shell = "cd web && npm ci && npm run typecheck && npm run smoke && npm run build"
+
+[tool.poe.tasks.web_e2e]
+help = "Run web Playwright wired tests (requires `npx playwright install chromium`)"
+shell = "cd web && npx playwright test"
+
+[tool.poe.tasks.report_e2e]
+help = "Playwright UX test on the bundled report.html (requires `poe report_html` first or REPORT_HTML_PATH env)"
+shell = """
+  set -e
+  REPORT="${REPORT_HTML_PATH:-$(uv run python -c 'from pathlib import Path; from oracles.reports import latest_results; p = latest_results("benchmark"); print(str((p.parent / "report.html").resolve()) if p else "")')}"
+  if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
+    echo "ERROR: report.html not found. Run 'uv run poe report_html' first or set REPORT_HTML_PATH."
+    exit 1
+  fi
+  cd web && REPORT_HTML_PATH="$REPORT" npx playwright test tests/e2e/report-ux.spec.ts
+"""
+
+[tool.poe.tasks._bundle_report_html]
+help = "Bundle the LATEST benchmark run into a self-contained, offline report.html"
+shell = """
+RESULTS=$(uv run python -c "from oracles.reports import latest_results; p=latest_results('benchmark'); print(p.resolve() if p else '')")
+if [ -z "$RESULTS" ]; then echo "no benchmark run found — run 'uv run poe benchmark' first" >&2; exit 1; fi
+RESULTS=$(uv run python -c "from oracles.migrate import migrate_to_current; print(migrate_to_current('$RESULTS'))")
+cd web && npm ci && npm run typecheck && BENCH_JSON="$RESULTS" npm run build:html
+DEST="$(dirname "$RESULTS")/report.html"
+cp dist-html/index.html "$DEST"
+echo "self-contained report -> $DEST ($(du -h "$DEST" | cut -f1))"
+"""
+
+[tool.poe.tasks.report_html]
+help = "Pipeline: build extension -> benchmark -> self-contained, deployable report.html (data inlined, opens offline)"
+sequence = [
+  { ref = "_setup_benchmark" },
+  { cmd = "uv run python -m oracles.cli run" },
+  { ref = "_bundle_report_html" },
+]
+
+[tool.poe.tasks.bundle_report_only]
+help = "Bundle latest results.json into report.html WITHOUT re-running the benchmark"
+sequence = [ { ref = "_bundle_report_html" } ]
+
+# ---------------------------------------------------------------------------
+[tool.poe.tasks.scenario_smoke]
+help = "Fast pre-merge smoke gate: spectrafit vs lmfit on the canonical regression scenario"
+cmd = "uv run pytest tests/scenario/test_smoke.py -v"
+
+[tool.poe.tasks.trust_audit]
+help = "Run the W1–W6 V&V trust audit test set (Plan E ground-truth harness)"
+cmd = "pytest tests/audit/ -v"
+
+[tool.poe.tasks.migration_smoke]
+help = "30s sanity check: verify new import paths resolve after the bench → oracles restructure"
+cmd = "uv run pytest tests/unit/benchmark/test_contract.py tests/integration/benchmark/test_engine.py tests/audit/test_audit_trust_ledger_contract.py -q"
+
+# Background job entry points (generic dispatcher; specific wrappers return in
+# Phase 6/8). Check: bash scripts/check_pytest_bg.sh --job <job_id>
+# ---------------------------------------------------------------------------
+
+[tool.poe.tasks.run_bg]
+help = "Universal background dispatcher: uv run poe run_bg <task>  (e.g. run_bg benchmark_super)"
+cmd = "scripts/run_pytest_bg.sh --poe ${task}"
+args = [
+    { name = "task", positional = true, help = "Any poe task name, e.g. benchmark_super, benchmark_cold_hot, qv_all" },
+]
+
+[tool.poe.tasks.bg_status]
+help = "Check background job status (all by default; optional --job and --tail)"
+cmd = "scripts/check_pytest_bg.sh ${job:+--job ${job}} ${tail:+--tail ${tail}}"
+args = [
+    { name = "job", options = [
+        "--job",
+    ], default = "", help = "Optional job id" },
+    { name = "tail", options = [
+        "--tail",
+    ], default = "", help = "Optional tail line count" },
+]
+
+[tool.poe.tasks.prune_worktrees]
+help = "On-demand worktree hygiene: prune stale registrations, auto-remove merged worktrees, flag unmerged/locked ones. GIT_HYGIENE_PRUNE_OFF=1 for warn-only."
+shell = "source .claude/hooks/lib/git-hygiene.sh && prune_worktrees"
+
+[tool.poe.tasks.backport_github]
+help = "List commits on a GitHub branch not yet on local main, with a cherry-pick/squash recipe (uv run poe backport_github [branch] [--squash])"
+cmd = "python3 scripts/backport_from_github.py --github-branch ${branch} ${squash:+--squash}"
+args = [
+    { name = "branch", positional = true, default = "main", help = "GitHub branch to check — default 'main' covers direct-edit-in-transit; pass a feature-branch name for the GitHub-first iteration lane" },
+    { name = "squash", options = ["--squash"], type = "boolean", help = "Suggest a squash-merge recipe instead of per-commit cherry-picks" },
+]
+
+[tool.poe.tasks.check_stale_github_branches]
+help = "List GitHub-mirror branches with un-backported commits older than N days (uv run poe check_stale_github_branches [--min-age-days N] [--strict])"
+cmd = "python3 scripts/check_stale_github_branches.py --min-age-days ${min_age_days} ${strict:+--strict}"
+args = [
+    { name = "min_age_days", options = ["--min-age-days"], default = "14", help = "only flag branches whose newest commit is at least this many days old" },
+    { name = "strict", options = ["--strict"], type = "boolean", help = "exit 1 if any stale branch is found, instead of always exiting 0" },
+]
+
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+
+[tool.ty.src]
+# Restricts ty's own project-wide discovery to exactly what `poe lint_ci` /
+# `.gitlab/20-lint.yml`'s `lint:python` job check (`ty check python/oracles
+# python/spectrafit_core`) -- required so the astral-sh/ty-pre-commit hook
+# below (which invokes `uv check` with no path args, deferring scope
+# entirely to this config) matches CI instead of scanning the whole repo.
+# Without this, a whole-project run surfaces ~138 pre-existing diagnostics
+# in tests/**, scripts/*.py, and docs/tutorials/gallery/*.py that no round
+# of the ruff/ty lint-debt cleanup has scoped in yet (measured before this
+# change; see DECISIONS.md).
+include = ["python/oracles", "python/spectrafit_core"]
+
+[tool.ty.analysis]
+# `jax`/`optimistix` are the HEAVY optional backend (the `jax` extra), intentionally
+# NOT installed in the fast pre-commit / core CI jobs — so `ty` cannot resolve them
+# there. Their imports are already runtime-guarded (try/except in backends/_jax.py;
+# the engine degrades to spectrafit+lmfit when absent), so a missing module is not a
+# bug. Declaring them here suppresses `unresolved-import` ONLY for these globs (real
+# missing core/typo imports still error). The LIGHT deps (fastapi/typer/lmfit/scipy)
+# are installed via `--extra benchmark`, so they are genuinely type-checked.
+allowed-unresolved-imports = ["jax", "jax.**", "optimistix", "optimistix.**"]
+
+[tool.ty.rules]
+# Two additions from Astral's own "coming from mypy/pyright" strict-mode guide
+# (docs.astral.sh/ty/coming-from-mypy-or-pyright); NOT invented config keys — both
+# verified live against ty 0.0.65 via `ty check -c 'rules.<name>="warn"'` before
+# landing, and both currently fire ZERO diagnostics on python/spectrafit_core +
+# python/oracles, so this is pure future-guard, not a retroactive gate.
+#
+# `possibly-unresolved-reference`: flags a name only bound on some control-flow
+# path (e.g. assigned inside one `if` branch, read after). `warn` not `error` —
+# ty is still pre-1.0 (`ty>=0.0.1a16` in [dependency-groups.dev]), so this stays
+# advisory until the analysis has proven itself over a few releases.
+#
+# `unused-ignore-comment`: the ty-side counterpart to ruff's RUF100 below — flags
+# a `# ty: ignore[...]` whose target diagnostic no longer fires, so suppressions
+# don't silently outlive the bug they were guarding.
+possibly-unresolved-reference = "warn"
+unused-ignore-comment = "warn"
+
+# Round 2 (2026-08-09): seven more rules verified at 0 current diagnostics
+# against python/spectrafit_core + python/oracles -- pure future-guards,
+# same shape as the two above.
+pydantic-discarded-extra-argument = "warn"  # Pydantic-first codebase: catches a
+    # BaseModel(...) call with a typo'd/extra kwarg silently swallowed instead
+    # of raising -- a real silent-data-loss class.
+unused-awaitable = "warn"  # Only python/oracles/api.py is async (FastAPI); a
+    # missed `await` there returns a coroutine object silently instead of
+    # erroring.
+possibly-missing-attribute = "warn"  # Catches typo'd/renamed attribute access
+    # (e.g. `report.reduced_chi2s`) that would otherwise be a silent
+    # `AttributeError` surfaced only at runtime, not at review time.
+possibly-missing-import = "warn"  # Same class as above for module-level
+    # imports/re-exports -- a typo'd or moved name fails silently until the
+    # import path is actually exercised.
+unsupported-dynamic-base = "warn"  # Flags a class base that ty can't
+    # statically resolve (e.g. a computed/dynamic base) -- rare in a
+    # Pydantic-`BaseModel`-first codebase, so a hit here is worth a look.
+blanket-ignore-comment = "warn"  # Flags a bare `# ty: ignore` with no
+    # specific rule code -- forces suppressions to name what they're
+    # suppressing, the same discipline `unused-ignore-comment` above enforces
+    # from the other direction.
+division-by-zero = "warn"  # Numerics-heavy codebase (chi-square, residuals,
+    # normalization) -- a statically-detectable division by a literal/known
+    # zero is a real correctness signal, not noise.
+
+# Round 3 (2026-08-10): the two rules round 2 deliberately deferred, now
+# closed to zero diagnostics by this plan's Tasks 4-7 and re-verified before
+# landing here -- same advisory posture as every rule above.
+missing-override-decorator = "warn"  # Was 28 hits (17 main + 11 tests) at
+    # round-2 measurement time -- real API-contract value across the
+    # 6-backend roster (a subclass method meant to override a base method,
+    # silently drifting instead), each fixed with a manual `@override` +
+    # import addition. 0 diagnostics on python/oracles + python/spectrafit_core
+    # after Task 4.
+missing-type-argument = "warn"  # Was 91 hits (bare `dict`/`list` annotations)
+    # at round-1/2 measurement time -- each needed a real generic-parameter
+    # decision, not a mechanical fix. Closed in three passes (Task 5: 21
+    # lineshapes `build()` return sites; Task 6: 39 in cases.py/migrate.py;
+    # Task 7: 31 across reports.py/cli.py/engine.py/_engine_profile.py and
+    # the multidim/api/audit-runner/inference sites) -- 0 diagnostics on
+    # python/oracles + python/spectrafit_core, re-verified before landing here.
+
+[tool.ruff]
+# Project-wide Ruff configuration: include pydocstyle (D) checks in the lint pass.
+# line-length bumped 88 -> 100 (2026-08-10): a `ruff check . --select ALL` sweep
+# surfaced many E501 hits in docs/tutorials/gallery/*.py and
+# docs/_render_benchmark_summary.py (markdown-embedded prose, image-alt links,
+# f-string table rows) that were awkward to wrap at 88 without hurting
+# readability; 100 comfortably fits nearly all of them without going as wide
+# as e.g. 120. E501 itself is still not in `extend-select` below (this repo's
+# line-length constraint is enforced by `ruff format`, not the E501 lint rule).
+line-length = 100
+target-version = "py313"
+# ``.claude`` holds harness tooling/skill scaffolds and generated examples that
+# are not shipped library source and are not held to pydocstyle standards.
+#
+# ``*.md`` — `ruff format` reformats Python code blocks embedded in Markdown
+# by default (https://docs.astral.sh/ruff/formatter/#markdown-code-blocks),
+# which this repo has never actually wanted: (1) narrative docs (ARCHITECTURE.md,
+# DECISIONS.md, the migrated docs/ pages) embed illustrative Pydantic-model
+# snippets with aligned inline `#` comments that ruff would "fix" by
+# collapsing the alignment — cosmetic churn with no benefit; (2)
+# ``docs/tutorials/gallery/*.md`` embed a pymdownx.snippets include directive
+# (``--8<-- "script.py"``) inside a ```python fence for syntax highlighting,
+# which reformatting mangles into `--8 < --"script.py"` (breaking the site
+# build's snippet includes) since it isn't real Python at all. Discovered via
+# a real CI run (`ruff format --check .` failing on 5 files, 2 of them
+# pre-existing and untouched — ARCHITECTURE.md/DECISIONS.md — confirming this
+# was never actually enforced, not something this change introduced). The
+# ``.py`` scripts the gallery pages include are NOT excluded and are still
+# fully formatted/linted as normal source.
+extend-exclude = [".claude", "*.md"]
+
+[tool.ruff.lint]
+# Each addition below was measured against the tree BEFORE landing (`ruff check .
+# --select <CODE> --statistics --exit-zero`) and picked for a real, low-noise
+# payoff — see spectrafit-core git history / DECISIONS.md for the audit. Skipped
+# on purpose: `ANN` (ty already type-checks, see [tool.ty.rules] above — a second
+# annotation-presence linter is redundant); `ARG` (unused
+# function/method args) — measured at 44 hits, but 18/44 are the
+# `lineshapes/*.py` `build(rng, variant)` registry-callback contract (CLAUDE.md
+# "Declarative Registries") where the shared signature is the point and an unused
+# `variant` is correct-by-design, not dead code, and another 20/44 are pytest
+# fixtures/parametrize placeholders in `tests/**` — i.e. ARG is dominated by two
+# structural false-positive patterns for this codebase, not real dead params.
+extend-select = [
+    "D",    # pydocstyle (pre-existing) — Google convention, see below.
+    "I",    # isort — deterministic import ordering under the same tool that
+            # already owns formatting, instead of a second config surface for a
+            # separate isort dependency. 0 violations measured.
+    "UP",   # pyupgrade — keeps syntax idiomatic for the pinned
+            # `target-version = "py313"` as Python evolves, instead of idiom
+            # drift accumulating unnoticed. 0 violations measured (already
+            # py313-idiomatic).
+    "PIE",  # flake8-pie — misc anti-patterns (e.g. redundant dict-call literals,
+            # duplicate class fields). 0 violations measured; cheap insurance.
+    "SIM",  # flake8-simplify — redundant control flow (e.g. if/else that's a
+            # ternary). 2 violations measured.
+    "C4",   # flake8-comprehensions — unnecessary list()/dict()/set() wrapping a
+            # comprehension. 4 violations measured, all `--fix`-safe.
+    "RET",  # flake8-return — unreachable/redundant return/assign patterns.
+            # 5 violations measured.
+    "PTH",  # flake8-use-pathlib — os.path.* where pathlib.Path is already this
+            # codebase's norm elsewhere (e.g. oracles/reports.py). 8 violations
+            # measured, keeps path-handling style singular.
+    "B",    # flake8-bugbear — real correctness catches for a numerics-heavy
+            # codebase; the standout is B905 (`zip()` without `strict=`), a
+            # classic silent-truncation footgun when array lengths drift.
+            # 30 violations measured (25× B905, 5× B007 unused-loop-var); NOT
+            # auto-fixable (needs a `strict=True/False` judgment call per call
+            # site) — tracked as manual follow-up debt, not fixed in this pass.
+    "RUF",  # ruff-specific rules (unused-noqa, collection-literal-concat,
+            # ambiguous pytest.raises pattern, chained-operator parens, ...).
+            # RAW count was 460, but 409 of those were RUF001-003
+            # (ambiguous-unicode-character-*) firing on intentional scientific
+            # notation (χ, σ, ×, µ, Δ, — in formula docstrings/comments/tables —
+            # the house style fixed in commit 698e950, "proper LaTeX for formula
+            # docstrings, not hand-rolled Unicode") — 100% false positives against
+            # this codebase's own convention, so those three codes are disabled
+            # project-wide below. The remaining ~51 (RUF100 unused-noqa ×33,
+            # RUF005 collection-literal-concat ×13, RUF043 pytest.raises ×4,
+            # RUF021 chained-operator-parens ×1) are real and mostly auto-fixable.
+    "ICN",  # flake8-import-conventions -- enforces `import numpy as np` (etc).
+            # 1 violation measured (engine.py's local `import numpy as _np`,
+            # fixed in this same pass); cheap insurance against alias drift.
+    "TRY003",  # tryceratops -- long/dynamic exception messages built inline at
+            # the `raise` site instead of being owned by the exception class.
+            # 113 hits measured across python/oracles + python/spectrafit_core
+            # (50 in Task 8's python/spectrafit_core pass, 63 in Task 9's
+            # python/oracles pass of the 2026-08-09/10 lint-type-debt-cleanup
+            # plan), closed via a `msg = <literal>; raise Exc(msg)`
+            # extraction. Scoped per-file-ignore below carves out the
+            # remaining scripts/*.py + tests/**/*.py hits, deliberately
+            # deferred rather than fixed in this pass.
+    "EM101",  # flake8-errmsg -- string-literal exception message, same
+            # extraction pattern and scope as TRY003 above (paired 1:1 at
+            # nearly every site).
+    "EM102",  # flake8-errmsg -- f-string exception message; the other half
+            # of the EM101/EM102 pair, same scope as TRY003 above.
+
+    # Round 4 (2026-08-10): seven more rules measured against this branch's
+    # already-clean tree (`uv run ruff check . --select <CODE> --statistics
+    # --exit-zero`, repo root) -- see DECISIONS.md Round 4 entry for the full
+    # candidate list (incl. rejections: PD, S, PLR2004, PLC0415, PLR0911,
+    # PLR0912, PLR0913, T20, SLF, all re-measured and either inapplicable or
+    # too noisy for this codebase's shape).
+    "DTZ",  # flake8-datetimez -- naive `datetime.now()`/`utcnow()` calls. 0
+            # violations measured; `oracles/reports.py`'s one timestamp call
+            # already uses `datetime.now(UTC)` (tz-aware) -- this locks that
+            # convention in as a checked guard instead of an implicit one.
+    "NPY",  # NumPy-specific rules (legacy `np.random` global-state RNG,
+            # deprecated aliases, etc.). 0 violations measured across the 45
+            # files that `import numpy` -- cheap insurance for a numerics-
+            # heavy codebase, same shape as UP/PIE in round 1.
+    "FURB",  # refurb -- general Python modernization suggestions (e.g.
+            # `list.append` in a loop instead of extend/comprehension, using
+            # `math.pi` over a hand-typed literal). 0 violations measured
+            # (this repo does not enable `preview = true`, and refurb's two
+            # currently-implemented rules that *would* fire here --
+            # FURB113/FURB152 -- are still preview-gated upstream, so they
+            # stay silent under this config; re-measure if/when they graduate
+            # to stable). Same "keeps idiomatic" rationale as UP.
+    "LOG",  # flake8-logging -- logging-module misuse (e.g. calling the root
+            # logger directly, `.warn()`'s deprecated alias). 0 violations
+            # measured; `oracles/forensics.py` + `oracles/_engine_base.py`
+            # are the only two files that use `logging` and both already do
+            # `logging.getLogger(__name__)` correctly -- locks that in.
+    "G",    # flake8-logging-format -- the paired rule family for LOG above,
+            # covering log-call *argument* style specifically (e.g. an
+            # f-string/`.format()` call baked into a log message instead of
+            # lazy `%s` substitution, which defeats level-gating). 0
+            # violations measured; the two files above already use lazy
+            # `%s`-style substitution (`_LOG.warning("... %s", val)`)
+            # everywhere, so this is the same lock-in as LOG, not new debt.
+    "PLW2901",  # pylint -- `for` loop variable reassigned inside the loop
+            # body, which silently shadows the iterator on every pass. 1
+            # violation measured (`tests/audit/test_audit_built_site_links.py`
+            # -- `for ref in parser.refs: ref = ref.strip()`), fixed by
+            # renaming the loop var (`raw_ref`) rather than the stripped
+            # value, so the loop's own binding is never reassigned.
+    "PLC0207",  # pylint -- `str.split(sep)[0]`/`[-1]` without the `maxsplit`
+            # argument, which builds the whole split list just to keep one
+            # element. 2 violations measured (`tests/integration/benchmark/
+            # test_gate.py`, `tests/parity/test_design_token_parity.py`),
+            # both `--fix`-safe and semantically identical (only the first
+            # element was ever used).
+
+    # Round 5 (2026-08-10): six more rules measured against this branch's
+    # already-clean tree (`uv run ruff check . --select <CODE> --statistics
+    # --exit-zero`, repo root) -- see DECISIONS.md Round 5 entry for the full
+    # candidate list (incl. rejections: INP001, A, N, SLOT, all measured and
+    # either fighting a deliberate pattern or structurally inapplicable for
+    # this codebase's shape). `PERF` also closes out Round 4's own dangling
+    # candidate (mentioned there as a to-measure item, never actually
+    # resolved to an add/reject verdict).
+    "PERF",  # perflint -- 12 violations measured, all `PERF401` (manual-list
+            # -comprehension) and all 0 in-scope (`python/oracles` +
+            # `python/spectrafit_core`) -- 5 in `scripts/*.py`, 7 in
+            # `tests/**/*.py`. Carved out via the same per-file-ignores
+            # pattern as `TRY003`/`EM101`/`EM102` below rather than fixed,
+            # since none of the hits are in this round's scope.
+    "ISC",  # flake8-implicit-str-concat -- accidental same-line string
+            # concatenation (a missing-comma-in-a-list-of-strings bug class).
+            # 0 violations measured. Confirmed a real, applicable guard, not
+            # a `PD`-style inapplicable 0: this codebase makes heavy
+            # deliberate use of *multi-line* implicit concatenation
+            # (parenthesized adjacent string literals building long
+            # docstrings/messages, e.g. `bench_contract.py`'s `Field`
+            # descriptions) -- `ISC002`'s default `allow-multiline = true`
+            # means that pattern is never flagged, only the same-line
+            # accidental case is. Also confirmed no `ruff format` conflict
+            # (the known `ISC001`/formatter interaction) by re-running both
+            # `ruff check .` and `ruff format --check .` with the rule live.
+    "RSE",  # flake8-raise -- unnecessary parens on a raised exception
+            # (`raise Foo()` vs the bare-class form). 0 violations measured
+            # against 86 in-scope `raise` statements (a real target surface,
+            # not an absent one) -- cheap insurance, same "0 hits but the
+            # pattern genuinely exists" shape as `DTZ`/`NPY` in Round 4.
+    "FLY",  # flynt -- `str.join([...])` calls that could be a plainer
+            # f-string. 0 violations measured against 21 in-scope `.join(`
+            # call sites (again a real target surface, not an absent one).
+    "TID",  # flake8-tidy-imports -- bans parent-relative imports
+            # (`from ..x import y`); same-package relative imports
+            # (`from .x import y`) are allowed by default. 0 violations
+            # measured despite 78 existing same-package relative imports in
+            # `python/` -- confirms the rule's default scope (`ban-relative
+            # -imports` = "parents" only) doesn't fight this codebase's own
+            # `from .module import X` style, it only guards against the one
+            # pattern (`..`) that never occurs here.
+    "BLE",  # flake8-blind-except -- catching `Exception`/bare `except:`
+            # without re-raising, which can silently swallow real bugs. 0
+            # *new* violations measured, but not a trivial 0: 14 genuine
+            # blind-except sites already carry a hand-written
+            # `# noqa: BLE001` with a specific rationale comment (e.g.
+            # `_engine_base.py` "report, don't abort the run",
+            # `audit/structure_wires.py` "a wire must not take down the
+            # audit") across `python/oracles` + 2 more in `tests/**` -- this
+            # rule was already being manually enforced by convention before
+            # being turned on here. The one bare `except Exception:` site
+            # without a noqa (`oracles/reports.py:560`) doesn't need one:
+            # ruff's own re-raise detection already exempts a catch block
+            # whose body ends in a bare `raise` (verified with a throwaway
+            # repro -- `except Exception: raise` is not flagged, `except
+            # Exception: pass` and `except Exception as e: log(e)` are),
+            # which is exactly that site's cleanup-then-reraise shape.
+
+    # Round 6 (2026-08-10): closes out issue #7's PT* cluster. TC001/TC003
+    # (the issue's other candidate cluster) were measured, attempted, and
+    # REJECTED -- not added here. See DECISIONS.md for the full incident:
+    # moving a typing-only-looking import (e.g. `collections.abc.Callable`)
+    # under `if TYPE_CHECKING:` broke `pydantic.errors.PydanticUserError`
+    # class-not-fully-defined at collection time for every Pydantic
+    # `BaseModel` (with `arbitrary_types_allowed=True`) that uses that name
+    # as a field type -- this codebase's core "registry of Pydantic models
+    # with `Callable` fields" pattern (see `oracles.models.PeakModel`,
+    # `oracles.cases.CaseFamily`, and ~15 more) depends on exactly the kind
+    # of import ruff's static analysis cannot distinguish from a genuinely
+    # type-checking-only one. 57 test files failed to collect before this
+    # was caught and fully reverted.
+    "PT018",  # flake8-pytest-style -- a combined `assert A and B` hides
+            # which half failed in the pytest report. 33 hits; 25
+            # `--unsafe-fix`-safe (mechanical `assert A; assert B` split),
+            # 8 more had an explicit failure message ruff's fixer skips
+            # rather than duplicate onto both halves -- fixed by hand,
+            # keeping the same message on both assertions.
+    "PT006",  # flake8-pytest-style -- `@pytest.mark.parametrize("a,b", ...)`
+            # comma-string form instead of `("a", "b")` tuple form; both
+            # work identically in pytest, tuple form is what
+            # `--unsafe-fix` converges on. 9 hits, all mechanical.
+    "PT019",  # flake8-pytest-style -- a fixture listed as a test parameter
+            # purely for its setup side effect (never read as a value)
+            # should be `@pytest.mark.usefixtures(...)`, not a positional
+            # param -- the param form reads as "this value matters" when it
+            # doesn't. 4 hits, one file (`tests/audit/test_wire_recompute.py`),
+            # fixed by hand (not mechanically `--fix`-able).
+    "PT001",  # flake8-pytest-style -- `@pytest.fixture()` instead of the
+            # parenthesis-free `@pytest.fixture`. 1 hit, `--fix`-safe.
+    # PT011 (pytest-raises-too-broad, 14 hits) measured but deliberately
+    # deferred, not added: every hit is a bare `pytest.raises(ValueError)`
+    # needing a hand-crafted `match=` regex against that site's actual
+    # error message to fix correctly -- an imprecise pattern risks either
+    # not matching (silently breaking the test) or matching too broadly
+    # (defeating the rule's purpose), and none could be verified accurate
+    # without re-running each test under a deliberately-wrong input to
+    # observe the real message. Same "real signal, wrong pass" shape as
+    # `PLR0912` above -- tracked as open debt, not silently dropped.
+
+    # COM812 (2026-08-10): superseded Round 1's own rejection of COM -- see
+    # DECISIONS.md's "Adopt COM812" entry for the full context (a maintainer
+    # -run `ruff check . --select ALL --fix` applied it repo-wide first).
+    "COM812",  # flake8-commas -- missing trailing comma on the last element of
+            # a multi-line collection/call. Reverses Round 1's own rejection
+            # of `COM` ("would fight `ruff format`") -- superseded here after
+            # a maintainer-run `ruff check . --select ALL --fix` (2026-08-10)
+            # applied it repo-wide (183 files) and `ruff format .` afterward
+            # converged to a stable fixed point (confirmed: a second
+            # `ruff format --check .` reports 0 files needing reformatting) --
+            # not a live conflict, just a one-time reformat as multi-line
+            # calls picked up the "magic trailing comma" signal. Individual
+            # `COM812` only (not the blanket `COM` family) since `COM819`
+            # (prohibited-trailing-comma) is mutually exclusive with it and
+            # was never measured.
+]
+ignore = [
+    "RUF001",  # ambiguous-unicode-character-string
+    "RUF002",  # ambiguous-unicode-character-docstring
+    "RUF003",  # ambiguous-unicode-character-comment
+    # See the RUF rationale above: this is a scientific-notation-heavy codebase
+    # by design, not a source of confusable-identifier bugs.
+]
+# FBT (flake8-boolean-trap) is deliberately NOT in extend-select above (see
+# DECISIONS.md 2026-08-09 round-2 entry: real value across ~18 sites, but a
+# blanket enable was rejected in favor of fixing sites individually). 4 sites
+# are genuine false positives — third-party APIs (jax.config.update,
+# typer.Option, matplotlib Axes.grid) whose own signatures require a
+# positional bool — and carry `# noqa: FBT003`. Since FBT003 itself is never
+# selected, RUF100 (unused-noqa) would otherwise flag those comments as dead;
+# `external` tells RUF100 the code is a real, deliberately-unselected rule,
+# not a stale leftover (verified via a minimal-repro `ruff check --select
+# RUF100`: without this, `# noqa: FBT003` is flagged unused; with it, clean).
+external = ["FBT003"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests are self-documenting via their names; don't hold them to pydocstyle.
+# TRY003/EM101/EM102 (see extend-select above, round 3, 2026-08-10): 38 hits
+# remain across scripts/*.py and tests/**/*.py after this plan closed out its
+# actual scope (python/oracles + python/spectrafit_core) to zero. Carved out
+# here rather than silently dropped -- deferred debt for a future pass, not
+# forgotten scope.
+# PERF (round 5, 2026-08-10): all 12 PERF401 hits are outside this round's
+# scope too (5 scripts/*.py, 7 tests/**/*.py, 0 in python/oracles or
+# python/spectrafit_core) -- same carve-out shape as TRY003/EM101/EM102.
+"tests/**/*.py" = ["D", "TRY003", "EM101", "EM102", "PERF"]
+"scripts/*.py" = ["TRY003", "EM101", "EM102", "PERF"]
+
+[tool.ruff.lint.pydocstyle]
+# Google-style docstrings, enforced via ruff's built-in pydocstyle (D) rules
+# (no separate pydocstyle dependency).
+convention = "google"

@@ -1,0 +1,35 @@
+/*
+ * Visible focus rings — the palette swap to systemBlue/systemIndigo raises
+ * the stakes on keyboard-navigation accessibility: a focus ring needs to
+ * stay visible against both the new light-scheme and dark-scheme brand
+ * colors, not just Material's stock indigo. `:focus-visible` (not `:focus`)
+ * so mouse clicks don't get a ring, only keyboard/programmatic focus does.
+ */
+a:focus-visible,
+button:focus-visible,
+.md-nav__link:focus-visible,
+.sf-button:focus-visible,
+.md-typeset .headerlink:focus-visible,
+.md-typeset details > summary:focus-visible,
+.md-option:focus-visible + .md-header__button,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+/*
+ * pymdownx.tabbed (content.tabs.link) renders each tab's radio input as a
+ * visually-hidden (opacity: 0, 0x0) sibling of a WRAPPING .tabbed-labels
+ * div, not of the label directly - confirmed against the real built DOM
+ * with a temporary test page: the label is a child of that wrapper div,
+ * not an adjacent sibling of its input. Outlining the hidden input itself
+ * would render nothing (opacity: 0 hides it entirely, and the box is
+ * 0-by-0), so the ring targets the visible label row via the general
+ * sibling combinator instead.
+ */
+.md-typeset .tabbed-set > input:focus-visible ~ .tabbed-labels {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}

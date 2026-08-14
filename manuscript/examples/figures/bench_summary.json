@@ -1,0 +1,6965 @@
+{
+  "solvers": [
+    "spectrafit",
+    "lmfit",
+    "jax",
+    "scipy-ls-lm",
+    "scipy-ls-trf",
+    "scipy-ls-dogbox"
+  ],
+  "solvers_eligible": {
+    "spectrafit": 151,
+    "lmfit": 151,
+    "jax": 0,
+    "scipy-ls-lm": 147,
+    "scipy-ls-trf": 147,
+    "scipy-ls-dogbox": 147
+  },
+  "solvers_full_suite": [
+    "lmfit",
+    "spectrafit"
+  ],
+  "solvers_partial": [
+    "scipy-ls-dogbox",
+    "scipy-ls-lm",
+    "scipy-ls-trf"
+  ],
+  "solvers_not_run": [
+    "jax"
+  ],
+  "baseline_solver_id": "lmfit",
+  "n_cases": 151,
+  "categories": [
+    {
+      "id": "easy",
+      "label": "Easy",
+      "n": 20
+    },
+    {
+      "id": "complex",
+      "label": "Complex",
+      "n": 35
+    },
+    {
+      "id": "reality",
+      "label": "Reality-like",
+      "n": 16
+    },
+    {
+      "id": "optfn",
+      "label": "Optimization fns",
+      "n": 20
+    },
+    {
+      "id": "scaling",
+      "label": "Large-N scaling",
+      "n": 8
+    },
+    {
+      "id": "edge",
+      "label": "Edge / ill-conditioned",
+      "n": 20
+    },
+    {
+      "id": "lineshapes",
+      "label": "Asymmetric lineshapes",
+      "n": 24
+    },
+    {
+      "id": "fixed",
+      "label": "Fixed-param",
+      "n": 4
+    },
+    {
+      "id": "tied",
+      "label": "Tied/shared-param",
+      "n": 4
+    }
+  ],
+  "git_commit": "fe2d86c",
+  "git_branch": "HEAD",
+  "cases": [
+    {
+      "id": "EZ-001",
+      "category": "easy",
+      "difficulty": 0.096,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2717403694987297,
+          "r2": 0.9999539341403364,
+          "speedup": 10.70833833140836,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.9098878148943186,
+          "r2": 0.9999539341403364,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.5434261877089739,
+          "r2": 0.9999539341403364,
+          "speedup": 1.8853430362055013,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.327242400497198,
+          "r2": 0.9999539341403364,
+          "speedup": 1.250358713932267,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0502819679677486,
+          "r2": 0.9999539341403364,
+          "speedup": 1.4192622577559983,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-002",
+      "category": "easy",
+      "difficulty": 0.159,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2640301827341318,
+          "r2": 0.9973012985860211,
+          "speedup": 10.944372183093313,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.8896445874124765,
+          "r2": 0.9973012985860206,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.5318032819777727,
+          "r2": 0.9973012985860211,
+          "speedup": 1.8864332133311141,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.2807596251368523,
+          "r2": 0.9973012985860211,
+          "speedup": 1.266965863287364,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0389356650412083,
+          "r2": 0.9973012985860211,
+          "speedup": 1.4172318611897325,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-003",
+      "category": "easy",
+      "difficulty": 0.228,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2588799688965082,
+          "r2": 0.9998176184817085,
+          "speedup": 9.491481552432319,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.4571544490754604,
+          "r2": 0.9998176184817079,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1813445016741753,
+          "r2": 0.9998176184817085,
+          "speedup": 2.0799643504441216,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7890743911266327,
+          "r2": 0.9998176184817085,
+          "speedup": 1.3734221792354415,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5891189686954021,
+          "r2": 0.9998176184817085,
+          "speedup": 1.5462369385047854,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-004",
+      "category": "easy",
+      "difficulty": 0.254,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20080292597413063,
+          "r2": 0.9997421902748181,
+          "speedup": 10.84733350184708,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.1781763061881065,
+          "r2": 0.9997421902748157,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1845314875245094,
+          "r2": 0.9997421902748181,
+          "speedup": 1.8388504899436346,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7780864145606756,
+          "r2": 0.9997421902748181,
+          "speedup": 1.2250115002010653,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.597255002707243,
+          "r2": 0.9997421902748181,
+          "speedup": 1.363699786506375,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-005",
+      "category": "easy",
+      "difficulty": 0.18,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20786072127521038,
+          "r2": 0.9931534301967484,
+          "speedup": 10.230991705451103,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.126621315255761,
+          "r2": 0.9931534301967285,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.179669052362442,
+          "r2": 0.9931534301967484,
+          "speedup": 1.8027270538265991,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7685266211628914,
+          "r2": 0.9931534301967468,
+          "speedup": 1.2024819359843197,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5878945123404264,
+          "r2": 0.9931534301967484,
+          "speedup": 1.3392711535486672,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-006",
+      "category": "easy",
+      "difficulty": 0.287,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20023831166327,
+          "r2": 0.9999527421150172,
+          "speedup": 11.192600843936805,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.241187496110797,
+          "r2": 0.9999527421150172,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1756632011383772,
+          "r2": 0.9999527421150172,
+          "speedup": 1.906317637517861,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.77106074988842,
+          "r2": 0.9999527421150172,
+          "speedup": 1.2654492491304974,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5774143394082785,
+          "r2": 0.9999527421150172,
+          "speedup": 1.4207982266419068,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-007",
+      "category": "easy",
+      "difficulty": 0.178,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20261062309145927,
+          "r2": 0.9965852311180166,
+          "speedup": 11.065510924999368,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.241990063339472,
+          "r2": 0.9965852311180163,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1737870518118143,
+          "r2": 0.9965852311180166,
+          "speedup": 1.9100483855898893,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7566452734172344,
+          "r2": 0.9965852311180166,
+          "speedup": 1.276290721448894,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5818998217582703,
+          "r2": 0.9965852311180166,
+          "speedup": 1.4172768923176917,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-008",
+      "category": "easy",
+      "difficulty": 0.21,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.1997819636017084,
+          "r2": 0.999708390571118,
+          "speedup": 11.217485551659156,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.2410512901842594,
+          "r2": 0.999708390571118,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1664084158837795,
+          "r2": 0.999708390571118,
+          "speedup": 1.9213264064853566,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7684129998087883,
+          "r2": 0.999708390571118,
+          "speedup": 1.2672669169625963,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5760029200464487,
+          "r2": 0.999708390571118,
+          "speedup": 1.42198422457124,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-009",
+      "category": "easy",
+      "difficulty": 0.127,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20192679949104786,
+          "r2": 0.9997649450565956,
+          "speedup": 11.106424880861647,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.242684829980135,
+          "r2": 0.9997649450565956,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1671364773064852,
+          "r2": 0.9997649450565956,
+          "speedup": 1.921527493644786,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7689918167889118,
+          "r2": 0.9997649450565956,
+          "speedup": 1.267775695000712,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5942014288157225,
+          "r2": 0.9997649450565956,
+          "speedup": 1.406776326656631,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-010",
+      "category": "easy",
+      "difficulty": 0.174,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.20108697935938835,
+          "r2": 0.9885948244953316,
+          "speedup": 11.167814492243494,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.2457020822912455,
+          "r2": 0.988594824495325,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1723206844180822,
+          "r2": 0.9885948244953315,
+          "speedup": 1.915603906115475,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7648078501224518,
+          "r2": 0.9885948244953318,
+          "speedup": 1.2724909865600533,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5746734570711851,
+          "r2": 0.9885948244953315,
+          "speedup": 1.4261382715297306,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-011",
+      "category": "easy",
+      "difficulty": 0.259,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2334455493837595,
+          "r2": 0.999946774007956,
+          "speedup": 12.728571841765897,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.971428446471691,
+          "r2": 0.999946774007956,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.7261765897274017,
+          "r2": 0.999946774007956,
+          "speedup": 1.7213930858261377,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.584621077403426,
+          "r2": 0.999946774007956,
+          "speedup": 1.1496572834022003,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.047316636890173,
+          "r2": 0.999946774007956,
+          "speedup": 1.4513770820449263,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-012",
+      "category": "easy",
+      "difficulty": 0.294,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23360224440693855,
+          "r2": 0.9965326249868299,
+          "speedup": 13.095109806102576,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0590470414608717,
+          "r2": 0.9965326249868227,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6880265902727842,
+          "r2": 0.9965326249868302,
+          "speedup": 1.8122031128470146,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.623087726533413,
+          "r2": 0.9965326249868143,
+          "speedup": 1.166200813841483,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0198985002934933,
+          "r2": 0.9965326249868302,
+          "speedup": 1.5144558209317889,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-013",
+      "category": "easy",
+      "difficulty": 0.153,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.22363848984241486,
+          "r2": 0.9997441223521217,
+          "speedup": 13.82533731728647,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0918775591999292,
+          "r2": 0.9997441223521217,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6823785845190287,
+          "r2": 0.9997441223521217,
+          "speedup": 1.8378013056341056,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.597624436020851,
+          "r2": 0.9997441223521217,
+          "speedup": 1.1902712017662551,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.04179878346622,
+          "r2": 0.9997441223521217,
+          "speedup": 1.5142910184083191,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-014",
+      "category": "easy",
+      "difficulty": 0.125,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23521273396909237,
+          "r2": 0.9997688950423331,
+          "speedup": 13.063874499990597,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0727896373718977,
+          "r2": 0.9997688950423327,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6824326012283564,
+          "r2": 0.9997688950423331,
+          "speedup": 1.8263968702986566,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.6626538019627333,
+          "r2": 0.9997688950423331,
+          "speedup": 1.1540327304686924,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.054080832749605,
+          "r2": 0.9997688950423331,
+          "speedup": 1.4959438734738801,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-015",
+      "category": "easy",
+      "difficulty": 0.064,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23149792104959488,
+          "r2": 0.991844305340758,
+          "speedup": 13.097960727202507,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0321506783366203,
+          "r2": 0.9918443053407534,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6394639387726784,
+          "r2": 0.991844305340758,
+          "speedup": 1.8494768970682718,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.631566021591425,
+          "r2": 0.991844305340756,
+          "speedup": 1.1522229172509775,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.035340992733836,
+          "r2": 0.9918443053407578,
+          "speedup": 1.4897507047523697,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-016",
+      "category": "easy",
+      "difficulty": 0.175,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23408373817801476,
+          "r2": 0.9999424041189675,
+          "speedup": 13.501041395210974,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.160374239087105,
+          "r2": 0.9999424041189675,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.660596113651991,
+          "r2": 0.9999424041189675,
+          "speedup": 1.9031564708030027,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.596836304292083,
+          "r2": 0.9999424041189675,
+          "speedup": 1.2170094179073203,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0721545442938805,
+          "r2": 0.9999424041189675,
+          "speedup": 1.5251633850331625,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-017",
+      "category": "easy",
+      "difficulty": 0.292,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23524509742856026,
+          "r2": 0.9964435266603667,
+          "speedup": 12.759239684472025,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.001548582687974,
+          "r2": 0.9964435266603561,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6611672472208738,
+          "r2": 0.9964435266603648,
+          "speedup": 1.8068912613763322,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.61754565872252,
+          "r2": 0.9964435266603693,
+          "speedup": 1.1467034291019262,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0449315197765827,
+          "r2": 0.9964435266603648,
+          "speedup": 1.4677990698758976,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-018",
+      "category": "easy",
+      "difficulty": 0.056,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2163480967283249,
+          "r2": 0.9997495870561075,
+          "speedup": 14.714348133033724,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.1834212131798267,
+          "r2": 0.9997495870561074,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6422185581177473,
+          "r2": 0.9997495870561075,
+          "speedup": 1.9384881491222163,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.6442401576787233,
+          "r2": 0.9997495870561075,
+          "speedup": 1.203907747915919,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.063258085399866,
+          "r2": 0.9997495870561075,
+          "speedup": 1.5429098452135082,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-019",
+      "category": "easy",
+      "difficulty": 0.142,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23425696417689323,
+          "r2": 0.9998086767013992,
+          "speedup": 12.796454917177371,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.9976586811244488,
+          "r2": 0.999808676701399,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6628256998956203,
+          "r2": 0.9998086767013992,
+          "speedup": 1.8027497898983755,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.106633899733424,
+          "r2": 0.9998086767013992,
+          "speedup": 0.964921769952254,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.061940962448716,
+          "r2": 0.9998086767013992,
+          "speedup": 1.4538043211307536,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "EZ-020",
+      "category": "easy",
+      "difficulty": 0.152,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23991591297090054,
+          "r2": 0.99208621910065,
+          "speedup": 13.041240024805154,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.128801006823778,
+          "r2": 0.9920862191006601,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6671253833919764,
+          "r2": 0.9920862191006479,
+          "speedup": 1.876764062255377,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.6153353974223137,
+          "r2": 0.9920862191006563,
+          "speedup": 1.1963287805868181,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0394339226186275,
+          "r2": 0.9920862191006479,
+          "speedup": 1.534151693822179,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-001",
+      "category": "complex",
+      "difficulty": 0.492,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.5477075465023518,
+          "r2": 0.9985600909632006,
+          "speedup": 13.239736165748308,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.25150341168046,
+          "r2": 0.9985600909632004,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.641651408746839,
+          "r2": 0.9985600909632005,
+          "speedup": 1.5622679889350488,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.455165635794401,
+          "r2": 0.9985600909631974,
+          "speedup": 1.3292911518761739,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.798196256160736,
+          "r2": 0.9985600909632005,
+          "speedup": 1.5112977928674245,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-002",
+      "category": "complex",
+      "difficulty": 0.492,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6543160416185856,
+          "r2": 0.997609456672956,
+          "speedup": 18.91752631245583,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 12.378040933981538,
+          "r2": 0.9976094566730233,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.12909472733736,
+          "r2": 0.9976094566730233,
+          "speedup": 1.5226838103331952,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.951878175139427,
+          "r2": 0.997609456673023,
+          "speedup": 1.3827311645456735,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 7.829534355551004,
+          "r2": 0.9976094566730233,
+          "speedup": 1.5809421572057758,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-003",
+      "category": "complex",
+      "difficulty": 0.39,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.950375571846962,
+          "r2": 0.9989959671643449,
+          "speedup": 20.315055102708783,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 19.306932110339403,
+          "r2": 0.998995967164343,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 12.972466880455613,
+          "r2": 0.9989959671643449,
+          "speedup": 1.488300744049486,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 12.952030403539538,
+          "r2": 0.9989959671643431,
+          "speedup": 1.4906490726784578,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 11.96946855634451,
+          "r2": 0.9989959671643449,
+          "speedup": 1.6130149821986552,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-004",
+      "category": "complex",
+      "difficulty": 0.5,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.1642198078334332,
+          "r2": 0.999070572669628,
+          "speedup": 23.018812523923632,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 26.798957493156195,
+          "r2": 0.9990705726696257,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 18.520875368267298,
+          "r2": 0.999070572669628,
+          "speedup": 1.4469595502527992,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 20.920955576002598,
+          "r2": 0.9990705726696285,
+          "speedup": 1.2809624013491987,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 16.733819851651788,
+          "r2": 0.999070572669628,
+          "speedup": 1.6014847614432088,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-005",
+      "category": "complex",
+      "difficulty": 0.392,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.4382952358573675,
+          "r2": 0.9984006663002731,
+          "speedup": 26.49176882752717,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 38.10298489406705,
+          "r2": 0.9984006663001114,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 29.84527382068336,
+          "r2": 0.9984006663002812,
+          "speedup": 1.2766840446161674,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 28.028475120663643,
+          "r2": 0.9984006663002059,
+          "speedup": 1.3594383829313674,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 26.823152555152774,
+          "r2": 0.9984006663002811,
+          "speedup": 1.4205259734373543,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-006",
+      "category": "complex",
+      "difficulty": 0.613,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7307867053896189,
+          "r2": 0.9873228594499592,
+          "speedup": 11.423301011085782,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 8.347996510565281,
+          "r2": 0.9873228484082202,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 6.274642888456583,
+          "r2": 0.9873228484082363,
+          "speedup": 1.330433724909354,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 7.1024359203875065,
+          "r2": 0.9873228484082341,
+          "speedup": 1.1753709014962597,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 6.792193045839667,
+          "r2": 0.9873228484082351,
+          "speedup": 1.229057603961738,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-007",
+      "category": "complex",
+      "difficulty": 0.581,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.109560253098607,
+          "r2": 0.9989903748577428,
+          "speedup": 12.384981717649158,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 13.74188344925642,
+          "r2": 0.9989903714437127,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 10.825205827131867,
+          "r2": 0.9989903714437415,
+          "speedup": 1.269433918273804,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 19.123524660244584,
+          "r2": 0.9989903714437741,
+          "speedup": 0.7185852866247024,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 11.047474341467023,
+          "r2": 0.9989903714437414,
+          "speedup": 1.2438936742017,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-008",
+      "category": "complex",
+      "difficulty": 0.488,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.645305659621954,
+          "r2": 0.9991614356609683,
+          "speedup": 15.817874505379866,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 26.025238446891308,
+          "r2": 0.9991614355511709,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 21.30931755527854,
+          "r2": 0.9991614355511865,
+          "speedup": 1.2213079268906284,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 33.77207927405834,
+          "r2": 0.9991614355511996,
+          "speedup": 0.7706140399499273,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 21.37409057468176,
+          "r2": 0.9991614355511873,
+          "speedup": 1.2176068196192156,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-009",
+      "category": "complex",
+      "difficulty": 0.685,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 9.122435469180346,
+          "r2": 0.9993212510994582,
+          "speedup": 73.59267240730237,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 671.3444050401449,
+          "r2": 0.9993212523411129,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 271.6218465939164,
+          "r2": 0.9993212505755676,
+          "speedup": 2.4716141704309478,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 330.4909844882786,
+          "r2": 0.9993212523463512,
+          "speedup": 2.0313546709288683,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 170.0645152013749,
+          "r2": 0.9993210804938013,
+          "speedup": 3.9475866217311713,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-010",
+      "category": "complex",
+      "difficulty": 0.584,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 16.313390573486686,
+          "r2": 0.9991117320256504,
+          "speedup": 40.590031347676934,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 662.161034764722,
+          "r2": 0.9991151823147384,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7830.2654169965535,
+          "r2": 0.9991148702016797,
+          "speedup": 0.08456431544803322,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 350.42926319874823,
+          "r2": 0.9991151823340284,
+          "speedup": 1.889571175421994,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 116.72924109734595,
+          "r2": 0.999115182347552,
+          "speedup": 5.672623487824401,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-011",
+      "category": "complex",
+      "difficulty": 0.676,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.713542103767395,
+          "r2": 0.9981591807874653,
+          "speedup": 16.665371136577217,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 11.89144398085773,
+          "r2": 0.9981591807873988,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.171023033559322,
+          "r2": 0.9981591807874652,
+          "speedup": 1.2966322227458846,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.483483085408807,
+          "r2": 0.9981591807874653,
+          "speedup": 1.134302777424095,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.218693245202303,
+          "r2": 0.9981591807874652,
+          "speedup": 1.2899272884523423,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-012",
+      "category": "complex",
+      "difficulty": 0.352,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.0340088047087193,
+          "r2": 0.9994116606556261,
+          "speedup": 16.27693257921466,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 16.83049160055816,
+          "r2": 0.9994116606556228,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 16.027805395424366,
+          "r2": 0.9994116606556261,
+          "speedup": 1.050080855446557,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 15.857867198064923,
+          "r2": 0.9994116606556261,
+          "speedup": 1.0613338723515053,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 15.13335295021534,
+          "r2": 0.9994116606556261,
+          "speedup": 1.1121455804226565,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-013",
+      "category": "complex",
+      "difficulty": 0.365,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.5368841122835875,
+          "r2": 0.9995781537110638,
+          "speedup": 38.26407076524947,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 58.80744243040681,
+          "r2": 0.9995781537110419,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 29.839606024324894,
+          "r2": 0.9995781537110624,
+          "speedup": 1.9707848147347413,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 36.72296437434852,
+          "r2": 0.9995781537110623,
+          "speedup": 1.6013805920168196,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 30.85998143069446,
+          "r2": 0.9995781537110656,
+          "speedup": 1.905621445770372,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-014",
+      "category": "complex",
+      "difficulty": 0.496,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 6.8794849794358015,
+          "r2": 0.9994170333685655,
+          "speedup": 73.05817661749794,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 502.6026286650449,
+          "r2": 0.9994170333135146,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 190.9060210455209,
+          "r2": 0.9994170333741615,
+          "speedup": 2.632722770672597,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 219.81742605566978,
+          "r2": 0.9994170333667965,
+          "speedup": 2.2864548897854826,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 374.8705096077174,
+          "r2": 0.9994170333741611,
+          "speedup": 1.3407366431437686,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "CX-015",
+      "category": "complex",
+      "difficulty": 0.315,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 3.9431005716323853,
+          "r2": 0.9995791147855785,
+          "speedup": 80.35969645515972,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 316.86636502854526,
+          "r2": 0.9995791147330724,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 60.833888594061136,
+          "r2": 0.999579114786669,
+          "speedup": 5.208714621926686,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 160.507848020643,
+          "r2": 0.9995791147875353,
+          "speedup": 1.9741487343833364,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 46.68628657236695,
+          "r2": 0.9995791147855438,
+          "speedup": 6.787140042448667,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "CX-016",
+      "category": "complex",
+      "difficulty": 0.606,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.529112458229065,
+          "r2": 0.8668337432457808,
+          "speedup": 29.473343384868006,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 45.068056555464864,
+          "r2": 0.8668337431347201,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 35.69557657465339,
+          "r2": 0.8668337431276075,
+          "speedup": 1.2625669867304135,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 62.816661316901445,
+          "r2": 0.8668337432231945,
+          "speedup": 0.7174538667074758,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 30.219936510547996,
+          "r2": 0.8668337432235514,
+          "speedup": 1.4913352494878427,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-017",
+      "category": "complex",
+      "difficulty": 0.61,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 84.49542615562677,
+          "r2": 0.9623586280009412,
+          "speedup": 41.96940149299421,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 3546.222464647144,
+          "r2": 0.9623585565648582,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3280.4577238857746,
+          "r2": 0.9623585104799159,
+          "speedup": 1.081014530023135,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3392.2956904862076,
+          "r2": 0.9623584669021918,
+          "speedup": 1.0453754000845588,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3524.548103567213,
+          "r2": 0.9621136187524212,
+          "speedup": 1.0061495432727943,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "CX-018",
+      "category": "complex",
+      "difficulty": 0.352,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 4.1243399027734995,
+          "r2": 0.9834678897591286,
+          "speedup": 53.56522517197648,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 220.92119557783008,
+          "r2": 0.9834678897456602,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 180.1192001439631,
+          "r2": 0.9834678897323385,
+          "speedup": 1.2265277405254706,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 272.12304598651826,
+          "r2": 0.9834678897266685,
+          "speedup": 0.8118430204135489,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 63.17717907950282,
+          "r2": 0.9834678897531655,
+          "speedup": 3.4968512174280613,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-019",
+      "category": "complex",
+      "difficulty": 0.655,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 6.949983537197113,
+          "r2": 0.994562858973533,
+          "speedup": 53.31797830026662,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 370.5590714234859,
+          "r2": 0.9945628589114192,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 344.496454577893,
+          "r2": 0.994562858996027,
+          "speedup": 1.0756542382345473,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 418.5730475001037,
+          "r2": 0.9945628589028407,
+          "speedup": 0.8852912858021372,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 271.3144214358181,
+          "r2": 0.9945628589257667,
+          "speedup": 1.3657920189515065,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-020",
+      "category": "complex",
+      "difficulty": 0.376,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 119.87343756482005,
+          "r2": 0.9924406826352145,
+          "speedup": 29.28691918699339,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 3510.7236786279827,
+          "r2": 0.9923120667121733,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 28630.18552144058,
+          "r2": 0.9923742388418705,
+          "speedup": 0.1226231550612507,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 19088.215257506818,
+          "r2": 0.9923597930457785,
+          "speedup": 0.18392100210873938,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 23547.455300576985,
+          "r2": 0.991881771085196,
+          "speedup": 0.14909142554108423,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "CX-021",
+      "category": "complex",
+      "difficulty": 0.69,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8445675484836102,
+          "r2": 0.998804410740329,
+          "speedup": 7.213675121781777,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 6.092435913160443,
+          "r2": 0.998804410740328,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.9366199634969234,
+          "r2": 0.9988044107403287,
+          "speedup": 1.5476312089187536,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.35170703753829,
+          "r2": 0.998804410740329,
+          "speedup": 0.959180874866305,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.303995752707124,
+          "r2": 0.9988044107403286,
+          "speedup": 1.4155301871123893,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-022",
+      "category": "complex",
+      "difficulty": 0.637,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.1565552558749914,
+          "r2": 0.9985756762041545,
+          "speedup": 10.555053411596123,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 12.207502499222755,
+          "r2": 0.9985756762041348,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.981025846675038,
+          "r2": 0.9985756762041489,
+          "speedup": 1.5295655889033992,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.204768506810069,
+          "r2": 0.9985756762041563,
+          "speedup": 1.1962547206314555,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 8.395752403885126,
+          "r2": 0.9985756762041487,
+          "speedup": 1.4540093504393656,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-023",
+      "category": "complex",
+      "difficulty": 0.466,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.624012365937233,
+          "r2": 0.9991530436032658,
+          "speedup": 11.613990950641426,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 18.861264921724796,
+          "r2": 0.999153043603174,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 12.446576030924916,
+          "r2": 0.9991530436032586,
+          "speedup": 1.5153777934479222,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 15.087632928043604,
+          "r2": 0.9991530436032656,
+          "speedup": 1.2501142499740359,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 12.595314532518387,
+          "r2": 0.9991530436032587,
+          "speedup": 1.4974826450763954,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-024",
+      "category": "complex",
+      "difficulty": 0.465,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 2.02626409009099,
+          "r2": 0.999041671831134,
+          "speedup": 13.429836678985396,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 27.212395798414946,
+          "r2": 0.9990416718312244,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 17.927297856658697,
+          "r2": 0.9990416718312518,
+          "speedup": 1.5179307007669036,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 30.334184877574444,
+          "r2": 0.999041671831235,
+          "speedup": 0.8970867655828331,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 17.690344946458936,
+          "r2": 0.9990416718312519,
+          "speedup": 1.538262587913077,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-025",
+      "category": "complex",
+      "difficulty": 0.435,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 2.3819885682314634,
+          "r2": 0.998847193130073,
+          "speedup": 15.788823254399587,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 37.60879649780691,
+          "r2": 0.9988471931300544,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 23.984555155038834,
+          "r2": 0.9988471931300584,
+          "speedup": 1.5680422778200163,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 32.96590712852776,
+          "r2": 0.9988471931300759,
+          "speedup": 1.140839120585319,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 24.075896944850683,
+          "r2": 0.9988471931300579,
+          "speedup": 1.5620932663051053,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-026",
+      "category": "complex",
+      "difficulty": 0.378,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.45377016067504883,
+          "r2": 0.9998753629766521,
+          "speedup": 12.080632532345987,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.481830565258861,
+          "r2": 0.9998753629766495,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.180951112881303,
+          "r2": 0.9998753629766521,
+          "speedup": 1.7233306551176208,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.3288355227559805,
+          "r2": 0.9998753629766521,
+          "speedup": 1.2663522410222734,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.5854855086654425,
+          "r2": 0.9998753629766521,
+          "speedup": 1.5288949159075695,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-027",
+      "category": "complex",
+      "difficulty": 0.678,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6098279263824224,
+          "r2": 0.9999674571188233,
+          "speedup": 15.243879121453915,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.296143194660544,
+          "r2": 0.9999674571188226,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.27771795168519,
+          "r2": 0.9999674571188233,
+          "speedup": 1.7613944662753833,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.7580940667539835,
+          "r2": 0.9999674571188233,
+          "speedup": 1.3755569399947143,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.522867664694786,
+          "r2": 0.9999674571188233,
+          "speedup": 1.6832094772226058,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-028",
+      "category": "complex",
+      "difficulty": 0.393,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.824666814878583,
+          "r2": 0.9999647825919543,
+          "speedup": 17.259028938283986,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 14.232948422431946,
+          "r2": 0.999964782591954,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.970748236402869,
+          "r2": 0.9999647825919546,
+          "speedup": 1.7856477209290398,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 15.834982972592115,
+          "r2": 0.9999647825919546,
+          "speedup": 0.8988294112514651,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 8.231509011238813,
+          "r2": 0.9999647825919546,
+          "speedup": 1.729081314616691,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-029",
+      "category": "complex",
+      "difficulty": 0.333,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.9936131536960602,
+          "r2": 0.999939665595005,
+          "speedup": 23.29183795989067,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 23.14307657070458,
+          "r2": 0.9999396655950026,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 12.75779283605516,
+          "r2": 0.9999396655950051,
+          "speedup": 1.8140345174205428,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 14.42198152653873,
+          "r2": 0.9999396655950052,
+          "speedup": 1.6047085158247951,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 13.051027432084084,
+          "r2": 0.9999396655950051,
+          "speedup": 1.7732762183773085,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-030",
+      "category": "complex",
+      "difficulty": 0.349,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.1182748712599277,
+          "r2": 0.9999147924014726,
+          "speedup": 24.53858146465696,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 27.44087902829051,
+          "r2": 0.9999147924014715,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 14.769237954169512,
+          "r2": 0.9999147924014726,
+          "speedup": 1.857975280338933,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 18.859039526432753,
+          "r2": 0.9999147924014726,
+          "speedup": 1.455051779801908,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 14.80528200045228,
+          "r2": 0.9999147924014726,
+          "speedup": 1.8534519658222133,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-031",
+      "category": "complex",
+      "difficulty": 0.425,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.4609654899686575,
+          "r2": 0.9956659958948513,
+          "speedup": 3.403282559329789,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.972078371793032,
+          "r2": 0.9956659958947706,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.3684324007481337,
+          "r2": 0.9956659958948512,
+          "speedup": 1.4760807937510416,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.511683480814099,
+          "r2": 0.9956659958948374,
+          "speedup": 1.102045033286745,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.761203959584236,
+          "r2": 0.9956659958948513,
+          "speedup": 1.3219379818856316,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-032",
+      "category": "complex",
+      "difficulty": 0.318,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 2.29920563288033,
+          "r2": 0.9986383887782879,
+          "speedup": 4.176470451228773,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.602564387023449,
+          "r2": 0.9986383887782877,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.567280575633049,
+          "r2": 0.9986383887782879,
+          "speedup": 1.7248213479759016,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 7.013357477262616,
+          "r2": 0.9986383887782879,
+          "speedup": 1.3691822238000944,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.802294937893748,
+          "r2": 0.9986383887782879,
+          "speedup": 1.6549597167684156,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-033",
+      "category": "complex",
+      "difficulty": 0.557,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 3.2154202926903963,
+          "r2": 0.9993987845879303,
+          "speedup": 5.140228709008789,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 16.527995700016618,
+          "r2": 0.9993987845879656,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 11.293010553345084,
+          "r2": 0.9993987845879234,
+          "speedup": 1.463559749806564,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 14.74753045476973,
+          "r2": 0.9993987845879069,
+          "speedup": 1.1207297215427034,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 11.322978185489774,
+          "r2": 0.9993987845879183,
+          "speedup": 1.4596862617996558,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-034",
+      "category": "complex",
+      "difficulty": 0.672,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 3.429710865020752,
+          "r2": 0.998869995772466,
+          "speedup": 6.105113568477259,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 20.938774337992072,
+          "r2": 0.998869995772466,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 11.882251128554344,
+          "r2": 0.9988699957724656,
+          "speedup": 1.7621891770721725,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 13.151675462722778,
+          "r2": 0.9988699957724656,
+          "speedup": 1.5920993790746367,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 11.843894375488162,
+          "r2": 0.9988699957724656,
+          "speedup": 1.7678960715258027,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "CX-035",
+      "category": "complex",
+      "difficulty": 0.434,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 4.584472393617034,
+          "r2": 0.9986329980856175,
+          "speedup": 6.23122113945347,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 28.566861292347312,
+          "r2": 0.9986329980855092,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 18.315909896045923,
+          "r2": 0.9986329980856312,
+          "speedup": 1.5596747010922118,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 22.78774604201317,
+          "r2": 0.9986329980856349,
+          "speedup": 1.253606268899054,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 18.2256530970335,
+          "r2": 0.9986329980856326,
+          "speedup": 1.5673984981639422,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-001",
+      "category": "reality",
+      "difficulty": 0.438,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.5050159525126219,
+          "r2": 0.999661474194919,
+          "speedup": 11.563358593507596,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.83968055434525,
+          "r2": 0.9996614741949177,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.1845320481806993,
+          "r2": 0.9996614741949189,
+          "speedup": 1.8337641028550546,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.136266885325313,
+          "r2": 0.9996614741949188,
+          "speedup": 1.4118239263194852,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.5132821649312973,
+          "r2": 0.999661474194919,
+          "speedup": 1.6621723733537486,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-002",
+      "category": "reality",
+      "difficulty": 0.63,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8170264773070812,
+          "r2": 0.9978420611469193,
+          "speedup": 17.895428517039402,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 14.621038921177387,
+          "r2": 0.9978420611469199,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.842773269861937,
+          "r2": 0.9978420611469203,
+          "speedup": 1.6534449629064918,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 12.149212881922722,
+          "r2": 0.9978420611469201,
+          "speedup": 1.2034556529116869,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.15104546584189,
+          "r2": 0.9978420611469203,
+          "speedup": 1.5977451948800105,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-003",
+      "category": "reality",
+      "difficulty": 0.47,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.4989693406969309,
+          "r2": 0.999479428225474,
+          "speedup": 13.824869333853462,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 6.89818593673408,
+          "r2": 0.9994794282254729,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.6375094205141068,
+          "r2": 0.9994794282254741,
+          "speedup": 1.8964035935772576,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.479853367432952,
+          "r2": 0.9994794282254736,
+          "speedup": 1.2588267375419844,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.9414328057318926,
+          "r2": 0.9994794282254741,
+          "speedup": 1.750172152295044,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-004",
+      "category": "reality",
+      "difficulty": 0.535,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6226480472832918,
+          "r2": 0.9979509498292519,
+          "speedup": 15.43446525067,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.610239649191499,
+          "r2": 0.997950949829253,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.068736849352717,
+          "r2": 0.9979509498292521,
+          "speedup": 1.8959831482312473,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.919418228790164,
+          "r2": 0.9979509498292394,
+          "speedup": 1.3888797195702702,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.465412512421608,
+          "r2": 0.9979509498292521,
+          "speedup": 1.7583740710055582,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-005",
+      "category": "reality",
+      "difficulty": 0.549,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.4443512298166752,
+          "r2": 0.9994668882790518,
+          "speedup": 11.718632268503526,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.207188660278916,
+          "r2": 0.9994668882790517,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.766075311228633,
+          "r2": 0.9994668882790518,
+          "speedup": 1.8825187583074128,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.707564901560545,
+          "r2": 0.9994668882790518,
+          "speedup": 1.404476738380808,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.1047440133988857,
+          "r2": 0.9994668882790518,
+          "speedup": 1.6771716566025041,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-006",
+      "category": "reality",
+      "difficulty": 0.547,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6519544404000044,
+          "r2": 0.9976614741850679,
+          "speedup": 15.023371116197396,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.794553508982062,
+          "r2": 0.9976614741851725,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.576515104621649,
+          "r2": 0.9976614741851663,
+          "speedup": 1.7563932537122744,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.633601479232311,
+          "r2": 0.9976614741851512,
+          "speedup": 1.1344690315556447,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.738860461860895,
+          "r2": 0.9976614741851664,
+          "speedup": 1.7067070325327371,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-007",
+      "category": "reality",
+      "difficulty": 0.726,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.806174473837018,
+          "r2": 0.9999141235752679,
+          "speedup": 67.86222181532209,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 54.708790965378284,
+          "r2": 0.9999141235752673,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 33.86706439778209,
+          "r2": 0.9999141235752661,
+          "speedup": 1.6153980847823675,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.954182732850313,
+          "r2": 0.9999141235752675,
+          "speedup": 6.109858665790627,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 15.020253835245967,
+          "r2": 0.9999141235752678,
+          "speedup": 3.6423346479671785,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-008",
+      "category": "reality",
+      "difficulty": 0.656,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6969638634473085,
+          "r2": 0.9995874049136472,
+          "speedup": 13.926113026597854,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.705997537821531,
+          "r2": 0.9995874049136436,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.557247903198004,
+          "r2": 0.9995874049136443,
+          "speedup": 1.7465475190041577,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 7.348856423050165,
+          "r2": 0.9995874049136466,
+          "speedup": 1.320749376376172,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.847213556990027,
+          "r2": 0.9995874049136443,
+          "speedup": 1.6599355305260806,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-009",
+      "category": "reality",
+      "difficulty": 0.693,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7952004671096802,
+          "r2": 0.9994152606469346,
+          "speedup": 18.037424166120115,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 14.34336812235415,
+          "r2": 0.9994152606469346,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.26211685873568,
+          "r2": 0.9994152606469346,
+          "speedup": 1.5486058253331174,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 12.074110098183155,
+          "r2": 0.9994152606469346,
+          "speedup": 1.1879441222349347,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.099753573536873,
+          "r2": 0.9994152606469346,
+          "speedup": 1.5762369833911007,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-010",
+      "category": "reality",
+      "difficulty": 0.662,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.0860601905733347,
+          "r2": 0.9991443951936316,
+          "speedup": 25.777938182388045,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 27.996392454952,
+          "r2": 0.9991443951930241,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 21.005231654271483,
+          "r2": 0.9991443951935839,
+          "speedup": 1.3328295024662984,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 22.0314955804497,
+          "r2": 0.9991443951935438,
+          "speedup": 1.270744074215072,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 20.114547107368708,
+          "r2": 0.999144395193583,
+          "speedup": 1.3918480145494243,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-011",
+      "category": "reality",
+      "difficulty": 0.516,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.30866614542901516,
+          "r2": 0.9991679172372736,
+          "speedup": 8.431724561386305,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.6025879196822643,
+          "r2": 0.9991679172372736,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.3961696531623602,
+          "r2": 0.9991679172372736,
+          "speedup": 1.8640914546361438,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.8146168440580368,
+          "r2": 0.9991679172372736,
+          "speedup": 1.4342355126948363,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.678805099800229,
+          "r2": 0.9991679172372736,
+          "speedup": 1.5502621001043906,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-012",
+      "category": "reality",
+      "difficulty": 0.525,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.28883456252515316,
+          "r2": 0.9965177198353234,
+          "speedup": 9.05770332961182,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.6161777786910534,
+          "r2": 0.9965177198353234,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.4034726191312075,
+          "r2": 0.9965177198353234,
+          "speedup": 1.8640746837729885,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.8241610378026962,
+          "r2": 0.9965177198353234,
+          "speedup": 1.4341813713126914,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.6855590511113405,
+          "r2": 0.9965177198353234,
+          "speedup": 1.5521128001811195,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-013",
+      "category": "reality",
+      "difficulty": 0.544,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.37174136377871037,
+          "r2": 0.9999807882367717,
+          "speedup": 10.136131583216264,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.768019378185272,
+          "r2": 0.9999807882367717,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.016324084252119,
+          "r2": 0.9999807882367717,
+          "speedup": 1.8687568172270679,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.059195587411523,
+          "r2": 0.9999807882367717,
+          "speedup": 1.2317026716730808,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.392563736066222,
+          "r2": 0.9999807882367717,
+          "speedup": 1.5748877747267584,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-014",
+      "category": "reality",
+      "difficulty": 0.406,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.49941567704081535,
+          "r2": 0.9997890112897269,
+          "speedup": 14.657500743598757,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.320185657590628,
+          "r2": 0.9997890112897257,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.13283403031528,
+          "r2": 0.9997890112897269,
+          "speedup": 1.7712266217068957,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.312502151355147,
+          "r2": 0.9997890112897269,
+          "speedup": 1.3779167422498544,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.489120561629534,
+          "r2": 0.9997890112897269,
+          "speedup": 1.6306502703802253,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-015",
+      "category": "reality",
+      "difficulty": 0.776,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.429393257945776,
+          "r2": 0.9994979606022121,
+          "speedup": 8.021834044560602,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.4445214550942183,
+          "r2": 0.9994979606022115,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.1107138600200415,
+          "r2": 0.9994979606022121,
+          "speedup": 1.631922507516728,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.8778400737792253,
+          "r2": 0.9994979606022121,
+          "speedup": 1.196912047503327,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.6329713873565197,
+          "r2": 0.9994979606022121,
+          "speedup": 1.3082259350157572,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "RL-016",
+      "category": "reality",
+      "difficulty": 0.478,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7647012826055288,
+          "r2": 0.9987684114984092,
+          "speedup": 7.573042233100016,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.79111510887742,
+          "r2": 0.9987684114983982,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.766590030863881,
+          "r2": 0.9987684114984087,
+          "speedup": 1.537495469754962,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.46513039059937,
+          "r2": 0.9987684114984102,
+          "speedup": 1.2969643890063554,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.185092868283391,
+          "r2": 0.9987684114984087,
+          "speedup": 1.3837482921263764,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-001",
+      "category": "optfn",
+      "difficulty": 0.77,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 25.782763259485364,
+          "r2": 0.9309403861345791,
+          "speedup": 18.228797883256256,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "lmfit": {
+          "med_ms": 469.98878032900393,
+          "r2": 0.9540993221818254,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 11.97781041264534,
+          "r2": 0.954099322182586,
+          "speedup": 39.238288479906345,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 7.709505269303918,
+          "r2": 0.9540993221825661,
+          "speedup": 60.96224905640912,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 7.642216514796019,
+          "r2": 0.9540993221825883,
+          "speedup": 61.499013986199344,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-002",
+      "category": "optfn",
+      "difficulty": 0.707,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 33.4791939239949,
+          "r2": 0.8088487429471175,
+          "speedup": 24.856340979869103,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 832.170259905979,
+          "r2": 0.7989867326201284,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 6.311774952337146,
+          "r2": 0.6432776823768989,
+          "speedup": 131.84409554999107,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.80073299817741,
+          "r2": 0.6432776807570415,
+          "speedup": 77.04757260885953,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.00809932500124,
+          "r2": 0.6432776817318483,
+          "speedup": 92.3802269360373,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-003",
+      "category": "optfn",
+      "difficulty": 0.777,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.133454870432615,
+          "r2": 0.987053382298379,
+          "speedup": 46.802747482068575,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 1223.1174891348928,
+          "r2": 0.9870533822908646,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.67743301205337,
+          "r2": 0.9577845577648626,
+          "speedup": 140.95383824178464,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.03379700705409,
+          "r2": 0.9577845577688138,
+          "speedup": 121.89976419445209,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.091103492304683,
+          "r2": 0.9577845577707544,
+          "speedup": 240.24604704729776,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-004",
+      "category": "optfn",
+      "difficulty": 0.764,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 36.8436174467206,
+          "r2": 0.9576246339144706,
+          "speedup": 37.501383114580385,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1381.686613196507,
+          "r2": 0.9874612614394374,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.122160797938704,
+          "r2": 0.9577968878335408,
+          "speedup": 170.11318140206737,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 9.384833509102464,
+          "r2": 0.9577968878421291,
+          "speedup": 147.22547947775445,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.9513795636594296,
+          "r2": 0.9577968878435315,
+          "speedup": 349.6719540445533,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-005",
+      "category": "optfn",
+      "difficulty": 0.858,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.765352580696344,
+          "r2": 0.08706875644904422,
+          "speedup": 14.390778265559211,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 385.1742541883141,
+          "r2": 0.0871385117866138,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 229.52995565719903,
+          "r2": 0.0308175221569732,
+          "speedup": 1.6781001550994434,
+          "success": false,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 26.892712572589517,
+          "r2": -2.5324359054224033e-08,
+          "speedup": 14.322625623898727,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 21.245046518743038,
+          "r2": -1.327424348218642e-08,
+          "speedup": 18.130073466702058,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-006",
+      "category": "optfn",
+      "difficulty": 0.74,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 27.479673037305474,
+          "r2": 0.34817924829463864,
+          "speedup": 29.019270421919988,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 797.440062975511,
+          "r2": 0.40887465216445595,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.476639812812209,
+          "r2": 0.3481792482946362,
+          "speedup": 321.98467409357465,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.859099630266428,
+          "r2": 0.34817924829464764,
+          "speedup": 164.11272121452402,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.925858600065112,
+          "r2": 0.3481792482946383,
+          "speedup": 272.54907771611545,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-007",
+      "category": "optfn",
+      "difficulty": 0.88,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.42904664389789,
+          "r2": 0.9894641070295429,
+          "speedup": 43.0347698110324,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1137.367938645184,
+          "r2": 0.9962871037709644,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.896270465105772,
+          "r2": 0.9979061936523704,
+          "speedup": 114.9289464809537,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 12.839792063459754,
+          "r2": 0.9978909097503514,
+          "speedup": 88.5814920540632,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 6.16066949442029,
+          "r2": 0.9895098564151874,
+          "speedup": 184.61758737021952,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-008",
+      "category": "optfn",
+      "difficulty": 0.954,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 28.218318708240986,
+          "r2": 0.782871040543409,
+          "speedup": 16.651153410409762,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 469.86755379475653,
+          "r2": 0.7840974659688547,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 26.524666463956237,
+          "r2": 0.793002377400052,
+          "speedup": 17.71436238164385,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 30.072948429733515,
+          "r2": 0.7930030177005696,
+          "speedup": 15.624259619658456,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 26.588200824335217,
+          "r2": 0.7930018943495951,
+          "speedup": 17.672032677167977,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "OF-009",
+      "category": "optfn",
+      "difficulty": 0.938,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 38.67377690039575,
+          "r2": 0.7446979334342778,
+          "speedup": 19.728338941724136,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 762.9693788476288,
+          "r2": 0.7765434717203119,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.812235504388809,
+          "r2": 0.7736532017125787,
+          "speedup": 97.66338692926024,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 16.76046964712441,
+          "r2": 0.7765434683552654,
+          "speedup": 45.521957016194435,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 18.73738900758326,
+          "r2": 0.773653200330367,
+          "speedup": 40.71908730393788,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-010",
+      "category": "optfn",
+      "difficulty": 0.706,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 27.993898605927825,
+          "r2": 0.960245759042825,
+          "speedup": 38.040453135951275,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "lmfit": {
+          "med_ms": 1064.900588011369,
+          "r2": 0.9923265573567361,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 13.16406112164259,
+          "r2": 0.965704174663835,
+          "speedup": 80.89453385024184,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 13.911367626860738,
+          "r2": 0.9923265573415401,
+          "speedup": 76.54895022364356,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 31.22148849070072,
+          "r2": 0.9923265573403017,
+          "speedup": 34.107937817524245,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "OF-011",
+      "category": "optfn",
+      "difficulty": 0.983,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 27.701848885044456,
+          "r2": 0.5158618450143115,
+          "speedup": 24.642057821606226,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 682.6305619906634,
+          "r2": 0.5492939484448978,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.79475467465818,
+          "r2": 0.5135286037595073,
+          "speedup": 69.69348234487416,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.875016588717699,
+          "r2": 0.5135284641754622,
+          "speedup": 76.91597589332426,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.9724404234439135,
+          "r2": 0.5135284643527869,
+          "speedup": 137.2828035851807,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-012",
+      "category": "optfn",
+      "difficulty": 0.722,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.190233882516623,
+          "r2": 0.968788624323249,
+          "speedup": 38.88562708822286,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 1018.4236681088805,
+          "r2": 0.9687886243876896,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 14.762654202058911,
+          "r2": 0.8230771425958343,
+          "speedup": 68.98648807792596,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 14.99453722499311,
+          "r2": 0.9687886243745303,
+          "speedup": 67.91964652375916,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.299287615343928,
+          "r2": 0.8223964807047659,
+          "speedup": 192.18124058034996,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "OF-013",
+      "category": "optfn",
+      "difficulty": 0.852,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 28.284881031140685,
+          "r2": 0.07535875379281742,
+          "speedup": 32.99440729963069,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 933.2428851630539,
+          "r2": 0.08121831493107146,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.946003090590239,
+          "r2": 0.03486415015954014,
+          "speedup": 93.83094662880013,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 18.99337745271623,
+          "r2": 0.03486424859261528,
+          "speedup": 49.13517290362654,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 61.144948936998844,
+          "r2": 0.03486426103525275,
+          "speedup": 15.26279605081734,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-014",
+      "category": "optfn",
+      "difficulty": 0.974,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 33.46778894774616,
+          "r2": 0.9921038780119418,
+          "speedup": 32.53322635912458,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1088.8151535764337,
+          "r2": 0.9994622395227227,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.533775409683585,
+          "r2": 0.9994622395227086,
+          "speedup": 144.5245038997205,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 12.69052503630519,
+          "r2": 0.9994622395213197,
+          "speedup": 85.79748674397156,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.304723046720028,
+          "r2": 0.9921128695070225,
+          "speedup": 205.25391127622785,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-015",
+      "category": "optfn",
+      "difficulty": 0.991,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 28.701374074444175,
+          "r2": 0.20822899773921366,
+          "speedup": 27.863472351261056,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 799.7199429664761,
+          "r2": 0.20823095624852928,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.497847545892,
+          "r2": 0.011127195667792078,
+          "speedup": 106.65993647798761,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 38.43929688446224,
+          "r2": 0.08429040182819558,
+          "speedup": 20.80474950856178,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 8.792688371613622,
+          "r2": 0.007243242259528659,
+          "speedup": 90.95283594358897,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "OF-016",
+      "category": "optfn",
+      "difficulty": 0.858,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 28.434464242309332,
+          "r2": 0.9574003099133392,
+          "speedup": 53.296867570885965,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1515.4678751714528,
+          "r2": 0.9873492220442245,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 6.589781027287245,
+          "r2": 0.9574924198070398,
+          "speedup": 229.9724177322644,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.968690410256386,
+          "r2": 0.9574924198420531,
+          "speedup": 168.97315057707857,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.811290254816413,
+          "r2": 0.9574924198375967,
+          "speedup": 397.62594130854296,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-017",
+      "category": "optfn",
+      "difficulty": 0.944,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.5256327111274,
+          "r2": 0.877655636953007,
+          "speedup": 38.07129969723961,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 1009.8653126042336,
+          "r2": 0.8776556370292579,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.922794807702303,
+          "r2": 0.4420596875728974,
+          "speedup": 170.50486221318246,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 17.207777127623558,
+          "r2": 0.8776556369140585,
+          "speedup": 58.686563936436734,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.543525563552976,
+          "r2": 0.4014902715780082,
+          "speedup": 182.17022741697022,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "OF-018",
+      "category": "optfn",
+      "difficulty": 0.732,
+      "winner": "scipy-ls-dogbox",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 25.942977517843246,
+          "r2": 0.9574003099133392,
+          "speedup": 56.14787707773461,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1456.6431127022952,
+          "r2": 0.9873492220442245,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 6.613370263949037,
+          "r2": 0.9574924198070398,
+          "speedup": 220.25730521135088,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.814278524369001,
+          "r2": 0.9574924198420531,
+          "speedup": 165.2594830847569,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.633159678429365,
+          "r2": 0.9574924198375967,
+          "speedup": 400.9301108758341,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "OF-019",
+      "category": "optfn",
+      "difficulty": 0.844,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.5770370606333,
+          "r2": 0.9602557093233777,
+          "speedup": 36.97502315096594,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 982.686560600996,
+          "r2": 0.9923495461401199,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.643430588766932,
+          "r2": 0.9923495461309177,
+          "speedup": 101.90217594822221,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 13.298356207087636,
+          "r2": 0.9923495461205507,
+          "speedup": 73.89534054421348,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.713430423289537,
+          "r2": 0.9604090138997697,
+          "speedup": 101.16781793637439,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "OF-020",
+      "category": "optfn",
+      "difficulty": 0.803,
+      "winner": "scipy-ls-lm",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 26.34551841765642,
+          "r2": 0.809892154566979,
+          "speedup": 45.759859938486905,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "lmfit": {
+          "med_ms": 1205.567232798785,
+          "r2": 0.9468460399902717,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.0191611517220736,
+          "r2": 0.8187582910058405,
+          "speedup": 240.1929717648446,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.476832510903478,
+          "r2": 0.8099319423299336,
+          "speedup": 115.06982015261995,
+          "success": true,
+          "ill_conditioned": true
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.588886793702841,
+          "r2": 0.8099319337711651,
+          "speedup": 215.70793564062384,
+          "success": true,
+          "ill_conditioned": true
+        }
+      }
+    },
+    {
+      "id": "SC-001",
+      "category": "scaling",
+      "difficulty": 0.584,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.3344739563763142,
+          "r2": 0.9998852426478861,
+          "speedup": 10.986020118216418,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 14.660557731986046,
+          "r2": 0.9998852426478857,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.830658858641982,
+          "r2": 0.9998852426478861,
+          "speedup": 1.6601884374277156,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 9.297606069594622,
+          "r2": 0.9998852426478861,
+          "speedup": 1.5768099468022794,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 10.555589105933905,
+          "r2": 0.9998852426478861,
+          "speedup": 1.3888905285015785,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-002",
+      "category": "scaling",
+      "difficulty": 0.602,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.5935162082314491,
+          "r2": 0.9986223038129667,
+          "speedup": 10.464908022968688,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 16.676000552251935,
+          "r2": 0.9986223038129624,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.957298170775175,
+          "r2": 0.9986223038129667,
+          "speedup": 1.6747515506963782,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 14.249577652662992,
+          "r2": 0.9986223038129672,
+          "speedup": 1.170280338037632,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 10.140684200450778,
+          "r2": 0.9986223038129667,
+          "speedup": 1.644465030427695,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-003",
+      "category": "scaling",
+      "difficulty": 0.783,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 4.492907086387277,
+          "r2": 0.9998092961293668,
+          "speedup": 20.711574285367966,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 93.05517887696624,
+          "r2": 0.9998092961293746,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 28.137874556705356,
+          "r2": 0.9998092961293749,
+          "speedup": 3.307114710794347,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 44.5445126388222,
+          "r2": 0.9998092961293749,
+          "speedup": 2.089037983903436,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 42.017455445602536,
+          "r2": 0.9998092961293749,
+          "speedup": 2.2146790635011007,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-004",
+      "category": "scaling",
+      "difficulty": 0.707,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 2.078591613098979,
+          "r2": 0.9984538036411817,
+          "speedup": 13.834446730394221,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 28.75616494566202,
+          "r2": 0.9984538036411766,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 16.64973166771233,
+          "r2": 0.9984538036411821,
+          "speedup": 1.7271248281692646,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 17.916113138198853,
+          "r2": 0.9984538036411619,
+          "speedup": 1.6050448400189632,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 16.554557252675295,
+          "r2": 0.9984538036411821,
+          "speedup": 1.7370543051530352,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-005",
+      "category": "scaling",
+      "difficulty": 0.88,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 5.922611569985747,
+          "r2": 0.9998374757326727,
+          "speedup": 14.209487808572433,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 84.15727689862251,
+          "r2": 0.9998374757326732,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 50.34611653536558,
+          "r2": 0.9998374757326738,
+          "speedup": 1.671574347536941,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 93.53937348350883,
+          "r2": 0.9998374757326738,
+          "speedup": 0.8996989584654381,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 51.15244467742741,
+          "r2": 0.9998374757326738,
+          "speedup": 1.6452249238394563,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-006",
+      "category": "scaling",
+      "difficulty": 0.687,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 5.1826536655426025,
+          "r2": 0.9980896980708198,
+          "speedup": 18.568436297807374,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 96.2337744422257,
+          "r2": 0.9980896980707928,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 45.0658134650439,
+          "r2": 0.9980896980706944,
+          "speedup": 2.1354052449729135,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 91.42595645971596,
+          "r2": 0.9980896980708197,
+          "speedup": 1.0525870132365325,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 39.913766318932176,
+          "r2": 0.9980896980706975,
+          "speedup": 2.411042187130795,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-007",
+      "category": "scaling",
+      "difficulty": 0.641,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 28.0389201361686,
+          "r2": 0.9997961961679899,
+          "speedup": 4.707377150221698,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 131.98977196589112,
+          "r2": 0.9997961961679889,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 74.79613251052797,
+          "r2": 0.9997961961679898,
+          "speedup": 1.7646603846437225,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 142.8481840994209,
+          "r2": 0.9997961961679892,
+          "speedup": 0.9239863481500581,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 63.293542014434934,
+          "r2": 0.9997961961679898,
+          "speedup": 2.0853592288418477,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "SC-008",
+      "category": "scaling",
+      "difficulty": 0.822,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 19.22001107595861,
+          "r2": 0.9977299311804112,
+          "speedup": 5.554918157471414,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 106.76558851264417,
+          "r2": 0.9977299311803804,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 55.94445439055562,
+          "r2": 0.9977299311804004,
+          "speedup": 1.9084213024458065,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 80.00692958012223,
+          "r2": 0.9977299311804108,
+          "speedup": 1.334454266311079,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 51.47467949427664,
+          "r2": 0.9977299311804003,
+          "speedup": 2.0741379948662955,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-001",
+      "category": "edge",
+      "difficulty": 0.998,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 2.018502913415432,
+          "r2": 0.9998896893361403,
+          "speedup": 9.234726054986018,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 18.640321446582675,
+          "r2": 0.9998896893360861,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 22.83127815462649,
+          "r2": 0.9998896893360758,
+          "speedup": 0.8164379287195287,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 42.852211045101285,
+          "r2": 0.9998896893359518,
+          "speedup": 0.43499089059754764,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 11.95737742818892,
+          "r2": 0.9998891669585757,
+          "speedup": 1.558897137648181,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-002",
+      "category": "edge",
+      "difficulty": 0.775,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.5492451600730419,
+          "r2": 0.9989688262026652,
+          "speedup": 10.339020513016164,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.678656976670027,
+          "r2": 0.9989688262026644,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.17221786826849,
+          "r2": 0.9989688262026652,
+          "speedup": 1.7901219942909032,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.914628807455301,
+          "r2": 0.9989688262026654,
+          "speedup": 1.1554599948740227,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.471857635304332,
+          "r2": 0.9989688262026652,
+          "speedup": 1.6356249515894261,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-003",
+      "category": "edge",
+      "difficulty": 0.762,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3503672778606415,
+          "r2": 0.8828952341586922,
+          "speedup": 9.317657441175532,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.2646022737026215,
+          "r2": 0.8828952341595548,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.9029618706554174,
+          "r2": 0.8828952341585073,
+          "speedup": 1.7155374072619902,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.8270494658499956,
+          "r2": 0.8828952341604468,
+          "speedup": 1.154773665313659,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.1998395677655935,
+          "r2": 0.8828952341585055,
+          "speedup": 1.4840183445825195,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-004",
+      "category": "edge",
+      "difficulty": 0.921,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6903621833771467,
+          "r2": 0.9991934856086946,
+          "speedup": 13.061312954814419,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.017036529257894,
+          "r2": 0.9991934856086925,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.545433843508363,
+          "r2": 0.9991934856086946,
+          "speedup": 1.6260290508764224,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.590064382180572,
+          "r2": 0.9991934856086945,
+          "speedup": 1.368277456232418,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.4513996001333,
+          "r2": 0.9991934856086946,
+          "speedup": 1.654077336219749,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-005",
+      "category": "edge",
+      "difficulty": 0.76,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.4767563659697771,
+          "r2": 0.9999055372649592,
+          "speedup": 8.541399348424758,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.072166513651609,
+          "r2": 0.9999055372649592,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.3028680589050055,
+          "r2": 0.9999055372649592,
+          "speedup": 1.7683021386765383,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.155978862196207,
+          "r2": 0.9999055372649592,
+          "speedup": 1.290302214133918,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.564475405961275,
+          "r2": 0.9999055372649592,
+          "speedup": 1.5879140444028501,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-006",
+      "category": "edge",
+      "difficulty": 0.813,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.48363045789301395,
+          "r2": 0.9996684683500795,
+          "speedup": 9.245558274523548,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.471433581784368,
+          "r2": 0.9996684683500786,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.814179752022028,
+          "r2": 0.9996684683500795,
+          "speedup": 1.5888940919895325,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.250774392858148,
+          "r2": 0.9996684683500747,
+          "speedup": 1.0519103505697587,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.3669909462332726,
+          "r2": 0.9996684683500795,
+          "speedup": 1.3280206728166761,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-007",
+      "category": "edge",
+      "difficulty": 0.749,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8670871611684561,
+          "r2": 0.9993219570133088,
+          "speedup": 14.805362138776207,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 12.837539426982403,
+          "r2": 0.999321957013356,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.40354454703629,
+          "r2": 0.9993219570132977,
+          "speedup": 1.5276338877158528,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.632372461259365,
+          "r2": 0.9993219570133207,
+          "speedup": 1.2074012148989224,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 8.226535748690367,
+          "r2": 0.9993219570132977,
+          "speedup": 1.5605036942829904,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-008",
+      "category": "edge",
+      "difficulty": 0.898,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6147024687379599,
+          "r2": 0.9741774176092585,
+          "speedup": 10.298142096952153,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 6.3302933704108,
+          "r2": 0.9741774176088912,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.623239394277334,
+          "r2": 0.9741774176092584,
+          "speedup": 1.3692333081965136,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.502534098923206,
+          "r2": 0.9741774176092597,
+          "speedup": 1.1504323747215994,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.883945221081376,
+          "r2": 0.9741774176092585,
+          "speedup": 1.296143401258129,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-009",
+      "category": "edge",
+      "difficulty": 0.887,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6509679369628429,
+          "r2": 0.9990751803846818,
+          "speedup": 12.179498377258586,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.928462931886315,
+          "r2": 0.9990751803846781,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.698537988588214,
+          "r2": 0.9990751803846818,
+          "speedup": 1.6874319099138768,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.60261046141386,
+          "r2": 0.9990751803846819,
+          "speedup": 1.200807313746712,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.709401400759816,
+          "r2": 0.9990751803846818,
+          "speedup": 1.6835394261799674,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-010",
+      "category": "edge",
+      "difficulty": 0.815,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8369095157831907,
+          "r2": 0.9998891129634911,
+          "speedup": 10.222610995301432,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 8.555400418117642,
+          "r2": 0.9998891129632206,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.454995531588793,
+          "r2": 0.9998891129634881,
+          "speedup": 1.147606377745787,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 11.562032159417868,
+          "r2": 0.9998891129634805,
+          "speedup": 0.7399564626836668,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.151762118563056,
+          "r2": 0.999889112963487,
+          "speedup": 0.9348364071618757,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-011",
+      "category": "edge",
+      "difficulty": 0.718,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6831418722867966,
+          "r2": 0.9999229691151165,
+          "speedup": 10.915008902303693,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.456499617546797,
+          "r2": 0.9999229691151166,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.728474421426654,
+          "r2": 0.9999229691151166,
+          "speedup": 1.576935593382581,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 7.435751613229513,
+          "r2": 0.9999229691151166,
+          "speedup": 1.0027903035760863,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.806486889719963,
+          "r2": 0.9999229691151166,
+          "speedup": 1.551340883399607,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-012",
+      "category": "edge",
+      "difficulty": 0.869,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8683511987328529,
+          "r2": 0.9993981194194155,
+          "speedup": 14.727110850131652,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 12.788304360583425,
+          "r2": 0.9993981194194151,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.271062513813376,
+          "r2": 0.9993981194194155,
+          "speedup": 1.5461501275351106,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 9.144537150859833,
+          "r2": 0.9993981194194147,
+          "speedup": 1.3984638204877302,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 7.957383990287781,
+          "r2": 0.9993981194194155,
+          "speedup": 1.6070990637365148,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-013",
+      "category": "edge",
+      "difficulty": 0.952,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.30774553306400776,
+          "r2": 0.9490331506664267,
+          "speedup": 7.634369252442014,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.3494430352002382,
+          "r2": 0.9490331506664618,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.2422793079167604,
+          "r2": 0.9490331506664228,
+          "speedup": 1.891235747249252,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.0287767983973026,
+          "r2": 0.949033150666286,
+          "speedup": 1.158058903796739,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.6811331734061241,
+          "r2": 0.9490331506664228,
+          "speedup": 1.3975353483984017,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-014",
+      "category": "edge",
+      "difficulty": 0.807,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6417525000870228,
+          "r2": 0.99921530112077,
+          "speedup": 11.885594342572995,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.627609884366393,
+          "r2": 0.9992153011207696,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.748988827690482,
+          "r2": 0.9992153011207701,
+          "speedup": 1.3267741707250111,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.642241030931473,
+          "r2": 0.9992153011207701,
+          "speedup": 1.1483488552803598,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.5615275632590055,
+          "r2": 0.9992153011207701,
+          "speedup": 1.3714954745089283,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-015",
+      "category": "edge",
+      "difficulty": 0.725,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6234615575522184,
+          "r2": 0.9999288947061894,
+          "speedup": 11.334640651263918,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.066712714731693,
+          "r2": 0.9999288947061894,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.552323604002595,
+          "r2": 0.9999288947061894,
+          "speedup": 1.5523309257976172,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.466829450801015,
+          "r2": 0.9999288947061892,
+          "speedup": 1.0927631180773407,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.897476406767964,
+          "r2": 0.9999288947061894,
+          "speedup": 1.4429294044104017,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-016",
+      "category": "edge",
+      "difficulty": 0.901,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7392123807221651,
+          "r2": 0.9997320383823507,
+          "speedup": 12.006439902069141,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 8.875309024006128,
+          "r2": 0.9997320383820433,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.250917376950383,
+          "r2": 0.999732038382316,
+          "speedup": 1.2240256732505945,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.129780974239111,
+          "r2": 0.9997320383822347,
+          "speedup": 0.8761600124007408,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 6.433933973312378,
+          "r2": 0.9997320383820375,
+          "speedup": 1.3794529227095655,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-017",
+      "category": "edge",
+      "difficulty": 0.859,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6429620552808046,
+          "r2": 0.9993708626585991,
+          "speedup": 11.096191165601606,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.134429877623916,
+          "r2": 0.9993708626585979,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.451174521818757,
+          "r2": 0.9993708626585991,
+          "speedup": 1.6028196249444688,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.165231879800558,
+          "r2": 0.9993708626585991,
+          "speedup": 1.3812409672301862,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.500499693676829,
+          "r2": 0.9993708626585991,
+          "speedup": 1.585252830401864,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-018",
+      "category": "edge",
+      "difficulty": 0.801,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.46899588778615,
+          "r2": 0.9359048706251533,
+          "speedup": 8.041536556717347,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.771447576582432,
+          "r2": 0.9359048706234214,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.4359046947211027,
+          "r2": 0.9359048706251538,
+          "speedup": 1.548273865047188,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.1411591917276382,
+          "r2": 0.9359048706242646,
+          "speedup": 1.2006547094189566,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.905801171436906,
+          "r2": 0.9359048706251538,
+          "speedup": 1.2979028343902372,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-019",
+      "category": "edge",
+      "difficulty": 0.952,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6569393444806337,
+          "r2": 0.9987734084398914,
+          "speedup": 12.122160541804757,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.963524200022221,
+          "r2": 0.998773408439892,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.637229023501277,
+          "r2": 0.9987734084398918,
+          "speedup": 1.7173023285378883,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 6.66607148014009,
+          "r2": 0.9987734084398933,
+          "speedup": 1.1946352846271706,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 4.605299327522516,
+          "r2": 0.9987734084398918,
+          "speedup": 1.729208816554017,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "ED-020",
+      "category": "edge",
+      "difficulty": 0.971,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.481149811297655,
+          "r2": 0.9997882992616146,
+          "speedup": 13.077929698859858,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 19.37037310563028,
+          "r2": 0.9997883384086574,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 11.848717462271452,
+          "r2": 0.9997883384093981,
+          "speedup": 1.634807578736618,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 8.054551435634494,
+          "r2": 0.9997883384093805,
+          "speedup": 2.4048978096946483,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 161.48138418793678,
+          "r2": 0.9997883384094051,
+          "speedup": 0.11995421765202649,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-001",
+      "category": "lineshapes",
+      "difficulty": 0.595,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3958335146307945,
+          "r2": 0.9993983165997126,
+          "speedup": 8.976689496803703,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.553274553269148,
+          "r2": 0.9993983157023897,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.2549093700945377,
+          "r2": 0.9993983157023897,
+          "speedup": 1.5757948414220195,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.3363797701895237,
+          "r2": 0.9993983157023897,
+          "speedup": 1.0650090211604728,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.667039865627885,
+          "r2": 0.9993983157023897,
+          "speedup": 1.3322915037989589,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-002",
+      "category": "lineshapes",
+      "difficulty": 0.747,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.43258070945739746,
+          "r2": 0.9990369581387073,
+          "speedup": 9.604270905098174,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.154622321948409,
+          "r2": 0.9990369581387066,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.538622124120593,
+          "r2": 0.9990369581387072,
+          "speedup": 1.6365658687338576,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.600946394726634,
+          "r2": 0.9990369581387073,
+          "speedup": 1.153758447510521,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.0467724427580833,
+          "r2": 0.9990369581387072,
+          "speedup": 1.3636142508192857,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-003",
+      "category": "lineshapes",
+      "difficulty": 0.584,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3975259605795145,
+          "r2": 0.9910002421975833,
+          "speedup": 12.409605818570297,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.9331404734402895,
+          "r2": 0.9910002421975793,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.457391168922186,
+          "r2": 0.9910002421975833,
+          "speedup": 1.4268389755210016,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 4.360122373327613,
+          "r2": 0.9910002421975751,
+          "speedup": 1.1314224810794367,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.7920232862234116,
+          "r2": 0.9910002421975833,
+          "speedup": 1.3009256803254894,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-004",
+      "category": "lineshapes",
+      "difficulty": 0.748,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.42340788058936596,
+          "r2": 0.9992173757789484,
+          "speedup": 7.752964906135364,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.282666439190507,
+          "r2": 0.9992173757789483,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.9535026513040066,
+          "r2": 0.9992173757789484,
+          "speedup": 1.6804002989191,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.7060091961175203,
+          "r2": 0.9992173757789484,
+          "speedup": 1.2131024698291317,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.4759010411798954,
+          "r2": 0.9992173757789484,
+          "speedup": 1.3258471904136144,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-005",
+      "category": "lineshapes",
+      "difficulty": 0.674,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8794702589511871,
+          "r2": 0.9994267350336624,
+          "speedup": 9.127173247741242,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 8.027077419683337,
+          "r2": 0.9994267350336618,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 4.9869040958583355,
+          "r2": 0.9994267350336636,
+          "speedup": 1.6096313996392853,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.742862354964018,
+          "r2": 0.9994267350336623,
+          "speedup": 1.3977485308776187,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.421918584033847,
+          "r2": 0.9994267350336635,
+          "speedup": 1.4804865280199913,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-006",
+      "category": "lineshapes",
+      "difficulty": 0.697,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.9733838960528374,
+          "r2": 0.9997601515861575,
+          "speedup": 12.552111728027112,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 12.218023417517543,
+          "r2": 0.9997601500690878,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 9.299115044996142,
+          "r2": 0.9997601500690886,
+          "speedup": 1.3138909840772501,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 11.871664319187403,
+          "r2": 0.9997601500690888,
+          "speedup": 1.0291752772836023,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 9.577093878760934,
+          "r2": 0.9997601500690886,
+          "speedup": 1.2757547928618913,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-007",
+      "category": "lineshapes",
+      "difficulty": 0.795,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7048370316624641,
+          "r2": 0.999521876227407,
+          "speedup": 10.415138217763174,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.340975105762482,
+          "r2": 0.9995218768434005,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 5.393792642280459,
+          "r2": 0.9995218768433954,
+          "speedup": 1.3610043234177365,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.280274087563157,
+          "r2": 0.9995218768433656,
+          "speedup": 0.7140835976974026,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 5.9042805805802345,
+          "r2": 0.9995218768433948,
+          "speedup": 1.243331004611752,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-008",
+      "category": "lineshapes",
+      "difficulty": 0.476,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.8846551645547152,
+          "r2": 0.9996007859889275,
+          "speedup": 11.214541927825948,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 9.921002434566617,
+          "r2": 0.9996007868949593,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 7.321098120883107,
+          "r2": 0.9996007868949631,
+          "speedup": 1.3551249103283287,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 10.13012696057558,
+          "r2": 0.9996007868949651,
+          "speedup": 0.979356179165095,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 7.621051510795951,
+          "r2": 0.999600786894963,
+          "speedup": 1.3017891849323633,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-009",
+      "category": "lineshapes",
+      "difficulty": 0.743,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 1.3744335155934095,
+          "r2": 0.9992547953965837,
+          "speedup": 14.47967753471157,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 19.901354098692536,
+          "r2": 0.9992547951508257,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 15.45034721493721,
+          "r2": 0.9992547951508266,
+          "speedup": 1.2880845861801828,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 28.133282903581858,
+          "r2": 0.9992547951508266,
+          "speedup": 0.7073953710591929,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 15.766877448186278,
+          "r2": 0.9992547951508266,
+          "speedup": 1.2622254573927612,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-010",
+      "category": "lineshapes",
+      "difficulty": 0.622,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6803087890148163,
+          "r2": 0.999479254452623,
+          "speedup": 15.270041383974286,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 10.388343362137675,
+          "r2": 0.9994792544526182,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 8.23199818842113,
+          "r2": 0.999479254452623,
+          "speedup": 1.2619467502737782,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 11.037853313609958,
+          "r2": 0.999479254452623,
+          "speedup": 0.941156134891608,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 8.277199231088161,
+          "r2": 0.999479254452623,
+          "speedup": 1.2550553722472102,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-011",
+      "category": "lineshapes",
+      "difficulty": 0.705,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3956917207688093,
+          "r2": 0.9993620384761982,
+          "speedup": 7.812577707455738,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0913723167032003,
+          "r2": 0.9993620384761975,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.7416018527001143,
+          "r2": 0.9993620384761982,
+          "speedup": 1.7750166675066708,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.694015158340335,
+          "r2": 0.9993620384761982,
+          "speedup": 1.1474962593037745,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.0713999401777983,
+          "r2": 0.9993620384761982,
+          "speedup": 1.4924072636778454,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-012",
+      "category": "lineshapes",
+      "difficulty": 0.732,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7037182804197073,
+          "r2": 0.996375361420153,
+          "speedup": 4.185418305101793,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.9453553725034,
+          "r2": 0.9963753614200824,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.9796809647232294,
+          "r2": 0.9963753614201536,
+          "speedup": 1.4877929449178582,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.3816739451140165,
+          "r2": 0.9963753614201538,
+          "speedup": 0.870975564264252,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.55391001701355,
+          "r2": 0.9963753614201537,
+          "speedup": 1.1532729629791703,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-013",
+      "category": "lineshapes",
+      "difficulty": 0.758,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6203046068549156,
+          "r2": 0.9987747542488203,
+          "speedup": 4.48804513795573,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.7839550748467445,
+          "r2": 0.9987747542488203,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.4787069521844387,
+          "r2": 0.9987747542488203,
+          "speedup": 1.882695601541679,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.4730321019887924,
+          "r2": 0.9987747542488203,
+          "speedup": 1.125725409147706,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.8978111911565065,
+          "r2": 0.9987747542488203,
+          "speedup": 1.4669294225998484,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-014",
+      "category": "lineshapes",
+      "difficulty": 0.591,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.9991985280066729,
+          "r2": 0.9994398764521596,
+          "speedup": 3.970884009763429,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.967701457440853,
+          "r2": 0.9994398764521594,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.3294263519346714,
+          "r2": 0.9994398764521596,
+          "speedup": 1.7032955148573536,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.3001801930367947,
+          "r2": 0.9994398764521594,
+          "speedup": 1.2022681263927628,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.678466495126486,
+          "r2": 0.9994398764521596,
+          "speedup": 1.481333242233999,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-015",
+      "category": "lineshapes",
+      "difficulty": 0.44,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.4728315398097038,
+          "r2": 0.9988480811797503,
+          "speedup": 8.91137022133193,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.213576903566718,
+          "r2": 0.9988480811797481,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 2.4616126902401447,
+          "r2": 0.9988480811797503,
+          "speedup": 1.7117139996364168,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 3.658675355836749,
+          "r2": 0.9988480811797503,
+          "speedup": 1.1516673368804708,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.9111180920153856,
+          "r2": 0.9988480811797503,
+          "speedup": 1.4474084425237561,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-016",
+      "category": "lineshapes",
+      "difficulty": 0.753,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.7212762720882893,
+          "r2": 0.9967499736932282,
+          "speedup": 7.805479786355605,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.629907362163067,
+          "r2": 0.9967499736932242,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 3.8471780717372894,
+          "r2": 0.9967499736932278,
+          "speedup": 1.4633862163860643,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.518419900909066,
+          "r2": 0.9967499736932173,
+          "speedup": 1.020202786894784,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.808558452874422,
+          "r2": 0.9967499736932284,
+          "speedup": 1.4782252738996362,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-017",
+      "category": "lineshapes",
+      "difficulty": 0.486,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3493682015687227,
+          "r2": 0.9859018980247046,
+          "speedup": 6.7153003115576215,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.3461123928427696,
+          "r2": 0.985901898024698,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.2621642090380192,
+          "r2": 0.9859018980247047,
+          "speedup": 1.85880123683027,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.965471776202321,
+          "r2": 0.9859018980247045,
+          "speedup": 1.1936637408123567,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.6849245876073837,
+          "r2": 0.9859018980247047,
+          "speedup": 1.3924138861159845,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-018",
+      "category": "lineshapes",
+      "difficulty": 0.624,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.4755505360662937,
+          "r2": 0.9999689851592383,
+          "speedup": 5.066520797816765,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.409386681392789,
+          "r2": 0.9999689851592383,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.3625926803797483,
+          "r2": 0.9999689851592383,
+          "speedup": 1.768236917815604,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.5510857813060284,
+          "r2": 0.9999689851592383,
+          "speedup": 0.9444553762356448,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.778253586962819,
+          "r2": 0.9999689851592383,
+          "speedup": 1.3549173745843066,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-019",
+      "category": "lineshapes",
+      "difficulty": 0.714,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2602755557745695,
+          "r2": 0.9997815243267959,
+          "speedup": 8.249662082075366,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.147185383364558,
+          "r2": 0.9997815243267959,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 0.6699806544929743,
+          "r2": 0.9997815243267959,
+          "speedup": 3.204846839927786,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.0174766648560762,
+          "r2": 0.9997815243267959,
+          "speedup": 2.1103043023284287,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.0749225039035082,
+          "r2": 0.9997815243267959,
+          "speedup": 1.9975257523841952,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-020",
+      "category": "lineshapes",
+      "difficulty": 0.709,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.5334776360541582,
+          "r2": 0.9954137733850343,
+          "speedup": 5.0320573446417685,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.684490056708455,
+          "r2": 0.9954137733850337,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.5884663444012403,
+          "r2": 0.9954137733850345,
+          "speedup": 1.6899886271876614,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.2502699866890907,
+          "r2": 0.9954137733850338,
+          "speedup": 1.1929635433027523,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.9803580362349749,
+          "r2": 0.9954137733850345,
+          "speedup": 1.355557938307037,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-021",
+      "category": "lineshapes",
+      "difficulty": 0.751,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2540589775890112,
+          "r2": 0.9979293150968593,
+          "speedup": 7.98522051916512,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.0287169609218836,
+          "r2": 0.9979293150968591,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.137513667345047,
+          "r2": 0.9979293150968593,
+          "speedup": 1.7834660093859813,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7179464921355247,
+          "r2": 0.9979293150968593,
+          "speedup": 1.1808964773984607,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.521506579592824,
+          "r2": 0.9979293150968593,
+          "speedup": 1.3333606230377235,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-022",
+      "category": "lineshapes",
+      "difficulty": 0.729,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2357778139412403,
+          "r2": 0.998126512581751,
+          "speedup": 8.451212551522824,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 1.9926084205508232,
+          "r2": 0.998126512581751,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 0.9063426405191422,
+          "r2": 0.998126512581751,
+          "speedup": 2.198515585021445,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7165804747492075,
+          "r2": 0.998126512581751,
+          "speedup": 1.1608010517782124,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.38481380417943,
+          "r2": 0.998126512581751,
+          "speedup": 1.4388998828124344,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-023",
+      "category": "lineshapes",
+      "difficulty": 0.608,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6307004950940609,
+          "r2": 0.9175741178324731,
+          "speedup": 3.743956264641887,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.361315069720149,
+          "r2": 0.9175741178327496,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.41874048858881,
+          "r2": 0.9175741178326267,
+          "speedup": 1.6643742028317647,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 5.808711983263493,
+          "r2": 0.917574117832846,
+          "speedup": 0.4065126789766391,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 3.291214117780328,
+          "r2": 0.917574117832102,
+          "speedup": 0.7174601788937012,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "LS-024",
+      "category": "lineshapes",
+      "difficulty": 0.542,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2653889823704958,
+          "r2": 0.9960823432157605,
+          "speedup": 9.96935000355314,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.6457556523382664,
+          "r2": 0.9960823432156979,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.4572488144040108,
+          "r2": 0.9960823432157013,
+          "speedup": 1.8155826418842098,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.4456954561173916,
+          "r2": 0.996082343215701,
+          "speedup": 1.081800943662248,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.872711582109332,
+          "r2": 0.996082343215701,
+          "speedup": 1.41279398152609,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "FX-001",
+      "category": "fixed",
+      "difficulty": 0.291,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2316562458872795,
+          "r2": 0.9994586991080595,
+          "speedup": 10.389698639939857,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.406838582828641,
+          "r2": 0.999458699108059,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.0681054554879665,
+          "r2": 0.9994586991080595,
+          "speedup": 2.253371678294697,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.8741523381322622,
+          "r2": 0.9994586991080595,
+          "speedup": 1.2842278260193307,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5482765156775713,
+          "r2": 0.9994586991080595,
+          "speedup": 1.5545276043764944,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "FX-002",
+      "category": "fixed",
+      "difficulty": 0.232,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2256364095956087,
+          "r2": 0.9988023839695509,
+          "speedup": 9.615339371231688,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.169570652768016,
+          "r2": 0.9988023839695508,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.063859323039651,
+          "r2": 0.9988023839695509,
+          "speedup": 2.0393397940708313,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.678910804912448,
+          "r2": 0.9988023839695509,
+          "speedup": 1.2922489071009076,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5164704527705908,
+          "r2": 0.9988023839695509,
+          "speedup": 1.4306712331942975,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "FX-003",
+      "category": "fixed",
+      "difficulty": 0.125,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.2736039459705353,
+          "r2": 0.9987338540763572,
+          "speedup": 11.187591054530602,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 3.0609690584242344,
+          "r2": 0.9987338540763572,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.6369868535548449,
+          "r2": 0.9987338540763572,
+          "speedup": 1.8698800492973422,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 2.707219682633877,
+          "r2": 0.9987338540763573,
+          "speedup": 1.1306688844128792,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 2.082156017422676,
+          "r2": 0.9987338540763572,
+          "speedup": 1.4700959163536398,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "FX-004",
+      "category": "fixed",
+      "difficulty": 0.241,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.23470399901270866,
+          "r2": 0.991684915296394,
+          "speedup": 9.809112877785338,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 2.302238019183278,
+          "r2": 0.9916849152963142,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        },
+        "scipy-ls-lm": {
+          "med_ms": 1.1065900325775146,
+          "r2": 0.991684915296394,
+          "speedup": 2.08047962787159,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-trf": {
+          "med_ms": 1.7125869635492563,
+          "r2": 0.9916849152963588,
+          "speedup": 1.344304299976684,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "scipy-ls-dogbox": {
+          "med_ms": 1.5223470982164145,
+          "r2": 0.991684915296394,
+          "speedup": 1.5122950750722919,
+          "success": true,
+          "ill_conditioned": false
+        }
+      }
+    },
+    {
+      "id": "TI-001",
+      "category": "tied",
+      "difficulty": 0.435,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3965322393923998,
+          "r2": 0.9982441455118052,
+          "speedup": 13.31725513521575,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.280721001327038,
+          "r2": 0.9982441455118011,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "TI-002",
+      "category": "tied",
+      "difficulty": 0.255,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.3465828485786915,
+          "r2": 0.9987222272238985,
+          "speedup": 13.767055722233941,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 4.771425388753414,
+          "r2": 0.9987222272238949,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "TI-003",
+      "category": "tied",
+      "difficulty": 0.442,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.6378504913300276,
+          "r2": 0.9984437408206659,
+          "speedup": 11.685339218491233,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 7.453499361872673,
+          "r2": 0.9984437408206654,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    },
+    {
+      "id": "TI-004",
+      "category": "tied",
+      "difficulty": 0.494,
+      "winner": "spectrafit",
+      "regression": false,
+      "m": {
+        "spectrafit": {
+          "med_ms": 0.39362371899187565,
+          "r2": 0.9979412698177693,
+          "speedup": 14.592384601688986,
+          "success": true,
+          "ill_conditioned": false
+        },
+        "lmfit": {
+          "med_ms": 5.743908695876598,
+          "r2": 0.9979412698177634,
+          "speedup": 1.0,
+          "success": true,
+          "ill_conditioned": null
+        }
+      }
+    }
+  ],
+  "manifest": {
+    "run_id": "2026-08-13_run_001",
+    "date": "2026-08-13",
+    "n_cases": 151,
+    "backends": [
+      "spectrafit",
+      "lmfit",
+      "jax",
+      "scipy-ls-lm",
+      "scipy-ls-trf",
+      "scipy-ls-dogbox"
+    ],
+    "baseline_solver_id": "lmfit",
+    "geomean_speedup_vs_baseline": 14.015667383082487,
+    "harmonic_mean_speedup_vs_baseline": 11.659740099360318,
+    "max_abs_delta_r2": 0.0001286159230411421,
+    "spectrafit_win_rate": 0.8807947019867549,
+    "regressions": 0,
+    "regression_case_ids": [],
+    "gate_state": "pass",
+    "saturated_categories": [
+      "fixed",
+      "reality",
+      "scaling",
+      "tied"
+    ]
+  },
+  "nist": {
+    "threshold_sig_figs": 4.0,
+    "total_available": 27,
+    "passed": true,
+    "min_sig_figs": 6.498360675661228,
+    "datasets": [
+      {
+        "name": "Gauss1",
+        "difficulty": "Lower",
+        "n_params": 8,
+        "min_sig_figs": 10.579901979312375,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 11.241264027085258
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 10.806846784736251
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 11.032274126873533
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 11.321359621803662
+          },
+          {
+            "name": "b5",
+            "sig_figs_agreed": 10.579901979312375
+          },
+          {
+            "name": "b6",
+            "sig_figs_agreed": 10.96443490916517
+          },
+          {
+            "name": "b7",
+            "sig_figs_agreed": 10.830738506441232
+          },
+          {
+            "name": "b8",
+            "sig_figs_agreed": 11.037203779939777
+          }
+        ]
+      },
+      {
+        "name": "Gauss2",
+        "difficulty": "Lower",
+        "n_params": 8,
+        "min_sig_figs": 9.916579403214724,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 11.887696304348355
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 11.01597136927977
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 10.198184321976377
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 10.593517858310008
+          },
+          {
+            "name": "b5",
+            "sig_figs_agreed": 9.916579403214724
+          },
+          {
+            "name": "b6",
+            "sig_figs_agreed": 10.841164890675937
+          },
+          {
+            "name": "b7",
+            "sig_figs_agreed": 10.612874893115777
+          },
+          {
+            "name": "b8",
+            "sig_figs_agreed": 10.0656763921061
+          }
+        ]
+      },
+      {
+        "name": "Gauss3",
+        "difficulty": "Average",
+        "n_params": 8,
+        "min_sig_figs": 8.874016200308361,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 11.073834171227118
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 9.5331772168075
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 9.7242384499104
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 9.702580298881852
+          },
+          {
+            "name": "b5",
+            "sig_figs_agreed": 8.874016200308361
+          },
+          {
+            "name": "b6",
+            "sig_figs_agreed": 8.973647786053883
+          },
+          {
+            "name": "b7",
+            "sig_figs_agreed": 9.6992119589538
+          },
+          {
+            "name": "b8",
+            "sig_figs_agreed": 9.136461392005664
+          }
+        ]
+      },
+      {
+        "name": "Lanczos1",
+        "difficulty": "Average",
+        "n_params": 6,
+        "min_sig_figs": 8.747301725058655,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 8.747301725058655
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 9.046453828459152
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 9.29544105933999
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 9.435654374446047
+          },
+          {
+            "name": "b5",
+            "sig_figs_agreed": 9.441978990761442
+          },
+          {
+            "name": "b6",
+            "sig_figs_agreed": 10.138398334055166
+          }
+        ]
+      },
+      {
+        "name": "BoxBOD",
+        "difficulty": "Higher",
+        "n_params": 2,
+        "min_sig_figs": 7.151356320830165,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 7.807473452467194
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 7.151356320830165
+          }
+        ]
+      },
+      {
+        "name": "Misra1a",
+        "difficulty": "Lower",
+        "n_params": 2,
+        "min_sig_figs": 10.41374959027353,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 10.659046511103313
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 10.41374959027353
+          }
+        ]
+      },
+      {
+        "name": "Misra1b",
+        "difficulty": "Lower",
+        "n_params": 2,
+        "min_sig_figs": 8.033172016202009,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 8.09938823975326
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 8.033172016202009
+          }
+        ]
+      },
+      {
+        "name": "MGH17",
+        "difficulty": "Average",
+        "n_params": 5,
+        "min_sig_figs": 8.514742943993848,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 9.993403521069622
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 8.637991945327594
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 8.514742943993848
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 9.163773131476393
+          },
+          {
+            "name": "b5",
+            "sig_figs_agreed": 9.086294630791613
+          }
+        ]
+      },
+      {
+        "name": "Bennett5",
+        "difficulty": "Higher",
+        "n_params": 3,
+        "min_sig_figs": 8.249107901707966,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 8.249107901707966
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 8.891407535624625
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 8.981228510552485
+          }
+        ]
+      },
+      {
+        "name": "MGH09",
+        "difficulty": "Higher",
+        "n_params": 4,
+        "min_sig_figs": 6.498360675661228,
+        "passed": true,
+        "params": [
+          {
+            "name": "b1",
+            "sig_figs_agreed": 7.855433082488254
+          },
+          {
+            "name": "b2",
+            "sig_figs_agreed": 6.498360675661228
+          },
+          {
+            "name": "b3",
+            "sig_figs_agreed": 7.0601145007924435
+          },
+          {
+            "name": "b4",
+            "sig_figs_agreed": 6.678883886622636
+          }
+        ]
+      }
+    ]
+  },
+  "trust_rung": 2,
+  "claims": {
+    "audited": 13,
+    "total": 21
+  }
+}

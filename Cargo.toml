@@ -1,0 +1,87 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+# Fields every crate inherits via `<field> = { workspace = true }`, following the
+# same layout astral-sh/uv uses across its own crate tree. Declaring them once
+# here rather than eleven times is what keeps them from drifting apart — before
+# this table existed, no crate manifest declared a license at all, so the Rust
+# half of the project was legally unlabelled even though both the repo LICENSE
+# and pyproject.toml said MIT.
+#
+# One deliberate divergence from uv: `version` IS inherited here. uv versions its
+# internal crates independently, but all eleven spectrafit crates move in
+# lockstep, so a single inherited version gives `rrt` exactly one Cargo-side
+# target to pin (see `[[tool.rrt.version_targets]]` in pyproject.toml) instead of
+# eleven that can silently disagree.
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# MSRV. A *derived* floor, not an independently bisected one: it is the highest
+# `rust-version` declared by any crate in the resolved dependency graph
+# (`nalgebra` 1.87.0 and `varpro` 1.87), read from `cargo metadata --locked`.
+# The workspace cannot build on anything older regardless of what its own code
+# uses, so declaring a lower number would be a claim the lockfile contradicts.
+# Re-derive after any dependency bump.
+rust-version = "1.87"
+homepage = "https://github.com/Anselmoo/spectrafit-core"
+documentation = "https://anselmoo.github.io/spectrafit-core/"
+repository = "https://github.com/Anselmoo/spectrafit-core"
+authors = ["Anselm Hahn <anselm.hahn@gmail.com>"]
+license = "MIT"
+keywords = ["curve-fitting", "least-squares", "spectroscopy", "optimization"]
+categories = ["science", "mathematics"]
+
+[workspace.dependencies]
+# Python bindings
+pyo3 = { version = "0.22", features = ["extension-module"] }
+numpy = { version = "0.22" }
+
+# Linear algebra + LM solver
+nalgebra = "0.34"
+levenberg-marquardt = "0.15"
+# Pure-Rust SIMD linear algebra (no BLAS/C dep) — backs the faer-native
+# trust-region core in crates/spectrafit-trust-region.
+faer = "0.24"
+
+# Parallelism
+rayon = "1.10"
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+
+# Math functions (erfc, etc.)
+libm = "0.2"
+
+# Dev / float comparison
+approx = "0.5"
+
+# Internal path dependencies
+spectrafit-types = { path = "crates/spectrafit-types" }
+spectrafit-models = { path = "crates/spectrafit-models" }
+spectrafit-graph = { path = "crates/spectrafit-graph" }
+spectrafit-solver = { path = "crates/spectrafit-solver" }
+spectrafit-varpro = { path = "crates/spectrafit-varpro" }
+spectrafit-trust-region = { path = "crates/spectrafit-trust-region" }
+spectrafit-levenberg-marquardt = { path = "crates/spectrafit-levenberg-marquardt" }
+spectrafit-dogleg = { path = "crates/spectrafit-dogleg" }
+spectrafit-newton-cg = { path = "crates/spectrafit-newton-cg" }
+
+# Variable Projection (separable NLS) — features applied per-platform in crates/spectrafit-varpro
+varpro = { version = "0.14" }
+
+# Workspace-wide lint policy. `deny` rather than `forbid` so the one legitimate
+# FFI site can opt out locally with `#[allow(unsafe_code)]` + a SAFETY comment —
+# `forbid` cannot be overridden at all. Crates opt in via `[lints] workspace =
+# true` in their own manifest; a crate that omits that stanza is NOT covered.
+# `spectrafit-builder` additionally keeps its own stricter `#![forbid(unsafe_code)]`.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[profile.release]
+lto = true
+codegen-units = 1

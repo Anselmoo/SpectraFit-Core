@@ -1,0 +1,46 @@
+{
+  "name": "spectrafit-benchmark-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SpectraFit benchmark report UI — Vite + React; fetches the report from the FastAPI app at runtime.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:html": "NODE_OPTIONS=--max-old-space-size=4096 BUILD_HTML=1 vite build",
+    "typecheck": "tsc --noEmit",
+    "contract": "openapi-typescript http://localhost:8000/openapi.json -o src/openapi.gen.ts",
+    "check:contract": "node scripts/check-openapi-sync.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "smoke": "vitest run"
+  },
+  "dependencies": {
+    "@observablehq/plot": "^0.6.16",
+    "d3-format": "^3.1.0",
+    "katex": "^0.16.47",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.9.0",
+    "@playwright/test": "^1.60.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/d3-format": "^3.0.4",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^20.19.42",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "happy-dom": "^20.10.2",
+    "msw": "^2.14.6",
+    "openapi-typescript": "^7.4.0",
+    "typescript": "^5.5.4",
+    "vite": "^8.0.16",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^4.1.8"
+  }
+}

@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "If you use SpectraFit-Core, please cite it as below."
+title: "SpectraFit-Core: a Rust-cored nonlinear curve-fitting library with a self-auditing cross-backend benchmark"
+abstract: >-
+  A high-performance numerical curve-fitting framework (Rust kernel + Pydantic
+  schemas) shipped with a self-auditing cross-backend benchmark that audits its
+  own credibility against independent oracles (lmfit, JAX, scipy) and NIST StRD
+  certified values.
+type: software
+authors:
+  - given-names: Anselm
+    family-names: Hahn
+    email: anselm.hahn@gmail.com
+    # AUTHOR INPUT REQUIRED before submission: JORS and the CodeMeta/FAIR
+    # checklist both expect an ORCID iD here, and codemeta.json mirrors whatever
+    # this file declares. Deliberately left unset rather than guessed — an
+    # invented identifier would resolve to the wrong person.
+    #   orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/Anselmoo/spectrafit-core"
+url: "https://github.com/Anselmoo/spectrafit-core"
+license: MIT
+version: 0.1.0
+# date-released: intentionally absent until 0.1.0 is actually tagged and
+# deposited. It previously read 2026-06-13, asserting a release date for a
+# release that does not exist: `git tag -l` shows no version tag, the GitHub
+# releases and tags endpoints both return empty, and PyPI has no
+# spectrafit-core project. CITATION.cff is machine-readable and gets
+# harvested, so a placeholder date is published misinformation rather than a
+# harmless stub. Restore this line, with the real date, as part of tagging.
+keywords:
+  - curve-fitting
+  - spectroscopy
+  - Levenberg-Marquardt
+  - trust-region
+  - benchmark
+  - reproducibility
+# The forthcoming journal article. Represented as `in-preparation` so the
+# citation makes no claim it cannot yet support (no DOI / journal / year until
+# the paper is accepted). On acceptance, set `status` (submitted → in-press →
+# published) and ADD `journal`, `year`, `volume`, `doi` with the real values.
+preferred-citation:
+  type: article
+  title: "spectrafit-core: a Rust-cored nonlinear curve-fitting library with a self-auditing cross-backend benchmark"
+  status: in-preparation
+  authors:
+    - given-names: Anselm
+      family-names: Hahn
+      email: anselm.hahn@gmail.com

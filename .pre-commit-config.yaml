@@ -1,0 +1,324 @@
+# spectrafit-core pre-commit hooks
+# 
+# STRATEGY: Hybrid approach
+# - Git pre-commit: Fast shell scripts (bash only, zero Python deps)
+# - Claude Code hooks: Python validators for semantic analysis (in .claude/settings.json)
+# - CI/CD: Can use either bash (fast) or Python (semantic verification)
+#
+# See DECISIONS.md [2026-05-06] for architecture rationale and trade-offs.
+
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-ast
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
+    hooks:
+      - id: ruff-check
+        # pre-commit: attempt to auto-fix what ruff can
+        args: [--fix]
+        stages: [pre-commit]
+      - id: ruff-check
+        # pre-push: strict (no --fix) — mirrors .gitlab/20-lint.yml `lint:python`
+        # so a commit that bypassed pre-commit (--no-verify, fresh worktree
+        # without `pre-commit install`, agent-side edit) still gets caught
+        # client-side before the push reaches the GWDG runner. Cycle 30L.
+        alias: ruff-check-strict
+        stages: [pre-push]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    # Official hook, replacing the local `ty-check` system hook below.
+    # Deliberately checks the whole project (no path args -- pre_commit's own
+    # manifest passes none and sets pass_filenames: false) rather than being
+    # scoped per-invocation, since a change in one file can surface new
+    # diagnostics in another; the resulting scope is controlled by
+    # [tool.ty.src].include in pyproject.toml instead, which restricts it to
+    # exactly python/oracles + python/spectrafit_core -- the same scope the
+    # old CLI-arg-scoped invocation used, verified equivalent (0 diagnostics
+    # either way) before switching.
+    #
+    # Version note: pins ty 0.0.69 independent of this project's own `ty`
+    # dev dependency (currently resolves to 0.0.65) -- a real, currently-
+    # unclosed version skew between what this hook checks locally and what
+    # `uv run poe lint_ci` / CI check. Bumping the project's own `ty` pin to
+    # match is a separate decision (a version bump can itself surface new
+    # diagnostics), not folded into this hook swap.
+    rev: v0.0.69
+    hooks:
+      - id: ty
+
+  - repo: https://github.com/Anselmoo/repo-release-tools
+    # Kept in step with the uv-managed CLI (currently 1.15.0) so the hook and
+    # `uv run rrt` cannot disagree about a rule. Bumped 1.8.1 -> 1.14.1
+    # (2026-08-10) to unlock rrt-doctor/rrt-release-check, then -> 1.15.0.
+    #
+    # NOT wired here (tested, both have real problems for this repo):
+    # rrt-tree-check — `rrt-hooks tree-check` (the pre-commit entry) takes
+    # zero CLI args, always full-depth-scanning .rrt/tree.lock.toml; this
+    # repo's own architecture.md workflow writes that SAME lock file at
+    # `--max-depth 2` (CLAUDE.md's documented refresh command), so the two
+    # uses fight over one file and the hook flaps (measured: 133 vs 965
+    # entries) every time someone refreshes the doc tree. Needs either an
+    # upstream depth-scoped check or decoupling architecture.md's snapshot
+    # from this lock file before it's safe to wire — filed as a follow-up.
+    # rrt-dirty-tree — correctly does what it says (fails pre-push on any
+    # uncommitted change), but that's blocking for any workflow that keeps
+    # unrelated local scratch files dirty across a push, which this repo's
+    # working tree does today (confirmed failing locally against 2 files
+    # unrelated to any in-flight commit). Revisit once the tree is
+    # consistently clean, or scope it to pre-push --hook-stage manual only.
+    rev: v1.15.0
+    hooks:
+      - id: rrt-branch-name
+      - id: rrt-changelog
+      - id: rrt-commit-subject
+      # Native folder-structure check against [tool.rrt.folders] (pyproject.toml).
+      # Replaces the former `uvx … rrt folder check` local hook; single source of
+      # truth for required layout, supersedes scripts/validate_repo_layout.sh.
+      - id: rrt-folder-check
+        stages: [pre-commit, pre-push]
+      # Health-check for the automation wiring itself (this file, CI policy
+      # steps). Manual-only (upstream default) — run via
+      # `pre-commit run rrt-doctor --hook-stage manual` when touching CI/hook
+      # config, not on every commit. Verified clean against this repo before
+      # wiring (`uv run rrt doctor`).
+      - id: rrt-doctor
+        stages: [manual]
+      # Validates [tool.rrt] version targets, pin targets, and CHANGELOG.md
+      # against the release policy. Manual-only (upstream default) — run
+      # before cutting a release, not on every commit. Verified clean against
+      # this repo before wiring (`uv run rrt release check`).
+      - id: rrt-release-check
+        stages: [manual]
+
+  - repo: local
+    hooks:
+      # NOTE: `ty-check` (a local `language: system` hook) was replaced by the
+      # official `astral-sh/ty-pre-commit` repo above -- see that block for
+      # the scoping/version-skew rationale.
+      #
+      # NOTE: the `mypy-check` hook was removed. mypy is not a project dependency
+      # (not in [dependency-groups].dev) so it failed to spawn on every run, and
+      # `ty` (Astral's checker, configured above) is the project's type checker.
+
+      - id: cargo-fmt
+        name: rustfmt (rust)
+        description: Ensure changed Rust files are formatted.
+        entry: uv run rustfmt --check --edition 2021
+        language: system
+        files: '\.rs$'
+        # Skip .claude/ tooling: rust-model-scaffolder templates/examples are
+        # intentionally-unformatted scaffolds, and .claude/worktrees/ holds agent
+        # worktree checkouts (full repo copies) that must not be re-linted here.
+        exclude: '^\.claude/'
+
+      - id: cargo-clippy
+        name: cargo clippy (rust)
+        description: Run clippy as a safety check (warn-level).
+        entry: uv run cargo clippy --workspace --all-targets --all-features
+        language: system
+        pass_filenames: false
+        files: '\.rs$'
+
+      - id: cargo-check
+        name: cargo check (rust)
+        description: Run cargo check for fast Rust compile validation.
+        entry: uv run cargo check --workspace
+        language: system
+        pass_filenames: false
+        files: '\.rs$'
+
+      - id: pre-merge-pyO3
+        name: PyO3 Boundary Validator (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate all #[pyfunction] decorators return JSON strings only.
+          Uses bash regex pattern matching (fast, <50ms).
+          For semantic analysis, Claude Code hooks use pydantic_edit.py (in .claude/settings.json).
+        entry: .claude/hooks/pre-merge-pyO3.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      - id: pre-merge-dag
+        name: Workspace DAG Validator (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate crate dependency graph follows the allowed DAG.
+          Uses cargo tree + bash checks (fast, <100ms).
+          For semantic analysis, Claude Code hooks validate in pydantic_edit.py.
+        entry: .claude/hooks/pre-merge-dag.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      - id: pre-merge-schema-sync
+        name: Schema Sync Checker (Shell)
+        description: |
+          [GIT PRE-COMMIT] Validate Python↔Rust schema alignment at JSON boundary.
+          Uses bash grep patterns (fast, <50ms).
+          For full semantic validation, Claude Code hooks use pydantic_edit.py.
+        entry: .claude/hooks/pre-merge-schema-sync.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 60
+
+      - id: pre-merge-binding-audit
+        name: Rust Binding Audit (TOML manifest check)
+        description: |
+          [GIT PRE-COMMIT] Fail if lib.rs/dispatch.rs changed but
+          scripts/binding_audit_notes.toml wasn't updated to match. Checked
+          directly against source — no docs/ dependency. Run
+          `uv run poe audit_bindings_regen` to also refresh the optional
+          docs/reference/rust/binding-audit.md page.
+        entry: .claude/hooks/pre-merge-binding-audit.sh
+        language: script
+        files: '^(crates/spectrafit-core/src/lib\.rs|crates/spectrafit-solver/src/dispatch\.rs|scripts/binding_audit_notes\.toml)$'
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      - id: pre-merge-contract-golden
+        name: OpenAPI Contract Golden Checker
+        description: |
+          [GIT PRE-COMMIT/PRE-PUSH] Fail if a Pydantic class docstring or
+          Field(description=...) in bench_contract.py / trust_ledger.py /
+          contract.py changed the OpenAPI schema without regenerating
+          tests/audit/golden/openapi_normalised.json + web/src/openapi.gen.ts
+          + web/openapi.snapshot.json. Run `uv run poe contract_regen` to fix
+          — never revert the docstring's LaTeX notation instead.
+        entry: .claude/hooks/pre-merge-contract-golden.sh
+        language: script
+        files: '^python/oracles/(bench_contract|trust_ledger|contract)\.py$'
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 60
+
+      - id: crate-conventions
+        name: Crate conventions (lints opt-in + pub mod)
+        description: |
+          [GIT PRE-COMMIT] Gate house rules 22 and 26, which share a failure
+          shape: they hold today, but a NEW crate breaks them silently.
+          (22) A crate without `[lints] workspace = true` does NOT inherit
+          [workspace.lints.rust] unsafe_code = "deny" — it is silently exempt
+          from the workspace safety policy, and compiles clean with `unsafe`.
+          (26) A new `pub mod` outside the sanctioned library-shaped crates
+          (spectrafit-models, spectrafit-types) defeats rule 21's curated
+          re-export list and blinds dead_code analysis.
+        entry: scripts/check_crate_conventions.py
+        language: system
+        files: '^crates/.*/(Cargo\.toml|src/lib\.rs)$'
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 30
+
+      # NOTE: the `pre-merge-perf-baseline` hook was removed. It required speedboat
+      # evidence artifacts (feedback.json / results_index.json / results_feedback.json
+      # with regression_smoke + scaling_10k scenarios) from the quick_validation system
+      # that the benchmark-experience rebuild REPLACED. Perf-regression is now gated by
+      # the dedicated benchmark CI job (`python -m benchmark.cli gate`, geomean speedup
+      # vs lmfit + max |Δr²|), which is too heavy (release build + 136 cases) for pre-commit.
+
+      - id: shellcheck-ci
+        name: ShellCheck (GitLab CI embedded shell)
+        description: |
+          [GIT PRE-COMMIT] Closes the one linting gap house rule 14 never named.
+          Rule 14 covers lint:python and lint:rust; NO hook has ever touched
+          `.gitlab/**`, `.github/**`, `web/`, or docs markdown — which is why a
+          missing web linter survived 258 commits.
+
+          `actionlint` already shellchecks `.github/workflows/**` (it invokes
+          shellcheck itself whenever shellcheck is on PATH). Nothing did the
+          equivalent for `.gitlab/**`, which carries the larger share of this
+          repo's inline shell. `scripts/shellcheck_ci.py` parses each job with a
+          `!reference`-tolerant loader and CONCATENATES a job's script entries
+          before checking — GitLab runs them in one shell, so per-entry checking
+          reports false "unused variable" findings.
+
+          Gated against a baseline rather than zero: the three current findings
+          are pre-existing. Lower BASELINE as they are fixed; do not raise it.
+
+          Install shellcheck 0.11.0 locally to match CI exactly (both
+          `.github/workflows/pre-commit-check.yml` and `.gitlab/20-lint.yml` pin
+          this version) — a different shellcheck release can disagree on
+          whether a rule like SC2015 fires, which otherwise makes CI failures
+          unreproducible locally.
+        entry: uv run --no-sync python scripts/shellcheck_ci.py
+        language: system
+        files: '^\.gitlab(-ci\.yml|/.*\.yml)$'
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        timeout: 60
+
+      - id: ruff-docstring-check
+        name: Ruff docstring checks
+        description: Run Ruff to validate Google-style docstrings (D-codes) on project sources.
+        entry: uv run ruff check python tests --select D
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      # NOTE: `validate-docstrings-script` was removed 2026-07-14. It invoked
+      # .claude/skills/docstring-enforcer/scripts/validate_docstrings.py, which
+      # no longer exists — that skill was folded into the 7-skill consolidation
+      # (CLAUDE.md "Skill catalog") and `ruff-docstring-check` above (D-codes,
+      # project-wide via pyproject.toml's extend-select) already covers every
+      # check it did (the same reasoning that dropped the separate GitHub
+      # "Docstring Check" workflow 2026-07-12, see ci.yml). The hook was
+      # silently failing every run (`No such file or directory`) until caught
+      # by the andon-loop-style CI investigation that added this note.
+
+      # NOTE: `validate-scenarios` and `validate-model-stub` were removed. They
+      # validated artifacts from a SUPERSEDED architecture: YAML benchmark
+      # scenarios (the rebuild moved to Python CaseSpec/CaseFamily in
+      # python/extras/bench/cases.py) and a `ModelKernel`/`fn evaluate` Rust stub
+      # (the real kernels implement the `Model` trait with `fn eval`). They ran
+      # against non-existent formats and failed every CI run. The generator skills
+      # under .claude/skills/{benchmark-scenario-generator,rust-model-scaffolder}/
+      # still ship their own example validators for ad-hoc use.
+
+      - id: pre-merge-arch-tree
+        name: architecture.md directory tree (regenerate + block on drift)
+        description: |
+          [GIT PRE-COMMIT/PRE-PUSH] Regenerate architecture.md's embedded
+          directory tree and fail if it was stale, so it cannot reach a runner.
+
+          `lint:python` already does exactly this in CI, and nothing did it
+          client-side — so the only signal was a red pipeline minutes after a
+          push. Because ANY file added or removed at depth <= 2 changes the
+          tree, that recurred four times (366818, 366826, 366889, 366934),
+          each fixed by hand and each returning with the next new file.
+
+          Runs unconditionally rather than behind a `files:` pattern: the
+          triggering change is "a path appeared or vanished", which no glob
+          expresses — one of the four failures was caused by adding
+          scripts/vendored_assets.toml.
+        entry: .claude/hooks/pre-merge-arch-tree.sh
+        language: script
+        stages: [pre-commit, pre-push]
+        fail_fast: false
+        pass_filenames: false
+        timeout: 120
+
+      - id: self-heal-automation
+        name: Self-heal automation metadata
+        description: |
+          [GIT PRE-COMMIT] Validate and safely heal automation metadata drift for hooks/skills/agents/instructions.
+          Applies deterministic safe fixes only and writes run evidence under .spectrafit_reports/self-heal/.
+        entry: uv run python scripts/self_heal_automation.py --mode fix-safe
+        language: system
+        stages: [pre-commit, pre-push]
+        files: '^(\.claude/hooks/|\.claude/settings\.json|\.claude/agents/|\.claude/skills/|\.claude/instructions/)'

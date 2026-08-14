@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spectrafit Skill Index",
+  "type": "object",
+  "required": ["schema_version", "streams", "inter_stream_wires", "skills"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "integer", "const": 1 },
+    "streams": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "root", "manifest", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "enum": ["crates", "python", "web", "crosscut", "meta"] },
+          "root": { "type": "string" },
+          "manifest": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "inter_stream_wires": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "contract", "proof", "lane"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "contract": { "type": "string" },
+          "proof": { "type": "string" },
+          "lane": { "type": "string", "enum": ["fast", "slow"] }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "stream", "description", "anchors", "composes_with", "serena_first", "absorbs"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "stream": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "enum": ["crates", "python", "web", "crosscut", "meta"] }
+          },
+          "description": { "type": "string", "minLength": 10 },
+          "anchors": {
+            "type": "object",
+            "required": ["claude_md_sections", "hooks"],
+            "additionalProperties": false,
+            "properties": {
+              "claude_md_sections": { "type": "array", "items": { "type": "string" } },
+              "hooks": { "type": "array", "items": { "type": "string", "pattern": "\\.sh$" } }
+            }
+          },
+          "composes_with": { "type": "array", "items": { "type": "string" } },
+          "serena_first": { "type": "boolean" },
+          "absorbs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "to_hooks": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

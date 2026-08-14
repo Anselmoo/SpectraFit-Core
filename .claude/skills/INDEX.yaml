@@ -1,0 +1,258 @@
+# Anchor Registry for the consolidated spectrafit-core skill catalog.
+#
+# Single declarative source of truth. The conductor (andon-loop in
+# tri-stream mode) reads this to:
+#   1. classify a task into stream(s),
+#   2. pick the right consolidated skill,
+#   3. carry the relevant anchor slice (CLAUDE.md section + hook list)
+#      into the spawned sub-agent's context.
+#
+# CI validator: scripts/validate_index.py (json-schema + anchor existence).
+# Edit by hand. Every change is auditable.
+
+schema_version: 1
+
+# Streams the codebase naturally splits into.
+# Used by andon-loop to fan out parallel sub-loops.
+streams:
+  - id: crates
+    root: crates/
+    manifest: Cargo.toml
+    description: Rust workspace — kernels, solvers, ABI surface.
+  - id: python
+    root: python/
+    manifest: pyproject.toml
+    description: Pydantic models, benchmark engine, contract.
+  - id: web
+    root: web/
+    manifest: package.json
+    description: Vite/React dashboard rendering the BenchReport contract.
+
+# Inter-stream wires (must stay green for a tri-stream cycle to converge).
+inter_stream_wires:
+  - from: crates
+    to: python
+    contract: pyo3 ABI (spectrafit_core::fit, ::fit_fast)
+    proof: import + call + JSON round-trip
+    lane: fast
+  - from: python
+    to: web
+    contract: BenchReport (oracles.contract → openapi.gen.ts)
+    proof: openapi-typescript regen + contractCoverage.test.ts
+    lane: fast
+  - from: python
+    to: web
+    contract: rendered dashboard surfaces
+    proof: playwright dashboard-render-audit
+    lane: slow
+
+# Consolidated skills: the original 7 (28 -> 7), plus 2 later process skills
+# (semantic-debugging, big-picture-driven-development) that are new
+# disciplines, not consolidations of retired specialists.
+# `absorbs` lists deprecated specialist skills whose content lives in
+# this skill's references/ directory.
+skills:
+  - name: crates-stream
+    stream: [crates]
+    description: |
+      Crates-stream conductor. Diagnoses + fixes Rust kernels, solvers,
+      and PyO3 binding surface. Reads serena symbols first; falls back to
+      grep only after serena returns nothing.
+    anchors:
+      claude_md_sections:
+        - "Adding a New Benchmark Model"
+        - "Code Conventions (pydantic-first)"
+      hooks:
+        - cargo-check-on-rust-edit.sh
+        - enforce-modeltype-parity.sh
+        - pre-merge-pyO3.sh
+        - enforce-perf-accuracy.sh
+    composes_with:
+      - superpowers:test-driven-development
+      - superpowers:verification-before-completion
+      - superpowers:systematic-debugging
+    serena_first: true
+    absorbs:
+      - spectrafit-solver
+      - spectrafit-bindings
+      - spectrafit-scaffold
+      - rust-model-scaffolder
+
+  - name: python-stream
+    stream: [python]
+    description: |
+      Python-stream conductor. Maintains Pydantic schemas, test coverage,
+      and Python architecture for the benchmark engine and contract layer.
+    anchors:
+      claude_md_sections:
+        - "Code Conventions (pydantic-first)"
+        - "Benchmark Engine (`oracles`) + Report"
+        - "Regenerate the contract (OpenAPI flow)"
+      hooks:
+        - enforce-pydantic-native.sh
+        - enforce-match-dispatch.sh
+        - enforce-modeltype-parity.sh
+        - contract-sync-reminder.sh
+        - pre-merge-schema-sync.sh
+    composes_with:
+      - superpowers:test-driven-development
+      - superpowers:verification-before-completion
+      - superpowers:systematic-debugging
+    serena_first: true
+    absorbs:
+      - spectrafit-schemas
+      - spectrafit-tests
+      - spectrafit-tdd
+      - python-arch-proposer
+      - python-pattern-advisor
+
+  - name: web-stream
+    stream: [web]
+    description: |
+      Web-stream conductor. Owns dashboard panels, render-truth surfaces,
+      and the four-step verify cycle (vitest → bench → gate → playwright).
+    anchors:
+      claude_md_sections:
+        - "Running & previewing the dashboard (Claude Desktop / preview)"
+        - "Benchmark Engine (`oracles`) + Report"
+      hooks:
+        - enforce-render-boundary.sh
+        - frontend-soft-freeze.sh
+    composes_with:
+      - superpowers:test-driven-development
+      - superpowers:verification-before-completion
+      - cupertino-council
+    serena_first: true
+    absorbs:
+      - spectrafit-devboard
+      - spectrafit-benchmark
+
+  - name: verification
+    stream: [crosscut]
+    description: |
+      Crosscut verification — ground-truth oracles, NIST StRD fixtures,
+      benchmark scenarios, DAG validation. Closes the oracle gap.
+    anchors:
+      claude_md_sections:
+        - "Benchmark Backend Comparison Fairness"
+        - "After a benchmark run"
+      hooks:
+        - protect-nist-fixtures.sh
+        - pre-merge-dag.sh
+        - pre-merge-perf-baseline.sh
+        - enforce-perf-accuracy.sh
+    composes_with:
+      - superpowers:verification-before-completion
+      - ground-truth
+    serena_first: true
+    absorbs:
+      - ground-truth
+      - nist-strd-runner
+      - benchmark-scenario-generator
+      - dag-validator
+
+  - name: quality-council
+    stream: [crosscut]
+    description: |
+      Five-voice quality council convened on stuck wires, design questions,
+      and presentation polish. Apple / NeXT / boring-to-brilliant lineage.
+    anchors:
+      claude_md_sections:
+        - "Running & previewing the dashboard (Claude Desktop / preview)"
+      hooks: []
+    composes_with:
+      - superpowers:brainstorming
+    serena_first: false
+    absorbs:
+      - one-more-thing
+      - boring-to-brilliant
+      - cupertino-council
+      - evolutionary-platform-thinking
+
+  - name: meta-builder
+    stream: [meta]
+    description: |
+      Generator of skills, agents, hooks, prompts, and instructions for
+      the universal-creator framework. Used when the catalog needs to grow.
+    anchors:
+      claude_md_sections:
+        - "Tooling: use MCP servers for discovery"
+      hooks: []
+    composes_with:
+      - superpowers:writing-skills
+      - superpowers:writing-plans
+    serena_first: false
+    absorbs:
+      - skill-generator
+      - agent-generator
+      - hook-generator
+      - prompt-generator
+      - instruction-generator
+
+  - name: andon-loop
+    stream: [meta]
+    description: |
+      The conductor. Walks the value stream, owns the andon rule, and
+      forks per-stream sub-loops in tri-stream mode. Reads this INDEX
+      at Phase 0.5.
+    anchors:
+      claude_md_sections:
+        - "Tooling: use MCP servers for discovery"
+      hooks:
+        - audit-decisions-topic-index.sh
+        - decisions-adr-reminder.sh
+    composes_with:
+      - superpowers:dispatching-parallel-agents
+      - superpowers:executing-plans
+    serena_first: true
+    absorbs:
+      - cycle-close
+
+  - name: semantic-debugging
+    stream: [meta, crosscut]
+    description: |
+      Process-first work conductor. Holds the trunk (the goal) in a committed
+      ledger, classifies every find (failure-kind + branch-verdict), dispatches
+      instance bugs to systematic-debugging and class bugs to BPDD, and forces
+      convergence. Introduces Invariant T (trunk convergence).
+    anchors:
+      claude_md_sections:
+        - "Skill catalog (consolidated)"
+        - "Tooling: use MCP servers for discovery"
+      hooks:
+        - guard-ledger-freshness.sh
+    composes_with:
+      - superpowers:systematic-debugging
+      - big-picture-driven-development
+      - andon-loop
+      - superpowers:verification-before-completion
+    serena_first: true
+    absorbs: []
+
+  - name: big-picture-driven-development
+    stream: [meta]
+    description: |
+      Fix the class, not the instance. A TDD-sibling discipline: before
+      patching a reported defect, reconstruct the system model, name the
+      invariant it violates, enforce it as a check, and sweep every sibling
+      — so the next instance never needs a human to point at it. The
+      MAP → CLASSIFY → ENFORCE → SWEEP loop; the cure for fingerpointing.
+    anchors:
+      claude_md_sections:
+        - "Code Conventions (pydantic-first)"
+        - "Tooling: use MCP servers for discovery"
+      hooks:
+        - suggest-discovery-enrichment.sh
+    composes_with:
+      - superpowers:test-driven-development
+      - superpowers:verification-before-completion
+      - superpowers:brainstorming
+      - verification
+      - andon-loop
+    serena_first: true
+    absorbs: []
+
+# Skills slated for relocation into hooks (deterministic enforcement
+# fits the hook primitive better than a skill).
+to_hooks:
+  - docstring-enforcer  # → .claude/hooks/enforce-docstrings.sh (tier 2)

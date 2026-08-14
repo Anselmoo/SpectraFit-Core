@@ -1,0 +1,269 @@
+:root {
+  /* substrate + glass surfaces — Apple grouped-background hierarchy (dark
+     appearance), SpectraFit Design System v3.2. Dashboard is dark-only by
+     design: no [data-theme] split here (the handbook's light appearance is
+     docs-site-only and out of scope for this dashboard). */
+  --surface-page: #000000;
+  --surface-card: #1C1C1E;
+  --surface-raised: #2C2C2E;
+  /* recessed surface (Card handbook has no equivalent; the status-disclosure
+     pattern sample's own --surface-sunken sits between --surface-page and
+     --surface-card) — used by StatusStrip so a flat disclosure strip reads
+     as inset relative to the card/page it sits on, never as another raised
+     surface competing with real content. */
+  --surface-sunken: color-mix(in srgb, var(--surface-page) 70%, var(--surface-card));
+  /* spectrafit-core-specific: translucent nav-rail backdrop (no handbook
+     equivalent token) — re-derived from --surface-page at the same alpha
+     the old --bg-translucent used. */
+  --bg-translucent: rgba(0, 0, 0, 0.7);
+  --glass-blur: 20px;
+  --border-subtle: rgba(84, 84, 88, 0.65);
+  --border-strong: #48484A;
+  /* ink → text hierarchy. --text-tertiary (30% alpha) is a DECORATIVE-ONLY
+     tone per the handbook's own accessibility findings — it fails WCAG AA
+     for real body text (~2.8:1 on --surface-page). Real body text, labels,
+     captions, and hints use --text-secondary; --text-tertiary is reserved
+     for genuinely decorative marks (chart reference-line strokes, N/A
+     placeholders, muted/skipped status swatches) — see the audit in the
+     accompanying report for the exact call sites that stayed vs. promoted. */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(235, 235, 245, 0.60);
+  --text-tertiary: rgba(235, 235, 245, 0.30);
+  /* one primary accent — Jobs' reduction: richness lives in the system family */
+  --system-blue: #0A84FF;
+  --system-indigo: #5E5CE6;
+  --system-teal: #64D2FF;
+  --system-green: #30D158;
+  --system-pink: #FF375F;
+  --system-orange: #FF9F0A;
+  --system-yellow: #FFD60A;
+  --system-gray: #8E8E93;
+  --system-red: #FF453A;    /* systemRed — RESERVED: danger/destructive only, never categorical */
+  --system-blue-soft: rgba(10, 132, 255, .16);
+  --system-indigo-soft: rgba(94, 92, 230, .16);
+  --system-teal-soft: rgba(100, 210, 255, .16);
+  --system-green-soft: rgba(48, 209, 88, .16);
+  --system-pink-soft: rgba(255, 55, 95, .16);
+  --system-orange-soft: rgba(255, 159, 10, .16);
+  --system-yellow-soft: rgba(255, 214, 10, .16);
+  /* neutral-400 — true gray (zero chroma), used by the provenance ladder's
+     "absent" rung so it reads distinct from the blue-tinted derived/reconstructed
+     rungs. */
+  --neutral-400: oklch(0.45 0 0);
+  /* provenance materials — a certainty gradient (measured → absent). NO
+     handbook equivalent (spectrafit-core-specific); rebuilt off the
+     handbook's own tint/shade color-mix pattern anchored to --system-blue,
+     token NAMES held stable across the redesign so no call site changed. */
+  --prov-measured: var(--text-primary);
+  --prov-derived: var(--blue-200);
+  --prov-reconstructed: var(--blue-400);
+  --prov-absent: var(--neutral-400);
+  /* readable variant of --prov-absent for actual body text (e.g. .absent-note) —
+     --prov-absent itself is a deliberately faint certainty-gradient marker
+     (--neutral-400 clears only ~2.8:1 on --surface-page, further muted by
+     opacity: 0.5 on .prov-absent) that fails WCAG AA for real paragraph text.
+     oklch(0.60 0 0) is a true-gray step recomputed via real sRGB relative
+     luminance math (OKLCH → linear-sRGB → WCAG contrast) to clear 4.5:1 on
+     --surface-page (#000000): linear luminance 0.216 → contrast 5.32:1.
+     (--neutral-300 at oklch(0.55 0 0) was tried first and falls just short,
+     at 4.33:1 — the exact break-even point is oklch(~0.559 0 0) ≈ 4.50:1.) */
+  --absent-text: oklch(0.60 0 0);
+  /* gate/status — used ONLY on the gate badge, never on data ink */
+  --success: var(--system-green);
+  --warning: var(--system-orange);
+  --warning-soft: var(--system-orange-soft);
+  --danger: var(--system-red);
+  /* per-solver identity colors — consumed via SolverMeta.color = var(--c-<id>)
+     from the served report data (no direct call sites in web/src). Mapped
+     onto the handbook's --plot-1..8 categorical family; the handbook's
+     BackendTag component only names one generic "scipy" slot, so the 3 real
+     scipy variants below are a proposal — see report for sign-off ask. */
+  --c-spectrafit: var(--system-blue);          /* plot-1 */
+  --c-lmfit: var(--system-green);              /* plot-5 */
+  --c-jax: var(--system-pink);                 /* plot-4 */
+  --c-scipy-ls-lm: var(--system-teal);         /* plot-3 */
+  --c-scipy-ls-trf: var(--system-indigo);      /* plot-7 */
+  --c-scipy-ls-dogbox: var(--system-yellow);   /* plot-6 */
+  --c-spectrafit-soft: var(--system-blue-soft);
+  --c-lmfit-soft: var(--system-green-soft);
+  --c-jax-soft: var(--system-pink-soft);
+  --c-scipy-ls-lm-soft: var(--system-teal-soft);
+  --c-scipy-ls-trf-soft: var(--system-indigo-soft);
+  --c-scipy-ls-dogbox-soft: var(--system-yellow-soft);
+  /* type — sans-only per the handbook's brand direction (no serif display).
+     --font-display keeps its name (no call site needs editing) but now
+     resolves to the same IBM Plex Sans body face — the handbook has no serif
+     display option. --font-mono gains JetBrains Mono as primary (a real,
+     visible change on every mono surface — CLI/data/axis text — not just a
+     token rename); IBM Plex Mono stays as the first fallback. */
+  --font-display: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* space scale (8px base, 4px half-step) — identical pixel values, pure
+     rename, plus two new steps beyond the old ceiling. */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px; --space-9: 96px;
+  /* shape — one flat --radius split into named steps; each existing call site
+     was reassigned to its semantic slot (see report), not blanket-renamed. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+  /* soft elevation for flat (non-blurred) cards — the handbook's Card.jsx
+     references var(--shadow-sm) but no shadow scale existed in this file
+     yet; this is the one step actually consumed (Card's replacement for
+     backdrop-filter blur on content surfaces per the handbook's chrome-
+     material rule: blur is NAVIGATION-only, content cards stay flat). */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* motion — one flat --motion split into fast/base/slow; existing call sites
+     default to --motion-base, with pure hover/active color-step transitions
+     promoted to --motion-fast on inspection (see report). */
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
+  --motion-slow: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* per-destination layout widths. --layout-nav keeps its own name (the
+     handbook has no nav-specific width) but is repointed to the same 720px
+     as --layout-prose, its closest handbook pairing. */
+  --layout-prose: 720px;   /* was --layout-editorial: 760px (Δ −40px) */
+  --layout-content: 1120px; /* was --layout-evidence: 1200px (Δ −80px) */
+  --layout-nav: 720px;      /* was 760px — no handbook nav-width token exists; repointed to --layout-prose's value */
+  /* tints & shades — Blue ramp, generated the same color-mix way the
+     handbook builds its own (a tint = base mixed with white, a shade = base
+     mixed with black). Only the steps actually consumed by the provenance
+     ladder are carried here (blue-200/blue-400); indigo/full 50→900 ramps
+     live in the handbook if a future call site needs them. */
+  --blue-200: color-mix(in srgb, var(--system-blue) 35%, white);
+  --blue-400: color-mix(in srgb, var(--system-blue) 75%, white);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--surface-page); color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.glass {
+  background: var(--surface-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+/* provenance material classes — certainty gradient (measured → absent) */
+.prov-measured      { color: var(--prov-measured);      opacity: 1.0; }
+.prov-derived       { color: var(--prov-derived);       opacity: 0.92; }
+.prov-reconstructed { color: var(--prov-reconstructed); opacity: 0.7; }
+.prov-absent        { color: var(--prov-absent);        opacity: 0.5; }
+
+/* credibility-rung ladder */
+.rung-ladder { display: flex; flex-direction: column; gap: var(--space-2); }
+.rung-head   { display: flex; align-items: baseline; gap: var(--space-3); }
+.rung-now    { font-family: var(--font-mono); font-size: 1.25rem; color: var(--system-blue); }
+.rung-cap    { font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.rung-steps  { display: flex; gap: var(--space-1); }
+.rung-step   { display: block; width: 28px; height: 6px; border-radius: 3px; transition: background var(--motion-fast); }
+.rung-gap    { margin: 0; font-size: 0.82rem; color: var(--text-secondary); font-family: var(--font-mono); }
+.rung-legend { margin: 0; font-size: 0.74rem; color: var(--text-tertiary); font-family: var(--font-mono); }
+
+/* render-truth money figure — claimed vs audited rung */
+.render-truth { display: flex; flex-direction: column; gap: var(--space-3); }
+.rt-cols      { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.rt-col       { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 100px; }
+.rt-label     { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); font-family: var(--font-mono); }
+.rt-rung      { font-family: var(--font-mono); font-size: 1.8rem; font-weight: 300; line-height: 1; }
+.rt-note      { font-size: 0.76rem; color: var(--text-secondary); }
+.rt-arrow     { font-size: 1.4rem; color: var(--text-secondary); flex-shrink: 0; }
+.rt-blocked   { margin: 0; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.5; }
+.rt-wire      { display: inline; }
+.rt-structural-gap { margin: var(--space-2) 0 0; font-size: 0.76rem; color: var(--text-secondary); line-height: 1.5; font-family: var(--font-mono); }
+
+/* Evidence section grouping + sticky rail (Dye + Jobs + Tog) */
+/* Dye: section label — small uppercase mono label in --text-secondary */
+.ev-section {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: var(--space-7) 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+/* Tog: sticky section rail — subtle horizontal nav bar */
+.ev-rail {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+  background: var(--bg-translucent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.ev-rail a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.ev-rail a:hover { color: var(--system-blue); }
+
+/* Suite-table rows are clickable (open the case drill-down) — make that
+   discoverable: a hover highlight + underlined case id, so the affordance is
+   visible, not just a cursor change (Tog: no hidden interaction). */
+.suite-row--clickable { transition: background var(--motion-fast); }
+.suite-row--clickable:hover { background: var(--surface-raised); }
+.suite-row--clickable:hover td:first-child { text-decoration: underline; }
+.suite-row--clickable:focus-visible {
+  outline: 2px solid var(--system-blue);
+  outline-offset: -2px;
+}
+
+/* Jobs: smooth scroll for anchor navigation */
+html { scroll-behavior: smooth; }
+
+
+/* Standing hero: the money figure IS the rung (Dye primary · Ive monument · Jobs one-number) */
+.money { display:flex; align-items:center; gap:var(--space-5); flex-wrap:wrap; }
+.money-rung { font-family:var(--font-mono); font-size:clamp(3rem,8vw,5.5rem); font-weight:200; line-height:.9; }
+.money-claimed { color:var(--text-secondary); }
+.money-audited { color:var(--danger); }
+.money-arrow  { color:var(--text-secondary); font-size:2rem; }
+.money-ladder { display:flex; gap:var(--space-1); margin-top:var(--space-2); }
+/* Tog: absent/partial measurement, explained where you meet it (not a footnote) */
+.absent-note { display:flex; gap:var(--space-2); align-items:flex-start; padding:var(--space-3);
+  border:1px dashed var(--border-subtle); border-radius:8px; color:var(--absent-text); font-size:.82rem; line-height:1.5; }
+/* Tog+Ive: ONE orchestrated entrance — communicates reading order, reduced-motion safe */
+@media (prefers-reduced-motion: no-preference) {
+  .stagger > * { opacity:0; transform:translateY(8px); animation:rise var(--motion-base) forwards; }
+  .stagger > *:nth-child(1){animation-delay:40ms} .stagger > *:nth-child(2){animation-delay:110ms}
+  .stagger > *:nth-child(3){animation-delay:180ms} .stagger > *:nth-child(4){animation-delay:250ms}
+  @keyframes rise { to { opacity:1; transform:none } }
+}
+/* quiet provenance footer — closes the editorial columns (Ive composition · Kare warmth) */
+.prov-footer { margin-top:var(--space-7); text-align:center; font-family:var(--font-mono);
+  font-size:0.72rem; color:var(--text-secondary); letter-spacing:0.04em; }
+.prov-footer .prov-mark { color:var(--text-secondary); }
+
+/* verification-wire matrix */
+.wire-matrix { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+/* Grid: wire-id (fixed) · dot (fixed) · name (1fr, grows) · evidence (minmax wraps).
+   The evidence column uses minmax(0, auto) so it can shrink below its content width
+   and let white-space / overflow-wrap take effect — the only fix for long NIST strings. */
+.wire-row    { display: grid; grid-template-columns: 3.5rem 10px 1fr minmax(0, auto); align-items: start; gap: var(--space-3);
+               padding: var(--space-2) var(--space-3); border-radius: 8px; background: var(--surface-raised);
+               border-left: 2px solid transparent; }
+/* R5 council: FAIL rows carry a structural border-left accent — Jobs/Dye/Tog.
+   padding-left compensates so the text column doesn't shift: space-3(12px) − 2px border = 10px. */
+.wire-row[data-status="fail"] { border-left: 2px solid var(--danger); padding-left: calc(var(--space-3) - 2px); }
+.wire-id     { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; padding-top: 2px; }
+.wire-dot    { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+.wire-name   { font-size: 0.88rem; color: var(--text-secondary); }
+/* Evidence wraps rather than forcing horizontal scroll (R1: Dye hierarchy + Tog no-clip).
+   min-width: 0 ensures the cell can shrink; overflow-wrap: anywhere breaks long tokens. */
+.wire-evidence { font-size: 0.78rem; color: var(--text-secondary); font-family: var(--font-mono);
+                 text-align: right; min-width: 0; white-space: normal; overflow-wrap: anywhere; }

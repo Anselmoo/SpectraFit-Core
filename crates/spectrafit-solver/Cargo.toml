@@ -1,0 +1,34 @@
+[package]
+name = "spectrafit-solver"
+description = "Solver strategy dispatch (lm/trf/irls/global/varpro/geodesic) and post-fit statistics."
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+spectrafit-types = { workspace = true }
+spectrafit-graph = { workspace = true }
+spectrafit-varpro = { workspace = true }
+spectrafit-levenberg-marquardt = { workspace = true }
+spectrafit-dogleg = { workspace = true }
+spectrafit-newton-cg = { workspace = true }
+nalgebra = { workspace = true }
+levenberg-marquardt = { workspace = true }
+faer = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+rayon = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+
+[lints]
+workspace = true

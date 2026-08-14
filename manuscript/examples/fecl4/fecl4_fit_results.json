@@ -1,0 +1,621 @@
+{
+  "window_ev": [
+    698.0,
+    735.0
+  ],
+  "model": "pseudo_voigt multiplet + 2 arctan_step + constant; L2 step amplitude tied to L3/2 via an expression edge",
+  "selection_criterion": "components specified from the spectroscopy; BIC reported per named shoulder as an ablation diagnostic, not used to select",
+  "spectra": {
+    "d5": {
+      "source_file": "manuscript/examples/fecl4/FeCl4_d5.txt",
+      "n_points": 331,
+      "model": "author-specified components; BIC reported, not selecting",
+      "n_peaks": 9,
+      "dof": 289,
+      "r_squared": 0.9990607488895829,
+      "reduced_chi2": 0.007139321392639219,
+      "aic": -1596.7614775992201,
+      "bic": -1437.0725058333835,
+      "n_iter": 41,
+      "n_func_evals": 103,
+      "n_jac_evals": 41,
+      "condition_number": 1.5323281995377482e+20,
+      "message": "converged_xtol",
+      "shoulder_ablations": {
+        "pre-shoulder 706 eV": {
+          "n_peaks": 8,
+          "r_squared": 0.994327657294425,
+          "reduced_chi2": 0.04252730873996981,
+          "bic": -865.0520800211311,
+          "delta_bic_vs_full": 572.0204258122524,
+          "prefers_full": true
+        }
+      },
+      "parameters": {
+        "bg.c": {
+          "value": -0.15531338559616423,
+          "stderr": 0.029833913311107043,
+          "vary": true,
+          "expr": null
+        },
+        "p6.sigma": {
+          "value": 0.575855988495271,
+          "stderr": 0.06629787021003608,
+          "vary": true,
+          "expr": null
+        },
+        "p8.amplitude": {
+          "value": 3.020606397699437e-09,
+          "stderr": 0.21878514344505337,
+          "vary": true,
+          "expr": null
+        },
+        "p8.fraction": {
+          "value": 0.8733090908703559,
+          "stderr": 11495112.77198831,
+          "vary": true,
+          "expr": null
+        },
+        "p1.fraction": {
+          "value": 0.9020528572278836,
+          "stderr": 0.09682705595919137,
+          "vary": true,
+          "expr": null
+        },
+        "p4.amplitude": {
+          "value": 0.6489963722177701,
+          "stderr": 0.6527584896893794,
+          "vary": true,
+          "expr": null
+        },
+        "p5.amplitude": {
+          "value": 2.068332031748155,
+          "stderr": 0.8321791270144544,
+          "vary": true,
+          "expr": null
+        },
+        "p4.fraction": {
+          "value": 0.9950060850120112,
+          "stderr": 7.073880293936971,
+          "vary": true,
+          "expr": null
+        },
+        "p5.fraction": {
+          "value": 0.99999997816181,
+          "stderr": 0.3196014165909432,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.amplitude": {
+          "value": 0.13619504765481028,
+          "stderr": null,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.sigma": {
+          "value": 2.999999780210718,
+          "stderr": 14.884740982405368,
+          "vary": true,
+          "expr": null
+        },
+        "p3.center": {
+          "value": 710.4811588273576,
+          "stderr": 0.3044565006147539,
+          "vary": true,
+          "expr": null
+        },
+        "p5.sigma": {
+          "value": 0.6050774657839689,
+          "stderr": 0.15142340050640266,
+          "vary": true,
+          "expr": null
+        },
+        "p6.amplitude": {
+          "value": 1.756690504099388,
+          "stderr": 0.1819371892364734,
+          "vary": true,
+          "expr": null
+        },
+        "p0.fraction": {
+          "value": 6.970868272821462e-08,
+          "stderr": 0.22215252017148918,
+          "vary": true,
+          "expr": null
+        },
+        "p2.sigma": {
+          "value": 0.49150891691188126,
+          "stderr": 0.22785973994332584,
+          "vary": true,
+          "expr": null
+        },
+        "p7.sigma": {
+          "value": 0.9583358068082073,
+          "stderr": 0.28142190193133615,
+          "vary": true,
+          "expr": null
+        },
+        "p3.fraction": {
+          "value": 0.12132556632034715,
+          "stderr": 1.4683917982701182,
+          "vary": true,
+          "expr": null
+        },
+        "p3.sigma": {
+          "value": 0.7782255693668323,
+          "stderr": 0.5493751818055196,
+          "vary": true,
+          "expr": null
+        },
+        "p4.sigma": {
+          "value": 0.6225564203622954,
+          "stderr": 1.6958084027832085,
+          "vary": true,
+          "expr": null
+        },
+        "p0.center": {
+          "value": 706.3917766116602,
+          "stderr": 0.01224624253734705,
+          "vary": true,
+          "expr": null
+        },
+        "p7.amplitude": {
+          "value": 2.508102990327503,
+          "stderr": 0.4158382766372419,
+          "vary": true,
+          "expr": null
+        },
+        "p7.fraction": {
+          "value": 0.9999999967186022,
+          "stderr": 0.6263159694597554,
+          "vary": true,
+          "expr": null
+        },
+        "p0.amplitude": {
+          "value": 1.7041161680252594,
+          "stderr": 0.1529793203071335,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.center": {
+          "value": 719.5000000232972,
+          "stderr": 24.043891639756144,
+          "vary": true,
+          "expr": null
+        },
+        "p5.center": {
+          "value": 713.3931854881363,
+          "stderr": 0.02801053095506584,
+          "vary": true,
+          "expr": null
+        },
+        "p1.amplitude": {
+          "value": 14.51591150825608,
+          "stderr": 0.8029051534978903,
+          "vary": true,
+          "expr": null
+        },
+        "p3.amplitude": {
+          "value": 0.9018259909134789,
+          "stderr": 0.7624918164459514,
+          "vary": true,
+          "expr": null
+        },
+        "p1.center": {
+          "value": 707.8242910004032,
+          "stderr": 0.00885352779021164,
+          "vary": true,
+          "expr": null
+        },
+        "p2.amplitude": {
+          "value": 3.677880280945519,
+          "stderr": 0.8391779564591528,
+          "vary": true,
+          "expr": null
+        },
+        "p2.fraction": {
+          "value": 0.9999999901206892,
+          "stderr": 1.0611388308517125,
+          "vary": true,
+          "expr": null
+        },
+        "p0.sigma": {
+          "value": 0.3113312383712906,
+          "stderr": 0.01917288745349183,
+          "vary": true,
+          "expr": null
+        },
+        "p4.center": {
+          "value": 711.926642334962,
+          "stderr": 0.11202895337461283,
+          "vary": true,
+          "expr": null
+        },
+        "p8.center": {
+          "value": 724.4275071710341,
+          "stderr": 118560944.45652072,
+          "vary": true,
+          "expr": null
+        },
+        "p8.sigma": {
+          "value": 2.5845852904915523,
+          "stderr": 16759410.59399045,
+          "vary": true,
+          "expr": null
+        },
+        "p6.center": {
+          "value": 720.1134918880268,
+          "stderr": 0.028357962441545512,
+          "vary": true,
+          "expr": null
+        },
+        "p2.center": {
+          "value": 708.6330741036965,
+          "stderr": 0.021931548637433212,
+          "vary": true,
+          "expr": null
+        },
+        "p1.sigma": {
+          "value": 0.5604473185294394,
+          "stderr": 0.029782267834780937,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.center": {
+          "value": 709.1302990014824,
+          "stderr": 0.19348315393290139,
+          "vary": true,
+          "expr": null
+        },
+        "p7.center": {
+          "value": 721.550030304881,
+          "stderr": 0.034212249103127756,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.amplitude": {
+          "value": 0.27239009530962055,
+          "stderr": 0.05584970186896989,
+          "vary": true,
+          "expr": null
+        },
+        "p6.fraction": {
+          "value": 0.4177572310695323,
+          "stderr": 0.32735682952528117,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.sigma": {
+          "value": 0.10000004207242301,
+          "stderr": 0.18686582881295263,
+          "vary": true,
+          "expr": null
+        }
+      }
+    },
+    "d6": {
+      "source_file": "manuscript/examples/fecl4/FeCl4_d6.txt",
+      "n_points": 331,
+      "model": "author-specified components; BIC reported, not selecting",
+      "n_peaks": 10,
+      "dof": 285,
+      "r_squared": 0.9992468906073688,
+      "reduced_chi2": 0.004357527200286271,
+      "aic": -1756.7937917954491,
+      "bic": -1581.8963465281042,
+      "n_iter": 37,
+      "n_func_evals": 95,
+      "n_jac_evals": 37,
+      "condition_number": 893816024.8096746,
+      "message": "converged_xtol",
+      "shoulder_ablations": {
+        "pre-shoulder 705 eV": {
+          "n_peaks": 9,
+          "r_squared": 0.9975904134167533,
+          "reduced_chi2": 0.013749015331408007,
+          "bic": -1220.1518277878254,
+          "delta_bic_vs_full": 361.74451874027886,
+          "prefers_full": true
+        },
+        "post-shoulder 708 eV": {
+          "n_peaks": 9,
+          "r_squared": 0.9991143986936438,
+          "reduced_chi2": 0.005053209551905571,
+          "bic": -1551.4641637062002,
+          "delta_bic_vs_full": 30.432182821904007,
+          "prefers_full": true
+        }
+      },
+      "parameters": {
+        "p2.fraction": {
+          "value": 3.7112012147537792e-09,
+          "stderr": 0.17419554492751402,
+          "vary": true,
+          "expr": null
+        },
+        "p0.sigma": {
+          "value": 0.5910141602875474,
+          "stderr": 0.06154859785652024,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.center": {
+          "value": 707.6585657839162,
+          "stderr": 38.84266345429352,
+          "vary": true,
+          "expr": null
+        },
+        "p5.sigma": {
+          "value": 0.32035102636861296,
+          "stderr": 0.3573209282847457,
+          "vary": true,
+          "expr": null
+        },
+        "p1.amplitude": {
+          "value": 11.279167734223593,
+          "stderr": 1.4702432279426894,
+          "vary": true,
+          "expr": null
+        },
+        "p9.sigma": {
+          "value": 0.8187245443606365,
+          "stderr": 0.08519490448797853,
+          "vary": true,
+          "expr": null
+        },
+        "p5.center": {
+          "value": 709.500002086914,
+          "stderr": 0.5464879835689301,
+          "vary": true,
+          "expr": null
+        },
+        "p7.sigma": {
+          "value": 0.5123401153778602,
+          "stderr": 0.035711119306575556,
+          "vary": true,
+          "expr": null
+        },
+        "p8.sigma": {
+          "value": 0.6535884001574195,
+          "stderr": 0.08648280452415902,
+          "vary": true,
+          "expr": null
+        },
+        "p0.amplitude": {
+          "value": 2.1191702775351424,
+          "stderr": 1.3886862014606391,
+          "vary": true,
+          "expr": null
+        },
+        "p0.center": {
+          "value": 704.842648434089,
+          "stderr": 0.19847633773985024,
+          "vary": true,
+          "expr": null
+        },
+        "p1.center": {
+          "value": 705.8913705237494,
+          "stderr": 0.027578329818328976,
+          "vary": true,
+          "expr": null
+        },
+        "p2.center": {
+          "value": 707.3744480418912,
+          "stderr": 0.15904461000317593,
+          "vary": true,
+          "expr": null
+        },
+        "p7.fraction": {
+          "value": 9.003885171876378e-08,
+          "stderr": 0.20790808013209058,
+          "vary": true,
+          "expr": null
+        },
+        "p3.sigma": {
+          "value": 0.5166573683122262,
+          "stderr": 0.8028670722149909,
+          "vary": true,
+          "expr": null
+        },
+        "p3.fraction": {
+          "value": 0.5895217563335657,
+          "stderr": 3.7947333559839134,
+          "vary": true,
+          "expr": null
+        },
+        "p1.fraction": {
+          "value": 0.3201100740809006,
+          "stderr": 0.22874565008205489,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.amplitude": {
+          "value": 0.13230711203730347,
+          "stderr": 0.07547978255532821,
+          "vary": true,
+          "expr": null
+        },
+        "step_l3.sigma": {
+          "value": 2.991766482587556,
+          "stderr": 17.534239321526684,
+          "vary": true,
+          "expr": null
+        },
+        "p4.fraction": {
+          "value": 0.6024175592490986,
+          "stderr": 5.85688661182298,
+          "vary": true,
+          "expr": null
+        },
+        "p5.amplitude": {
+          "value": 0.2857045827914537,
+          "stderr": 0.7376583134173659,
+          "vary": true,
+          "expr": null
+        },
+        "p7.center": {
+          "value": 717.637240835186,
+          "stderr": 0.05481792212269393,
+          "vary": true,
+          "expr": null
+        },
+        "p6.amplitude": {
+          "value": 0.3530799472543243,
+          "stderr": 0.34871248267754823,
+          "vary": true,
+          "expr": null
+        },
+        "p6.sigma": {
+          "value": 1.8829866383378442,
+          "stderr": 1.0225163149650482,
+          "vary": true,
+          "expr": null
+        },
+        "p8.center": {
+          "value": 718.928149143534,
+          "stderr": 0.03319142401388327,
+          "vary": true,
+          "expr": null
+        },
+        "p4.center": {
+          "value": 709.1135939085834,
+          "stderr": 0.13560325291640685,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.center": {
+          "value": 720.8327371528817,
+          "stderr": 0.4298193719779966,
+          "vary": true,
+          "expr": null
+        },
+        "p9.amplitude": {
+          "value": 1.0849737025242623,
+          "stderr": 0.1041967103791851,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.amplitude": {
+          "value": 0.06615355601865174,
+          "stderr": null,
+          "vary": true,
+          "expr": null
+        },
+        "p0.fraction": {
+          "value": 7.266091878853816e-08,
+          "stderr": 0.1680394260574951,
+          "vary": true,
+          "expr": null
+        },
+        "p6.center": {
+          "value": 711.000031419224,
+          "stderr": 1.7370690034074738,
+          "vary": true,
+          "expr": null
+        },
+        "p7.amplitude": {
+          "value": 1.4571945306943026,
+          "stderr": 0.22439244820359952,
+          "vary": true,
+          "expr": null
+        },
+        "p5.fraction": {
+          "value": 0.3920431573317879,
+          "stderr": 3.111234285947812,
+          "vary": true,
+          "expr": null
+        },
+        "p8.fraction": {
+          "value": 0.14059900215573362,
+          "stderr": 0.28537948923987966,
+          "vary": true,
+          "expr": null
+        },
+        "step_l2.sigma": {
+          "value": 0.10000016327871193,
+          "stderr": 0.4606361793026166,
+          "vary": true,
+          "expr": null
+        },
+        "bg.c": {
+          "value": -0.0411301546756685,
+          "stderr": 0.08460819420970715,
+          "vary": true,
+          "expr": null
+        },
+        "p3.center": {
+          "value": 707.9956189209713,
+          "stderr": 0.10652856781086947,
+          "vary": true,
+          "expr": null
+        },
+        "p2.sigma": {
+          "value": 0.3438188949717369,
+          "stderr": 0.08231598561529241,
+          "vary": true,
+          "expr": null
+        },
+        "p3.amplitude": {
+          "value": 2.916159521796994,
+          "stderr": 1.3002011917547551,
+          "vary": true,
+          "expr": null
+        },
+        "p4.sigma": {
+          "value": 0.2612226094866225,
+          "stderr": 1.0500576622072604,
+          "vary": true,
+          "expr": null
+        },
+        "p8.amplitude": {
+          "value": 2.533209365732095,
+          "stderr": 0.13896271370748497,
+          "vary": true,
+          "expr": null
+        },
+        "p2.amplitude": {
+          "value": 1.8524736223384102,
+          "stderr": 1.1816125971816631,
+          "vary": true,
+          "expr": null
+        },
+        "p1.sigma": {
+          "value": 0.64261555948083,
+          "stderr": 0.11798109119980284,
+          "vary": true,
+          "expr": null
+        },
+        "p4.amplitude": {
+          "value": 0.5772138435887555,
+          "stderr": 2.242516349401743,
+          "vary": true,
+          "expr": null
+        },
+        "p6.fraction": {
+          "value": 0.0014539876142993164,
+          "stderr": 1.660417370728596,
+          "vary": true,
+          "expr": null
+        },
+        "p9.center": {
+          "value": 720.8050592699278,
+          "stderr": 0.13192291874114512,
+          "vary": true,
+          "expr": null
+        },
+        "p9.fraction": {
+          "value": 0.3613315619038615,
+          "stderr": 0.22804659891506235,
+          "vary": true,
+          "expr": null
+        }
+      }
+    }
+  },
+  "l3_chemical_shift_ev": {
+    "value": 1.9329204766537487,
+    "stderr": 0.02896462031342001,
+    "d5_center": 707.8242910004032,
+    "d6_center": 705.8913705237494,
+    "definition": "L3 white-line maximum of d5 minus that of d6"
+  }
+}
