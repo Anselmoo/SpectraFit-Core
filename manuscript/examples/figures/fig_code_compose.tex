@@ -1,0 +1,77 @@
+% Figure: Listing 1, the composable model API in use.
+%
+% Source for fig_code_compose.pdf / .png. Build it with the sibling driver:
+%
+%     uv run --group manuscript python manuscript/examples/figures/fig_code_compose.py
+%
+% The caption is set INSIDE the float and there is deliberately no caption
+% paragraph beneath the image in method.md, matching the treatment of
+% Algorithm 1 and the venue's practice for code and algorithm boxes.
+%
+% This code is executed, not illustrative. It was run against the built
+% extension on 2026-08-15 and returns r^2 = 0.999198 on a seeded Gaussian, with
+% parameters keyed "peak1.sigma", "peak1.center", "peak1.amplitude". If the
+% public API changes, this listing is wrong until it is re-run and regenerated.
+\documentclass[border=6pt,varwidth=15.2cm]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\definecolor{kw}{RGB}{0,90,160}
+\definecolor{str}{RGB}{160,60,20}
+\definecolor{cmt}{RGB}{110,110,110}
+\definecolor{rule}{RGB}{40,40,40}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{cmt}\itshape,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  breaklines=false,
+  aboveskip=0.6em,
+  belowskip=0pt,
+  % Lets $...$ render as math inside the listing, which is how R^2 in the
+  % trailing comment becomes a real superscript rather than a caret. Safe
+  % because this snippet contains no literal '$'; adding one would need
+  % escapeinside instead.
+  mathescape=true,
+}
+
+\captionsetup{labelfont=bf,skip=0.4em,justification=justified,
+              singlelinecheck=false,font=small}
+\renewcommand{\lstlistingname}{Listing}
+
+\begin{document}
+\begin{minipage}{15.2cm}
+\hrule height 0.9pt
+\vspace{0.5em}
+\captionof{lstlisting}{One model, composed and fitted. The caller states the
+model as a graph of named components and names a solver, or asks for
+\texttt{auto} to have the solver family derived from the graph; the parameter
+layout follows from the graph, and each kernel carries its own Jacobian,
+closed-form for all but eleven. The same construction scales to several
+components, tied parameters, stacked datasets and N-dimensional fits without a
+change of interface.}
+\vspace{0.2em}
+\hrule height 0.4pt
+\begin{lstlisting}
+from spectrafit_core import MeasurementData, compose, fit, gaussian
+
+# x, y are the measured abscissa and ordinate.
+graph = compose([gaussian("peak1", amplitude=1.0, center=0.0, sigma=1.0)]).build()
+result = fit(graph, MeasurementData(x=list(x), y=list(y)))
+
+result.parameters   # keyed "peak1.<param>"; each carries .value and .stderr
+result.r_squared    # goodness of fit, as $R^2$ against the data
+\end{lstlisting}
+\vspace{0.3em}
+\hrule height 0.9pt
+\end{minipage}
+\end{document}

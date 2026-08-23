@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "jsx": "react-jsx",
+        "strict": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "forceConsistentCasingInFileNames": true,
+        "types": [
+            "node",
+            "react",
+            "react-dom"
+        ]
+    },
+    "include": [
+        "frontend/**/*.ts",
+        "frontend/**/*.tsx"
+    ]
+}
