@@ -1,0 +1,69 @@
+/*
+ * Abbreviation accessibility affordance — the visual half of the fix for a
+ * real defect measured on the live site: `pymdownx.abbr` (zensical.toml's
+ * `markdown_extensions.abbr` + `auto_append`) renders every
+ * `docs/includes/abbreviations.txt` term as a bare `<abbr title>` with a
+ * dotted underline and `cursor: help` (the theme's own bare `abbr{}` rule —
+ * kept as-is, untouched here, per the decision to preserve that affordance).
+ * `content.tooltips` is enabled in zensical.toml's theme features, but this
+ * build ships no JS that ever mounts a `.md-tooltip` element for it (`.md-tooltip`
+ * itself IS a real, styled theme component — used nowhere here; confirmed by
+ * grepping the installed bundle for `data-md-component=tooltip`, which does not
+ * exist). So a touch or keyboard user sees the affordance with no reachable
+ * mechanism behind it. docs/javascripts/abbr-init.js supplies that mechanism
+ * at runtime; this file styles the two states it introduces.
+ *
+ * Deliberately NOT reusing `.md-tooltip`'s own class names: that component's
+ * positioning is driven by `--md-tooltip-x/-y/-width` custom properties that
+ * only the theme's own (footnote-only, in this build) tooltip JS ever sets —
+ * repurposing the class without that JS would either do nothing or position
+ * wrongly. `.sf-abbr-tooltip` below borrows the same token values
+ * (background, shadow, radius, font) for visual consistency instead.
+ */
+
+/* Keyboard focus for an abbr this map has no glossary anchor for (see
+ * abbr-init.js — `el.tabIndex = 0` is what makes `[tabindex]:focus-visible`
+ * in utilities/focus.css apply here; no rule is needed in this file for the
+ * ring itself). This only marks the open/toggled state so a sighted keyboard
+ * user can tell which term the visible tooltip belongs to once several share
+ * a page.
+ */
+abbr.sf-abbr-active {
+  background-color: var(--md-accent-fg-color--transparent);
+  border-radius: var(--radius-sm, 6px);
+}
+
+/* An abbr whose term resolved to a glossary anchor is wrapped in this link
+ * (abbr-init.js) rather than replaced — the inner `<abbr title>` keeps its
+ * own dotted underline and native mouse-hover title tooltip, so the anchor
+ * itself contributes only focusability and navigation, no border/color that
+ * would visually double the affordance.
+ */
+.sf-abbr-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The touch/keyboard-reveal popover for an UNMATCHED abbr (no glossary
+ * anchor to link to) — `content: hidden` is toggled by abbr-init.js, not by
+ * CSS, since there is no `:hover`-only path available for touch. Positioned
+ * via inline `top`/`left` (viewport-relative abbr geometry only known at
+ * runtime) written by the same script.
+ */
+.sf-abbr-tooltip {
+  position: absolute;
+  z-index: 20;
+  max-width: 20rem;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm, 6px);
+  background-color: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font-family: var(--md-text-font-family);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  box-shadow: var(--md-shadow-z2);
+}
+
+.sf-abbr-tooltip[hidden] {
+  display: none;
+}

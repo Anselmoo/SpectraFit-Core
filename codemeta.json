@@ -1,0 +1,80 @@
+{
+  "@context": "https://w3id.org/codemeta/3.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "spectrafit-core",
+  "name": "SpectraFit-Core",
+  "description": "A Rust-cored, Python-exposed nonlinear curve-fitting library for spectroscopic and general nonlinear models, shipped with a self-auditing cross-backend benchmark that checks its own speed and accuracy claims against independent oracles (lmfit, SciPy, JAX/optimistix) and NIST StRD certified reference datasets.",
+  "version": "0.1.0",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/Anselmoo/spectrafit-core",
+  "issueTracker": "https://github.com/Anselmoo/spectrafit-core/issues",
+  "readme": "https://github.com/Anselmoo/spectrafit-core/blob/main/README.md",
+  "programmingLanguage": [
+    {
+      "@type": "ComputerLanguage",
+      "name": "Rust",
+      "version": "1.87"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "Python",
+      "version": "3.13"
+    },
+    {
+      "@type": "ComputerLanguage",
+      "name": "TypeScript"
+    }
+  ],
+  "runtimePlatform": [
+    "Python 3.13"
+  ],
+  "operatingSystem": [
+    "Linux",
+    "macOS",
+    "Windows"
+  ],
+  "applicationCategory": "Scientific/Engineering",
+  "applicationSubCategory": "Spectroscopy, nonlinear least squares, curve fitting",
+  "developmentStatus": "active",
+  "keywords": [
+    "curve-fitting",
+    "spectroscopy",
+    "Levenberg-Marquardt",
+    "trust-region",
+    "variable projection",
+    "nonlinear least squares",
+    "Rust",
+    "PyO3",
+    "Pydantic",
+    "benchmark",
+    "reproducibility",
+    "NIST StRD"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0000-0003-4543-4833",
+      "givenName": "Anselm W.",
+      "alternateName": "Anselm Hahn",
+      "familyName": "Hahn",
+      "email": "anselm.hahn@gmail.com",
+      "identifier": "https://orcid.org/0000-0003-4543-4833"
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Anselm W.",
+      "alternateName": "Anselm Hahn",
+      "familyName": "Hahn",
+      "email": "anselm.hahn@gmail.com"
+    }
+  ],
+  "softwareRequirements": [
+    "Python >= 3.13",
+    "numpy >= 2.4.4",
+    "pydantic >= 2.13.3",
+    "Rust toolchain >= 1.87 (source builds only; not required to install a released wheel)"
+  ],
+  "buildInstructions": "https://github.com/Anselmoo/spectrafit-core/blob/main/CONTRIBUTING.md"
+}

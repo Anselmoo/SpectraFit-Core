@@ -1,0 +1,39 @@
+import * as Plot from "@observablehq/plot";
+import type { WinnerBar } from "../series/winner";
+import { axes } from "./grammar";
+import { PLOT_SPECS } from "./spec";
+import { toSvg } from "./toSvg";
+
+export function winnerPlot(
+  bars: WinnerBar[],
+  o: { colors: Record<string, string>; width?: number }
+): SVGSVGElement {
+  const ids = bars.map((b) => b.backend);
+  return toSvg(
+    Plot.plot({
+      width: o.width,
+      height: Math.max(120, ids.length * 30 + 40),
+      marginLeft: 120,
+      style: {
+        background: "transparent",
+        color: "var(--text-secondary)",
+        fontSize: "11px",
+      },
+      color: {
+        domain: ids,
+        range: ids.map((i) => o.colors[i] ?? "var(--system-blue)"),
+      },
+      ...axes(PLOT_SPECS["winner-stability"]),
+      x: { ...axes(PLOT_SPECS["winner-stability"]).x, domain: [0, 1] },
+      y: { ...axes(PLOT_SPECS["winner-stability"]).y, domain: ids },
+      marks: [
+        Plot.barX(bars, {
+          y: "backend",
+          x: "fraction",
+          fill: "backend",
+          fillOpacity: 0.55,
+        }),
+      ],
+    })
+  );
+}
