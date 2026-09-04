@@ -1,0 +1,33 @@
+/*
+ * KaTeX math typography — cupertino-council pass, 2026-08-02.
+ *
+ * Tension resolutions (fixed precedence Usability > Reduction > Craft >
+ * Hierarchy > Metaphor):
+ *   1. Craft wanted KaTeX's own math glyph font (correct kerning/shapes for
+ *      real math); Usability required no visual disruption to table
+ *      scanning in reference/models/. Resolved: keep KaTeX's math font for
+ *      the glyphs themselves, but size-match to the surrounding text via
+ *      `font-size: inherit` rather than KaTeX's own (larger) default.
+ *   2. Craft wanted KaTeX's shipped default styling (hardcoded black ink,
+ *      poor on [data-md-color-scheme=slate]); Usability required correct
+ *      light/dark contrast. Resolved: `color: inherit`, relying on KaTeX's
+ *      own CSS using `currentColor` for strokes/borders (radicals, fraction
+ *      bars), so those follow along automatically.
+ *   3. Hierarchy wanted every formula in reference/models/ treated as an
+ *      inline, same-weight table citizen (all 34 rows, no display/block
+ *      equations); Reduction required not foreclosing block math (`$$...$$`)
+ *      for other, future pages. Resolved: arithmatex's generic mode supports
+ *      both at the config level; reference/models/index.md itself only ever
+ *      uses inline math.
+ */
+.katex {
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Table cells (every formula in reference/models/index.md) shouldn't grow
+   taller than the surrounding row just because KaTeX's own line-height
+   metrics differ slightly from the body font's. */
+.md-typeset table .katex {
+  line-height: 1.2;
+}

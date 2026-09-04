@@ -1,0 +1,1 @@
+spectrafit-core is a Rust + Python numerical fitting framework. Python package roots live under python/, with extras/benchmark providing benchmark/reporting utilities and spectrafit_core exposing the main PyO3-backed API. Benchmarks compare spectrafit, lmfit, and optional JAX backends over synthetic BenchmarkCase catalogs and typed Pydantic result contracts.

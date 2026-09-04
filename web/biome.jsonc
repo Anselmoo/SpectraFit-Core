@@ -1,0 +1,124 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
+  // GOV-08: lands a baseline-passing lint gate for web/. See
+  // analysis/web/BIOME_MEASUREMENT.md for the original 676-diagnostic sizing
+  // measurement this config is built against (re-measured here on biome
+  // 2.5.9; a couple of counts drifted slightly from that doc's 2.5.6 numbers
+  // — see the per-rule comments below for exact current counts).
+  //
+  // Named `biome.jsonc`, not `biome.json` — Biome always re-parses its own
+  // config file with the strict (comment-free) JSON parser when that file is
+  // swept up by `biome check .`'s own file walk (in addition to parsing it
+  // once, permissively, to load the config). A `.json` file with `//`
+  // comments in it therefore self-fails `biome check .` on its own config
+  // file; `.jsonc` is Biome's documented escape hatch for exactly this
+  // (comments allowed in config, since Biome v1.6).
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignoreUnknown": true
+  },
+  "formatter": {
+    // Deliberately OFF. 148 of 225 files (66%) need reformatting under this
+    // repo's style-derived trial config (2-space/double-quote/semicolons/
+    // trailing-commas/100-col — see BIOME_MEASUREMENT.md's "Trial config").
+    // Reformatting them is out of scope for landing a passing lint gate: it
+    // would bury this config-only change under a 148-file diff. Turn this on
+    // in its own, separate `biome format --write` commit (see that doc's
+    // "Recommendation").
+    "enabled": false
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        // 141 files currently fail import ordering
+        // (assist/source/organizeImports). Fixing it means either an
+        // auto-applied 141-file diff (same "don't reformat" argument as the
+        // formatter above) or hand-ordering each file's imports by hand. Off
+        // for now — a mechanical follow-up, split out on its own.
+        "organizeImports": "off"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      // biome 2.5 deprecated the boolean `recommended` field in favor of
+      // `preset` (`biome migrate` renames it automatically) — using `preset`
+      // directly here so this doesn't emit a deprecation diagnostic.
+      "preset": "recommended",
+      // --- Rules downgraded below from their recommended "error" to "warn" ---
+      // Every rule here has real, currently-uncleared violations (counts are
+      // from `biome check . --reporter=summary` on this tree, biome 2.5.9).
+      // "warn" keeps them visible in `biome check` output (and in editors)
+      // but does not fail the exit code, so this gate can land today instead
+      // of blocking on judgment-heavy fixes. Do not silently raise any of
+      // these back to "off" — lower the violation count instead, then flip
+      // back to "error" once it hits zero.
+      "a11y": {
+        // Real accessibility defects, genuine follow-up work, not noise —
+        // see this task's report for the full file:line list.
+        // useButtonType: 5 violations — <button> missing an explicit type=.
+        "useButtonType": "warn",
+        // useAriaPropsSupportedByRole: 5 violations — aria-label on elements
+        // whose implicit role doesn't support it.
+        "useAriaPropsSupportedByRole": "warn",
+        // useValidAnchor: 2 violations — <a> used without href / as a button.
+        "useValidAnchor": "warn",
+        // noSvgWithoutTitle: 2 violations — <svg> with no accessible title.
+        "noSvgWithoutTitle": "warn",
+        // useAnchorContent: 1 violation — <a> with no screen-reader-visible content.
+        "useAnchorContent": "warn",
+        // noRedundantRoles: 1 violation — role="list" on a <ul> (implied already).
+        "noRedundantRoles": "warn",
+        // noNoninteractiveTabindex: 1 violation — tabIndex on a non-interactive <div>.
+        "noNoninteractiveTabindex": "warn"
+      },
+      "security": {
+        // noDangerouslySetInnerHtml: 2 violations (Katex.tsx, Shell.tsx). Real
+        // XSS-shaped risk, flagged separately in this task's report by
+        // file:line — not a rule to quietly leave off. Fix, then flip back
+        // to "error".
+        "noDangerouslySetInnerHtml": "warn"
+      },
+      "suspicious": {
+        // noExportsInTest: 7 violations — test files exporting helpers
+        // instead of keeping them module-private; a real structure smell,
+        // not urgent.
+        "noExportsInTest": "warn",
+        // noArrayIndexKey: 5 violations — React list keys derived from array
+        // index; a correctness footgun on reordering lists, worth fixing.
+        "noArrayIndexKey": "warn",
+        // noAssignInExpressions: 3 violations — assignment inside an
+        // expression (e.g. `while ((m = re.exec(s)))`); readability, low
+        // risk here.
+        "noAssignInExpressions": "warn",
+        // useIterableCallbackReturn: 1 violation — a forEach() callback
+        // returns a value that forEach ignores; likely a leftover from a
+        // map() rewrite.
+        "useIterableCallbackReturn": "warn"
+      },
+      "correctness": {
+        // useExhaustiveDependencies: 4 violations across 2 hooks — missing
+        // or non-literal React hook dependency arrays. Judgment-heavy (a
+        // wrong auto-fix can introduce infinite render loops), so not
+        // mechanical.
+        "useExhaustiveDependencies": "warn"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // Generated by `openapi-typescript` via `poe contract_regen` — linting
+      // or formatting it fights the generator on every regen.
+      "includes": ["src/openapi.gen.ts"],
+      "linter": {
+        "enabled": false
+      }
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+ "@context": "https://w3id.org/ro/crate/1.1/context",
+ "@graph": [
+  {
+   "@id": "ro-crate-metadata.json",
+   "@type": "CreativeWork",
+   "conformsTo": {
+    "@id": "https://w3id.org/ro/crate/1.1"
+   },
+   "about": {
+    "@id": "./"
+   }
+  },
+  {
+   "@id": "./",
+   "@type": "Dataset",
+   "name": "spectrafit-core Fe L2,3-edge case study",
+   "description": "The measured Fe L2,3-edge X-ray absorption spectra of [FeCl4]- (Fe3+, d5) and [FeCl4]2- (Fe2+, d6) reproduced as Figure 3 of the spectrafit-core software metapaper, together with the scripts that fit them, the recorded fit results and the four constraint-hypothesis scenarios. This crate exists so the licence exception on the two spectra is machine-readable and not prose only: they are third-party data reproduced by permission and are NOT covered by the repository's MIT licence.",
+   "datePublished": "2026-08-18",
+   "license": {
+    "@id": "#licence-manifest"
+   },
+   "hasPart": [
+    {
+     "@id": "FeCl4_d5.txt"
+    },
+    {
+     "@id": "FeCl4_d6.txt"
+    },
+    {
+     "@id": "README.md"
+    },
+    {
+     "@id": "fecl4_constraint_scenarios.json"
+    },
+    {
+     "@id": "fecl4_constraint_scenarios.py"
+    },
+    {
+     "@id": "fecl4_fit_results.json"
+    },
+    {
+     "@id": "fig_constraint_grid.pdf"
+    },
+    {
+     "@id": "fig_constraint_grid.png"
+    },
+    {
+     "@id": "fig_constraint_grid.py"
+    },
+    {
+     "@id": "fig_fecl4_case_study.pdf"
+    },
+    {
+     "@id": "fig_fecl4_case_study.png"
+    },
+    {
+     "@id": "fig_fecl4_case_study.py"
+    }
+   ]
+  },
+  {
+   "@id": "#licence-manifest",
+   "@type": "CreativeWork",
+   "name": "MIT, except where a file declares its own licence",
+   "description": "This directory is not uniformly licensed. Every file is MIT-licensed, as the spectrafit-core repository is, EXCEPT those files that carry their own `license` property in this crate. Two do, and they are the only two: `FeCl4_d5.txt`, `FeCl4_d6.txt`. Resolve a file's licence from its own `license` property first, and fall back to MIT only where a file declares none."
+  },
+  {
+   "@id": "#licence-fecl4-spectra-by-permission",
+   "@type": "CreativeWork",
+   "name": "Reproduced by permission; no onward reuse licence",
+   "description": "Third-party measured data, reproduced and redistributed with the authors' permission. NOT covered by the MIT licence that covers the rest of this directory: that licence applies to the code. The permission is specific to this reproduction and redistribution and grants nothing onward -- the spectrafit-core repository records no reuse licence for these spectra. A third party wanting to use them should cite Wasinger et al. (2003) and seek permission from those authors.",
+   "citation": "Wasinger EC, de Groot FMF, Hedman B, Hodgson KO, Solomon EI. L-edge X-ray absorption spectroscopy of non-heme iron sites: experimental determination of differential orbital covalency. J Am Chem Soc. 2003;125(42):12894-906. doi:10.1021/ja034634s"
+  },
+  {
+   "@id": "https://spdx.org/licenses/MIT.html",
+   "@type": "CreativeWork",
+   "name": "MIT License",
+   "identifier": "MIT"
+  },
+  {
+   "@id": "FeCl4_d5.txt",
+   "@type": "File",
+   "name": "FeCl4_d5.txt",
+   "encodingFormat": "text/plain",
+   "contentSize": 9534,
+   "sha256": "c3885f1538789e16c6b91a89d08131794c5bc1786403bf06ce4d7507c98fd2d0",
+   "license": {
+    "@id": "#licence-fecl4-spectra-by-permission"
+   },
+   "citation": "Wasinger EC, de Groot FMF, Hedman B, Hodgson KO, Solomon EI. L-edge X-ray absorption spectroscopy of non-heme iron sites: experimental determination of differential orbital covalency. J Am Chem Soc. 2003;125(42):12894-906. doi:10.1021/ja034634s"
+  },
+  {
+   "@id": "FeCl4_d6.txt",
+   "@type": "File",
+   "name": "FeCl4_d6.txt",
+   "encodingFormat": "text/plain",
+   "contentSize": 9525,
+   "sha256": "2d83af4ca5b5b8354f39c5a43fb9612e8d35bea2f5dee20698339ce6c052882f",
+   "license": {
+    "@id": "#licence-fecl4-spectra-by-permission"
+   },
+   "citation": "Wasinger EC, de Groot FMF, Hedman B, Hodgson KO, Solomon EI. L-edge X-ray absorption spectroscopy of non-heme iron sites: experimental determination of differential orbital covalency. J Am Chem Soc. 2003;125(42):12894-906. doi:10.1021/ja034634s"
+  },
+  {
+   "@id": "README.md",
+   "@type": "File",
+   "name": "README.md",
+   "encodingFormat": "text/markdown",
+   "contentSize": 6059,
+   "sha256": "066433cf11b1904935ea5f0b7c19d0b2ec6f8bf3ca0ac74635b1452d035ea072"
+  },
+  {
+   "@id": "fecl4_constraint_scenarios.json",
+   "@type": "File",
+   "name": "fecl4_constraint_scenarios.json",
+   "encodingFormat": "application/json",
+   "contentSize": 2918,
+   "sha256": "907e182f69a2b4c4c236a397ad8f8e4e9161a362a57f0f5ee56f6a0c252ad8b6"
+  },
+  {
+   "@id": "fecl4_constraint_scenarios.py",
+   "@type": "File",
+   "name": "fecl4_constraint_scenarios.py",
+   "encodingFormat": "text/x-python",
+   "contentSize": 16664,
+   "sha256": "1e50a8bbb69f6f7e216e15ce9ac7b9fb71fd28df3c161065227194a3421220da"
+  },
+  {
+   "@id": "fecl4_fit_results.json",
+   "@type": "File",
+   "name": "fecl4_fit_results.json",
+   "encodingFormat": "application/json",
+   "contentSize": 17124,
+   "sha256": "bc40f4d1030bbc5cb5eafdaf89d49aa009417cc387944eb8e92561aae7d1c313"
+  },
+  {
+   "@id": "fig_constraint_grid.pdf",
+   "@type": "File",
+   "name": "fig_constraint_grid.pdf",
+   "encodingFormat": "application/pdf",
+   "contentSize": 101223,
+   "sha256": "e0031843a11c1e0b57e19c542d1ccc1fcabcb2d2af8b4a63afb78331e82d6230"
+  },
+  {
+   "@id": "fig_constraint_grid.png",
+   "@type": "File",
+   "name": "fig_constraint_grid.png",
+   "encodingFormat": "image/png",
+   "contentSize": 572829,
+   "sha256": "e108ac71ae96c14d9a0319966fa161e9b9427ae5ccda786377263e764851de22"
+  },
+  {
+   "@id": "fig_constraint_grid.py",
+   "@type": "File",
+   "name": "fig_constraint_grid.py",
+   "encodingFormat": "text/x-python",
+   "contentSize": 22170,
+   "sha256": "c59a457928ebbe8640537077ef3826a16321061b3b66800745cd99eeadea0162"
+  },
+  {
+   "@id": "fig_fecl4_case_study.pdf",
+   "@type": "File",
+   "name": "fig_fecl4_case_study.pdf",
+   "encodingFormat": "application/pdf",
+   "contentSize": 47124,
+   "sha256": "af82f27bb0b75a6389a44d6e075e03ad4cc20e7ece06c3c91229186e350f0ead"
+  },
+  {
+   "@id": "fig_fecl4_case_study.png",
+   "@type": "File",
+   "name": "fig_fecl4_case_study.png",
+   "encodingFormat": "image/png",
+   "contentSize": 326397,
+   "sha256": "00e0b39efaf0eb9270126e24c46f0c489a12aa3503adfc535b3d115d305be6a2"
+  },
+  {
+   "@id": "fig_fecl4_case_study.py",
+   "@type": "File",
+   "name": "fig_fecl4_case_study.py",
+   "encodingFormat": "text/x-python",
+   "contentSize": 20406,
+   "sha256": "8b0a314d2bb898420ac38e8aba675e51799941ce3fa01623501e44187f5e2d66"
+  }
+ ]
+}

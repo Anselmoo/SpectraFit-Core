@@ -1,0 +1,12 @@
+{% extends "main.html" %}
+
+{% block content %}
+<h1>No peak detected at this wavelength</h1>
+<p>Nothing was fit to the address you followed — the page doesn't exist.</p>
+<p>
+  <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}">Return to the docs home</a>
+  {% if config.repo_url %}
+  · <a href="{{ config.repo_url }}">View the repository</a>
+  {% endif %}
+</p>
+{% endblock %}
