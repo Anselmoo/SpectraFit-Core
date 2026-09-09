@@ -1,0 +1,64 @@
+% Figure: Algorithm 1, solver dispatch.
+%
+% Source for fig_algorithm_dispatch.pdf / .png. Build it with the sibling
+% driver rather than by hand:
+%
+%     uv run --group manuscript python manuscript/examples/figures/fig_algorithm_dispatch.py
+%
+% Two properties of this file are deliberate and should survive editing.
+%
+% 1. The caption is INSIDE the image, and there is deliberately no caption
+%    paragraph beneath the figure in method.md. This follows the venue's own
+%    practice for algorithm floats (see JORS 10.5334/jors.741): the algorithm
+%    box is self-contained. The caption text here is the single source; it is
+%    mirrored in manuscript-state.json for the numbering registry, which flags
+%    this algorithm `caption_in_image` so the renderer's caption guard knows
+%    not to demand a prose copy. Changing the wording means changing both.
+%
+% 2. Solver identifiers are set with \texttt, not algorithm2e's default small
+%    caps. Small caps flattens TrustRegionLevenbergMarquardt into one unbroken
+%    run of capitals and destroys the internal capitalisation that makes a
+%    compound identifier readable.
+%
+% The guard list mirrors `graph_prefers_varpro` in
+% crates/spectrafit-solver/src/dispatch.rs. It has four conjuncts, not three.
+% If that function changes, this figure is wrong until it is regenerated.
+\documentclass[border=6pt,varwidth=13.4cm]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage[ruled,vlined]{algorithm2e}
+
+\SetKwInOut{Input}{Input}
+\SetKwInOut{Output}{Output}
+\newcommand{\solver}[1]{\texttt{#1}}
+
+\begin{document}
+\begin{algorithm}[H]
+  \DontPrintSemicolon
+  \caption{Solver dispatch. The dispatcher checks for a named solver first,
+    then---only when the caller passed \texttt{auto}---for separability, and
+    otherwise returns the trust-region family. An unrecognised solver name is an
+    error, never a silent fallback, so a typo cannot quietly change what was
+    measured.}
+  \Input{model graph $G$, solver request $s$}
+  \Output{a solver instance, or an error}
+  \BlankLine
+  \eIf{$s$ names a solver}{
+    \Return that solver, or \solver{Error} if the name is unknown\;
+    \tcp*[h]{never a silent fallback}\;
+  }{
+    \uIf{$G$ is separable in its linear coefficients,
+         \emph{and} every varying nonlinear parameter is unbounded,
+         \emph{and} no parameter is tied,
+         \emph{and} no node is bound to a dataset index}{
+      \Return \solver{VariableProjection}\;
+      \tcp*[h]{the linear block is eliminated}\;
+    }
+    \Else{
+      \Return \solver{TrustRegionLevenbergMarquardt}\;
+    }
+  }
+\end{algorithm}
+\end{document}

@@ -1,0 +1,1709 @@
+{
+  "@context": "https://w3id.org/ro/crate/1.1/context",
+  "@graph": [
+    {
+      "@id": "ro-crate-metadata.json",
+      "@type": "CreativeWork",
+      "conformsTo": {
+        "@id": "https://w3id.org/ro/crate/1.1"
+      },
+      "about": {
+        "@id": "./"
+      }
+    },
+    {
+      "@id": "./",
+      "@type": "Dataset",
+      "name": "spectrafit-core reps-ladder benchmark — sweep-20260816T130505Z",
+      "description": "Cross-backend curve-fitting benchmark run at a ladder of repetition depths, with per-rung provenance. Records the geometric-mean speedup of spectrafit-core against lmfit, jax/optimistix and three scipy.optimize.least_squares methods over a deterministic 151-case catalogue, together with the solver configuration, timing methodology, accuracy definitions and machine environment needed to interpret or recompute those numbers. Every rung ran on one host in one process; see ladder.json for the methodology block and the comparability caveats.",
+      "license": "https://spdx.org/licenses/MIT.html",
+      "datePublished": "2026-08-17T01:02:23Z",
+      "hasPart": [
+        {
+          "@id": "sweep.json"
+        },
+        {
+          "@id": "ladder.schema.json"
+        },
+        {
+          "@id": "rungs/seed_20260603/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260603/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260603/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260604/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260604/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260604/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260605/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260605/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260605/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260606/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260606/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260606/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260607/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260607/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260607/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260608/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260608/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260608/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260609/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260609/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260609/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260610/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260610/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260610/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260611/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260611/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260611/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260612/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260612/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260612/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260613/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260613/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260613/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260614/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260614/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260614/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260615/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260615/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260615/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260616/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260616/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260616/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260617/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260617/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260617/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260618/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260618/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260618/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260619/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260619/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260619/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260620/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260620/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260620/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260621/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260621/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260621/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260622/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260622/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260622/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260623/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260623/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260623/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260624/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260624/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260624/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260625/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260625/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260625/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260626/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260626/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260626/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260627/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260627/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260627/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260628/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260628/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260628/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260629/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260629/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260629/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260630/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260630/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260630/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260631/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260631/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260631/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260632/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260632/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260632/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260633/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260633/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260633/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260634/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260634/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260634/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260635/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260635/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260635/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260636/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260636/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260636/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260637/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260637/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260637/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260638/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260638/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260638/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260639/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260639/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260639/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260640/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260640/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260640/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260641/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260641/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260641/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260642/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260642/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260642/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260643/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260643/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260643/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260644/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260644/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260644/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260645/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260645/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260645/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260646/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260646/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260646/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260647/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260647/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260647/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260648/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260648/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260648/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260649/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260649/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260649/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260650/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260650/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260650/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260651/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260651/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260651/trust.json"
+        },
+        {
+          "@id": "rungs/seed_20260652/provenance.json"
+        },
+        {
+          "@id": "rungs/seed_20260652/manifest.json"
+        },
+        {
+          "@id": "rungs/seed_20260652/trust.json"
+        }
+      ],
+      "keywords": [
+        "curve fitting",
+        "benchmark",
+        "reproducibility",
+        "Levenberg-Marquardt",
+        "spectroscopy",
+        "FAIR"
+      ],
+      "identifier": "sweep-20260816T130505Z",
+      "version": "0.1.0",
+      "url": "https://gitlab.mpcdf.mpg.de/anhahn/spectrafit-core",
+      "measurementTechnique": "wall-clock timing of Backend.run over repeated solves; see ladder.json methodology.timing"
+    },
+    {
+      "@id": "sweep.json",
+      "@type": "File",
+      "name": "sweep.json",
+      "encodingFormat": "application/json",
+      "contentSize": 68226,
+      "sha256": "2f42367c8239e922eb1616261daec04061b04b7e38488db4f0edab0fd5d59dfb"
+    },
+    {
+      "@id": "ladder.schema.json",
+      "@type": "File",
+      "name": "ladder.schema.json",
+      "encodingFormat": "application/json",
+      "contentSize": 23565,
+      "sha256": "fa8c1d457e40feb114ccae6d3d72e41d49df7ad9d4063ce8c85e8d3f1de0dd62"
+    },
+    {
+      "@id": "rungs/seed_20260603/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8924,
+      "sha256": "1f5f79fcfe045947eb5530768d603221b09e9795c92bd007c10ab377d4115275"
+    },
+    {
+      "@id": "rungs/seed_20260603/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106171,
+      "sha256": "46b368f0d47ab309c9863b3a8f3cccc866db9a49762a76047f26fb33be1f6da2"
+    },
+    {
+      "@id": "rungs/seed_20260603/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "09a949dc7fa10e011bf3cee075db00cce5db5acf54fe3242cabb02d16f6cbe06"
+    },
+    {
+      "@id": "rungs/seed_20260604/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "253a1ed5180a3717531f9b61b20f333d4135641d5311e841f7dad2bb9c803d38"
+    },
+    {
+      "@id": "rungs/seed_20260604/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106156,
+      "sha256": "cae68ad40bd0725230bd35f7cb4c356857183e11311a28cef6d87c32c637cf88"
+    },
+    {
+      "@id": "rungs/seed_20260604/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "ad3ae9b6a4d55a38432fe8b8564efd4615b96d7bedd505a52563201118c9c21d"
+    },
+    {
+      "@id": "rungs/seed_20260605/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8905,
+      "sha256": "0fa93a603e46bea6651f3d97b3eb6bb04199d060273ff5c6808eeabdc3980f51"
+    },
+    {
+      "@id": "rungs/seed_20260605/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106126,
+      "sha256": "eab0788ef52e30168cfcd07d1023f46d2de5cb0cd46f8b9c366c725557010718"
+    },
+    {
+      "@id": "rungs/seed_20260605/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "c4a680afb60f2bdcfbcee748e26746c407c209347f367c14c02ce75cd6c298ce"
+    },
+    {
+      "@id": "rungs/seed_20260606/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8905,
+      "sha256": "76d47db519ef3234627244714ae95f66c1d979d5e0667d4b0e8cfe1b612a7456"
+    },
+    {
+      "@id": "rungs/seed_20260606/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106112,
+      "sha256": "50317cb8ff6edf133bfe1307dda982f3647bb7a2f8e56cb522e6a77036da7de6"
+    },
+    {
+      "@id": "rungs/seed_20260606/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "ac4673c676c7fa6690e91709a35095f599c3d2410d5d424fde44376adecdac7f"
+    },
+    {
+      "@id": "rungs/seed_20260607/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "6801395674e925c411011d736e8b0b980e8b1b832f591ffca29c17f82f148827"
+    },
+    {
+      "@id": "rungs/seed_20260607/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106145,
+      "sha256": "59ae475176015c717688c8e5bf4184c50b0ab32e1def7b470f81cf002bcf067c"
+    },
+    {
+      "@id": "rungs/seed_20260607/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "d44b56ea2d3936651971b227c7bd3eada2a057f87e29d7d3bd92d50e23bb6e59"
+    },
+    {
+      "@id": "rungs/seed_20260608/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8889,
+      "sha256": "a113327cb01da384029cc2599b481abbfadf8478f2c3e1db4ed11354d4adfe25"
+    },
+    {
+      "@id": "rungs/seed_20260608/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106110,
+      "sha256": "aca7bb8690d32334f8f327150db9088a27497602fb47f2dd33ce38a49fc266b9"
+    },
+    {
+      "@id": "rungs/seed_20260608/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "14aa20ef5b2b6bf2d00d4cd08ce911c466eb8b85b27887dd4c4a66c8a7ed7932"
+    },
+    {
+      "@id": "rungs/seed_20260609/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8908,
+      "sha256": "8b9f115f30966100f57762633da0299d1d5c2d0ac182d41621f380dd0518327a"
+    },
+    {
+      "@id": "rungs/seed_20260609/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106154,
+      "sha256": "202e767afb8063c9540a9a83a0803a8bb7755e22a210bc7f74cb4a00fd71f452"
+    },
+    {
+      "@id": "rungs/seed_20260609/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "fff90f6ed9d6e4253acafce935a9a0e66e3526ce6456e5cb8c2d1e052b5e6211"
+    },
+    {
+      "@id": "rungs/seed_20260610/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8888,
+      "sha256": "cf751a00b47ebb3d2e79ebce0dc092f5c209c432ddc965511990bfb60bfa453e"
+    },
+    {
+      "@id": "rungs/seed_20260610/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106118,
+      "sha256": "36481428c373225994a4fe93305220e37f6c0986c309c0f6b8d2484721d7ee38"
+    },
+    {
+      "@id": "rungs/seed_20260610/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "25382a3d1e371d82d850f2701b6a1b361843e97592594a960006b6f48e457a20"
+    },
+    {
+      "@id": "rungs/seed_20260611/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "fd1e3cd8d4607b33b0269267f7e49efffae957b8741e8873e5d43d248ef66b95"
+    },
+    {
+      "@id": "rungs/seed_20260611/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106159,
+      "sha256": "119ab8caba5ec2dd20eb8e2ff7f80e6206aa5b173cc555e3ab9da5febf975015"
+    },
+    {
+      "@id": "rungs/seed_20260611/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "05e7daae6f726c5a246d8ebf12978a14ea1bf2490d95ffa48a12b1afd7317322"
+    },
+    {
+      "@id": "rungs/seed_20260612/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8920,
+      "sha256": "a322948fd4dc94347888767ff4ec4d60f8beff9a17c544f789d03d8a3ba8272a"
+    },
+    {
+      "@id": "rungs/seed_20260612/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106200,
+      "sha256": "6b93953733864a899e573cc3f0e2315361e17e837d84a6e10560fee67f955c76"
+    },
+    {
+      "@id": "rungs/seed_20260612/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "afb640ea10f103f993b5a1170c62e3ed8a6117ca3af1a4e027d0baf7374449c2"
+    },
+    {
+      "@id": "rungs/seed_20260613/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "6c3c97f622254e8ad32cbed6280ac86d66e042ad3d27d5dfc0312eb3831754ad"
+    },
+    {
+      "@id": "rungs/seed_20260613/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106122,
+      "sha256": "7a2dbcab6b465c1dce3c48c8c3be6e0de787b70876bedc16dd06dd4286891229"
+    },
+    {
+      "@id": "rungs/seed_20260613/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "a6e7725b61959664765aa2748211465786fafc466612b84f0006f8ffd8b0fa5f"
+    },
+    {
+      "@id": "rungs/seed_20260614/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "b5a66bff0956c2337669d35cbbd18c0561c6f856d41743281d17dc3ada7a43b7"
+    },
+    {
+      "@id": "rungs/seed_20260614/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106151,
+      "sha256": "ca657ac7cfec6cee82e07a06614460beb655158db63a63cf833d56e91f046764"
+    },
+    {
+      "@id": "rungs/seed_20260614/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "61e4158002d546ebe7d74196d6921be6d0c992c59f21628436e0105c4644929e"
+    },
+    {
+      "@id": "rungs/seed_20260615/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "ef331aa1f1ae16a82062be5f1577916794c8fc3b0084cf63bc42ee0d39f02969"
+    },
+    {
+      "@id": "rungs/seed_20260615/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106228,
+      "sha256": "3069d2a2ae08dc6e9f7045768c9cfea221c979f5d02019ef1080ee73855bd97d"
+    },
+    {
+      "@id": "rungs/seed_20260615/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "e181e2d1aaf80db1bce48b013b35c1b4a8adf43fae429c11f756730a43b3b0ff"
+    },
+    {
+      "@id": "rungs/seed_20260616/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8908,
+      "sha256": "3156b07c30bc4f8f2ecbaebbe7306c1f0cb021d712a1e5ea71810b7be00efae0"
+    },
+    {
+      "@id": "rungs/seed_20260616/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106184,
+      "sha256": "53e228645f62daf1fb62540156dc5013c957da5771cda91414e0349690cf9fd7"
+    },
+    {
+      "@id": "rungs/seed_20260616/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "1f755b0e8ca058d23eb39e00c2544505a5884ebb8bad95a22bb17b0e755acaf6"
+    },
+    {
+      "@id": "rungs/seed_20260617/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "62c9abe6376ec3edb1634ce48a6efca87e5a92a78e9b725ab92a025a5fa5cbd5"
+    },
+    {
+      "@id": "rungs/seed_20260617/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106111,
+      "sha256": "160b3a3f94f694781a170c38dd7a3c1240ee2086889e717f552bea166f37a3e8"
+    },
+    {
+      "@id": "rungs/seed_20260617/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "8a8a1a41bfb2d81dcbdf36a5cbbc24aa5786798309aaab2d98c2012a337e099a"
+    },
+    {
+      "@id": "rungs/seed_20260618/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8909,
+      "sha256": "2ddf77b0dc0b72aecaf448131ba45ed95a34818e95b9c312b61d15d11a885578"
+    },
+    {
+      "@id": "rungs/seed_20260618/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106181,
+      "sha256": "93f1500e60c9c99833d5d862a1fd7e185f6d47c3a98fb38e6e739ae1a591fc6e"
+    },
+    {
+      "@id": "rungs/seed_20260618/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "9878cf529b96cb59c9483d98ecd4294e824093b54faabd8a7c1b5629fa17fbae"
+    },
+    {
+      "@id": "rungs/seed_20260619/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "b04806f32a2c203691fcf8068e37af9b8695403c288cec750ba56783ed0dd290"
+    },
+    {
+      "@id": "rungs/seed_20260619/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106210,
+      "sha256": "724706035d12e870dbb975be8d8274ecd3bc7a510afec427bb06bebfef3e019e"
+    },
+    {
+      "@id": "rungs/seed_20260619/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "a9b47d6deef61ebc0e60ef02d0f74464f7846efa38e574c2a3d19f9b8e47df4a"
+    },
+    {
+      "@id": "rungs/seed_20260620/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8908,
+      "sha256": "51ea720417e3dc89bb2d77a71fac1ec74a34200762109cdf739495a4f0f8eaef"
+    },
+    {
+      "@id": "rungs/seed_20260620/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106179,
+      "sha256": "b496d5be2a2a4c1f7e59fc1bc278d586b3da76c168a4cd2674293a800bb5a7a2"
+    },
+    {
+      "@id": "rungs/seed_20260620/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "91364296462c056cceabc589e24fd105ec8f2e8e5ac38a5006b7db7b28f1450f"
+    },
+    {
+      "@id": "rungs/seed_20260621/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "d9b480c76f15ebd2b14381e3c135134eca90de44a3d4e56c129569533d5303da"
+    },
+    {
+      "@id": "rungs/seed_20260621/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106159,
+      "sha256": "4ceb70e06d5d0e8c3a846984606d422f3125e10cc56112622d6c885231049088"
+    },
+    {
+      "@id": "rungs/seed_20260621/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "996f31264dd0857182a1e31ae1dee8af0b34808dedac564490d15efff09d0da0"
+    },
+    {
+      "@id": "rungs/seed_20260622/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "af1f933fb3176bc1ed5dbe9f43028b2c8fe5c2103b672608bbb25078be6f44bc"
+    },
+    {
+      "@id": "rungs/seed_20260622/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106135,
+      "sha256": "4c62cf6b5244f20b9aeb30066e86f75d79348d20b5a5112ba3bcf6589e6f3249"
+    },
+    {
+      "@id": "rungs/seed_20260622/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "fc517fd3dc2cd62ce73213aecc8a3b6a1b8df684d7a81cfe1749772b7263e7fc"
+    },
+    {
+      "@id": "rungs/seed_20260623/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8919,
+      "sha256": "636230db058a840d84864ef7ae62fae818daf5073e878a9b9a5bfcebbe6c5c5c"
+    },
+    {
+      "@id": "rungs/seed_20260623/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106134,
+      "sha256": "432ee1a107bb37bd9e760cd1b2a6ce2cd85b9e0de09d71499f8890ddb85aa47a"
+    },
+    {
+      "@id": "rungs/seed_20260623/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "d5068b289f1e6882254c40204c434ca6b04702d06464db0e14c0671e2ab85eb1"
+    },
+    {
+      "@id": "rungs/seed_20260624/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "9abcdd553cc518a8febd5f42749752ae44c4337b136206848988696b87f75899"
+    },
+    {
+      "@id": "rungs/seed_20260624/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106160,
+      "sha256": "51948c151c78a9e30051dbc39b89b26506c35bd581af410de075fc2030b9bc5a"
+    },
+    {
+      "@id": "rungs/seed_20260624/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "10405a8be452e4ddb8d40b3f645c2f3afbb6b75d4581b3d661ef7d2d2c935098"
+    },
+    {
+      "@id": "rungs/seed_20260625/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "3fe1d88c651a5d449d452234b3f18a8025c2e2fed114ca297de351eccff2c9cb"
+    },
+    {
+      "@id": "rungs/seed_20260625/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106171,
+      "sha256": "92d50a50ae59a331d31e8fe4228ff226c1d1e5895cc700c99c0f6fddc294536e"
+    },
+    {
+      "@id": "rungs/seed_20260625/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "aaec51a4e4becebd1302d13088a55dd3a747343dedfb55ae0e01cc7bd4dc905c"
+    },
+    {
+      "@id": "rungs/seed_20260626/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "c77fd87ea7be022c46886c510e08d8fd16163dd135171051b11fb12a0de9df4a"
+    },
+    {
+      "@id": "rungs/seed_20260626/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106155,
+      "sha256": "a3e63610f9dca142f97b49dd785f7b7caa4db323a949e7d1cb9e723922285a63"
+    },
+    {
+      "@id": "rungs/seed_20260626/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "0ecf533c6434b4fc162724d90c5f6614d31fb3fb0342804442355795ea481c8d"
+    },
+    {
+      "@id": "rungs/seed_20260627/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "669cd2e32c2db2c6a513aba6784888c24609f0679208c2e1da54716798e30997"
+    },
+    {
+      "@id": "rungs/seed_20260627/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106136,
+      "sha256": "a1ac9c4741a45a0b72499781312a2d34a3fbee837aa5e2bdc8626f53a53228d1"
+    },
+    {
+      "@id": "rungs/seed_20260627/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "7d1764cf1090d4f03ccae72b3b428d7f0a88c3fe570bcd85c511005490d4484d"
+    },
+    {
+      "@id": "rungs/seed_20260628/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "c03d71ff40b97970b7a1325aee6ba16c160837591c0cc0f4089ce4231e130e42"
+    },
+    {
+      "@id": "rungs/seed_20260628/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106119,
+      "sha256": "3bc57dde4b65f931971bc7201bb78e7ba80fa7681d8b2b15b9b56fb694d83c6e"
+    },
+    {
+      "@id": "rungs/seed_20260628/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "842b31c5a6d5187b773456b4c7d65751b8f0a48a50e67fefbb0053dcba6d843c"
+    },
+    {
+      "@id": "rungs/seed_20260629/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8908,
+      "sha256": "ef7ab8d60e106312391a5db3c0d2f4ddc8037c31c47b6885d5a3a60e9ab7f901"
+    },
+    {
+      "@id": "rungs/seed_20260629/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106172,
+      "sha256": "2a66a25d49b6dd60d2c37dd8455f20a589af7fce50da9c4515e957c1193a47c5"
+    },
+    {
+      "@id": "rungs/seed_20260629/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "7b1d7e0e4fdc95d8dbed9e210aceb23c700d246b9bb05c1657d346406d003883"
+    },
+    {
+      "@id": "rungs/seed_20260630/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "3b8dfb56cab41345990c0406c55439763dba586dbfaf3b1ec66e4b69260facda"
+    },
+    {
+      "@id": "rungs/seed_20260630/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106123,
+      "sha256": "e40c919bf7bf45d946ae9d5e750c883d75538a85362cb5bc83cd6e9bc275b018"
+    },
+    {
+      "@id": "rungs/seed_20260630/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "b40a9d5088459834165f8a044f21b64cac06357243647f2f385285080434256f"
+    },
+    {
+      "@id": "rungs/seed_20260631/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "20e10735832b65e1d922aa01e7b3df106c35b73eb0a7c59760e2b20f2c79a67d"
+    },
+    {
+      "@id": "rungs/seed_20260631/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106145,
+      "sha256": "6430cefe8209dfe88f85c314ed930df9b05986d0cf17101f172103f5aa55d80a"
+    },
+    {
+      "@id": "rungs/seed_20260631/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "28804da337294693280f5c79e1fbb1eae1039d410ef911802652750387ab3622"
+    },
+    {
+      "@id": "rungs/seed_20260632/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "89ceebe453256a9d6b2c8cc2d8bd3c2ade1a9ebbf92e065ae5b5605f8cb2e456"
+    },
+    {
+      "@id": "rungs/seed_20260632/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106175,
+      "sha256": "d59a47e6cd578abf0623523a227e280106fbd4df58c8ed5c0d7b4f4fae4a6d68"
+    },
+    {
+      "@id": "rungs/seed_20260632/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "e7fc41102fd36fe5eb655061e4fe63959d68834be789ac68e7d0c879991b7a85"
+    },
+    {
+      "@id": "rungs/seed_20260633/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8905,
+      "sha256": "dac1ca7a4c869741e044204a9d1f31edb72f07a5cf704e57fc7dbd65b942451b"
+    },
+    {
+      "@id": "rungs/seed_20260633/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106152,
+      "sha256": "ac0910f82ff66f7c4d709b8d293333bc91cf5d123a75e9dfdd50be1e81fa995d"
+    },
+    {
+      "@id": "rungs/seed_20260633/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "612c2fa4d397f27343a48119864552fd0c5473e50e8e26e07f1e574f6875e8b1"
+    },
+    {
+      "@id": "rungs/seed_20260634/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "839833360679c2fa889593975301b6c08c82a44a0fd5b6523d843ff9f7966b1a"
+    },
+    {
+      "@id": "rungs/seed_20260634/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106135,
+      "sha256": "399edee6419c68d8c2ca7dfbc3fd74e4094430bf3d01f400784b9c5f41567692"
+    },
+    {
+      "@id": "rungs/seed_20260634/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "fc781c82343b131570a5dccbf07df66a7f463fb3b11c64019b5a64e822a9de88"
+    },
+    {
+      "@id": "rungs/seed_20260635/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "df51f7d51f277b6590fa49716e75bad96a1e472a328c7bad5f69905447f1869f"
+    },
+    {
+      "@id": "rungs/seed_20260635/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106131,
+      "sha256": "7d1dfbfa2c3fde915e80ba255a409a6ae7a923ffacd4924ccab17cf0234ff525"
+    },
+    {
+      "@id": "rungs/seed_20260635/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "1df2880cb65a6e1743f7754545bee1b5cc405091b7ca9a653301c87cabc28f73"
+    },
+    {
+      "@id": "rungs/seed_20260636/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "b3c2c455893f4dafc9064aeacc4a4fa1d50dbad712afdd3f87390512854725a5"
+    },
+    {
+      "@id": "rungs/seed_20260636/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106121,
+      "sha256": "5a66951c74fb72a5588d837f8df1f19b283d4178e933d95226d62b1f91e8f883"
+    },
+    {
+      "@id": "rungs/seed_20260636/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "119d647f0445bdf975d7033c8c675abc69e83ead792d0e319b5e167630d0b725"
+    },
+    {
+      "@id": "rungs/seed_20260637/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8922,
+      "sha256": "2f67686f07451aa275f25e6382fa6277a941e276da3bbc14151ca690fb0208e9"
+    },
+    {
+      "@id": "rungs/seed_20260637/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106179,
+      "sha256": "08a6f9515932d11ed1ce243057ff7f6cbe301359e29f8b06e7d446fc074f0f84"
+    },
+    {
+      "@id": "rungs/seed_20260637/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "c0b50d3df31f4b88b318657569016604de1142b690242f774aec18f34f82af05"
+    },
+    {
+      "@id": "rungs/seed_20260638/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8921,
+      "sha256": "75afe7af0ab0c709ba440d018a72ee9b2c6806ab06f3fb5bedfab81689540046"
+    },
+    {
+      "@id": "rungs/seed_20260638/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106175,
+      "sha256": "950dc22132db23809a1498aec8f9c983ac89fb4e15d9b1dd41e9bc2ce9c2cce6"
+    },
+    {
+      "@id": "rungs/seed_20260638/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "cb25fbb69d9aeafaa7aedbcfdd0398ddf354c0151f35622862c96eb22fe32b8d"
+    },
+    {
+      "@id": "rungs/seed_20260639/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8887,
+      "sha256": "e828c9f09b412c88ea1646490e860241a730ef828b70090352ef994b0683fdad"
+    },
+    {
+      "@id": "rungs/seed_20260639/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106157,
+      "sha256": "59b93dd710e910a62a9c1b98656fd9b73bf74e24d192a3328d30c4137132660d"
+    },
+    {
+      "@id": "rungs/seed_20260639/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "6084c4ac29ff6f88fe1e67a7c8f677d76ef4e1b710e0b3b1de6752bdc6679b02"
+    },
+    {
+      "@id": "rungs/seed_20260640/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8920,
+      "sha256": "a53033ba6f34c26b668ed5f95106e6f61598a808804d05e632438cfdb41adf0c"
+    },
+    {
+      "@id": "rungs/seed_20260640/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106133,
+      "sha256": "d8c25807acfc8347888fb0e5732a4675363083b3b9f5aa50c2f466e8dde7225f"
+    },
+    {
+      "@id": "rungs/seed_20260640/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "2d56dbf69430c8d76b1791feb9138a067684ce7e42c7333ec74d2ff2f37e8a76"
+    },
+    {
+      "@id": "rungs/seed_20260641/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "41fa5fd5d9784d25674aff07035ffad0e704356aa3f30e4f5d932e687de3699f"
+    },
+    {
+      "@id": "rungs/seed_20260641/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106143,
+      "sha256": "e736658739a7c7aabb378d283146bb66b9ba3975f41307cce2ea9da2b99795fd"
+    },
+    {
+      "@id": "rungs/seed_20260641/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "2707c4353b8ca6fa2baae6f3cd6248141cd5686f18c776adf1e2db031ef20eed"
+    },
+    {
+      "@id": "rungs/seed_20260642/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8919,
+      "sha256": "02ee30d43213fe7161965e44deab73e7202aa26fe2cf9ca7248cb7b9fb856de1"
+    },
+    {
+      "@id": "rungs/seed_20260642/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106166,
+      "sha256": "0a50177b3bb649e31009e55932c5ab53b54d019d73f401f7a5298a0c32d0d54a"
+    },
+    {
+      "@id": "rungs/seed_20260642/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "2419ba2e5db8ad24db597900fdd28170ca70304a006a94cc9dc5440ad39d36e7"
+    },
+    {
+      "@id": "rungs/seed_20260643/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8903,
+      "sha256": "022f312edd5dc6883d58fa5f23a09c9df54d54fbec2951bddd3f92c7ada8631b"
+    },
+    {
+      "@id": "rungs/seed_20260643/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106166,
+      "sha256": "1031f627f0b073ff81f33cb9415eb95704367e888a7eaceafc26b41ece7bce65"
+    },
+    {
+      "@id": "rungs/seed_20260643/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "c2ffc4c7104e04ecb624ee16509dc09ec6d7023dfa93671d5643c68e82b52cc2"
+    },
+    {
+      "@id": "rungs/seed_20260644/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "ed054e733ecf8e50592288dcda811a0881a50186941617f48101ae57fe5f2163"
+    },
+    {
+      "@id": "rungs/seed_20260644/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106094,
+      "sha256": "ccbe73c1b7150709fb7fafecb513ee4de8d7ea2ab798a0463cd0532b1c6d2d76"
+    },
+    {
+      "@id": "rungs/seed_20260644/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "e5aae7419551bf12acb431d4cb009aeb8f0ea14114da2bd228cf6f64b4febfec"
+    },
+    {
+      "@id": "rungs/seed_20260645/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8920,
+      "sha256": "8daaee8c00aa44a4fd19a3151f78a5c4b6b96ab71e36c2321dd83443e127066c"
+    },
+    {
+      "@id": "rungs/seed_20260645/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106130,
+      "sha256": "8b52e9cd74ca2dc6eb0d5d61131165e3478202370fd99a286aef1e98b0b18d9e"
+    },
+    {
+      "@id": "rungs/seed_20260645/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "d047ed758e8b2d1dde5be7ecb7f5764ad72edb517e64c3fe7db67e7f6b2774d6"
+    },
+    {
+      "@id": "rungs/seed_20260646/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "d0ffe017bd1f10dc2f1f4bd3db05ce46b9780c8c539caa2de4f62846581e03ed"
+    },
+    {
+      "@id": "rungs/seed_20260646/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106084,
+      "sha256": "48d906355fd84b9b57abc6733627241f73d141ee04d6deb0bc55ddcea42a9a21"
+    },
+    {
+      "@id": "rungs/seed_20260646/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "5d221718b6a84ab07ded23360dc63482b5bf95d42ad7669fca7923a21e5d44ee"
+    },
+    {
+      "@id": "rungs/seed_20260647/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "46c4f117d9f4e94af4a95dd450d630d3a4bde3cccd191d508998086f9500d35a"
+    },
+    {
+      "@id": "rungs/seed_20260647/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106130,
+      "sha256": "1586e2174ba6c2d0a1b466a5e92e75ef2a089ec55c3dd4b7cb9b1b82abb78a57"
+    },
+    {
+      "@id": "rungs/seed_20260647/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "aaf29de815fa21c8aedd81ae73771f18b1cd469a723681a9c7e8cdd519a05a7c"
+    },
+    {
+      "@id": "rungs/seed_20260648/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "39f7e1b54508d993476d44aa3a850d71b479b1fa4afe8d6526855e61a6a2d074"
+    },
+    {
+      "@id": "rungs/seed_20260648/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106108,
+      "sha256": "2211f10b9e032ad4f63a8bbf691293ba20aa6e85e96d71af1be93a6cf4831e25"
+    },
+    {
+      "@id": "rungs/seed_20260648/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "4afe319f937bd88d9f2c30394e59f50aaa6f1ab4befa3b732c6e82ca2a908bdf"
+    },
+    {
+      "@id": "rungs/seed_20260649/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8920,
+      "sha256": "8f2e629a0d1d60d200b73c427ac7776b71a67d2377728c97cce0a546cc6a5d6e"
+    },
+    {
+      "@id": "rungs/seed_20260649/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106152,
+      "sha256": "d41f55375893bea776e2314dcff9225dadd7fe373322530ad7362ccbe04b2d41"
+    },
+    {
+      "@id": "rungs/seed_20260649/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "ae7bd695204e5394f8a668a1e30d5d90c0129ee6767d31d8a482acdd35240946"
+    },
+    {
+      "@id": "rungs/seed_20260650/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8907,
+      "sha256": "96d8c3495ac04966246a87cbd04e081d428a9ef29ae9a65ac4d66577d12068f9"
+    },
+    {
+      "@id": "rungs/seed_20260650/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106161,
+      "sha256": "06e6dd5e40462bbb5e88274fc7178eb145a5ecbdabc0f47b2605cea18d062622"
+    },
+    {
+      "@id": "rungs/seed_20260650/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "f751bb1f2d8842b180695cb6a12b7d81663456bba884a35b28ad8d9315330d64"
+    },
+    {
+      "@id": "rungs/seed_20260651/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8905,
+      "sha256": "a05f4c978625e23555b041a31c1cbe92813acd3520b17230c972dff271d40949"
+    },
+    {
+      "@id": "rungs/seed_20260651/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106153,
+      "sha256": "488c8dfcc81b56ce42a71a396e94c2a37e6fb9629fe7009c4304f51b49ff3c6c"
+    },
+    {
+      "@id": "rungs/seed_20260651/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "3944e7892a5edf0a385ea0cf8bb17b5ddea00e67cb43667cf6e7657a0adc8d48"
+    },
+    {
+      "@id": "rungs/seed_20260652/provenance.json",
+      "@type": "File",
+      "name": "provenance.json",
+      "encodingFormat": "application/json",
+      "contentSize": 8906,
+      "sha256": "4cc5b84225e2f11c509ca73efb8e6267d72d1bd4465a587c8b2e169fc221515e"
+    },
+    {
+      "@id": "rungs/seed_20260652/manifest.json",
+      "@type": "File",
+      "name": "manifest.json",
+      "encodingFormat": "application/json",
+      "contentSize": 106117,
+      "sha256": "e901bf6f5e233a954f8ec458ee7eb4368179474d6a58ca2cbab8eae89769a7e4"
+    },
+    {
+      "@id": "rungs/seed_20260652/trust.json",
+      "@type": "File",
+      "name": "trust.json",
+      "encodingFormat": "application/json",
+      "contentSize": 17627,
+      "sha256": "ca170a72817691127e53cd99e114a451e419d84c0154bd778b65a5bbfdb1d607"
+    }
+  ]
+}

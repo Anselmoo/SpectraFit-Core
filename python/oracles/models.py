@@ -1,0 +1,1128 @@
+"""Model registry — the extensible catalogue of fittable shapes.
+
+Each shape is registered **once** as a :class:`PeakModel` record that bundles
+everything the engine needs: the numpy formula (data generation + scoring), the
+lmfit shape callable (oracle), the spectrafit ``ModelType`` name (subject), the
+canonical parameter names, and the shape's jax twin kernel from
+:mod:`oracles.jax_kernels` (which is what makes :attr:`PeakModel.jax_supported`
+true — the flag is derived, never stored). Adding a model is a one-record
+registration — backends never hardcode per-model maps.
+
+Conventions (``docs/reference/models/index.md``): ``amplitude`` is the peak value at ``center`` (not
+area), ``sigma`` is the standard-deviation width, and the pseudo-Voigt mixing
+weight is always ``fraction``.
+
+This module holds **behaviour** (formulas), so the registry records are Pydantic
+models with `Callable` fields rather than plain dataclasses — keeping the whole
+engine pydantic-first while still carrying code.
+
+Note:
+    :data:`SHAPE_BOUNDS` gives finite bounds for the long-tail shape
+    parameters an oracle's LM-family search can otherwise drive into a model
+    function's overflow/NaN region (e.g. pearson7 ``m -> 0+`` makes
+    ``2^(1/m)`` overflow to NaN and aborts the solver). The truth-side
+    generators in ``cases.py`` draw from much narrower ranges; these
+    envelopes are ~10x wider so an oracle stays independent (it can still
+    disagree with spectrafit) but cannot reach a numerically degenerate
+    corner. Registered once here so the lmfit and scipy-ls oracle backends
+    read the same table instead of hand-syncing two private copies (the
+    CX-033 NaN cascade that originally motivated this table is the precedent
+    for keeping it registry-backed, not duplicated).
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
+from numpy.typing import NDArray
+from pydantic import BaseModel, ConfigDict, model_validator
+from scipy.special import (
+    erfcx,  # scaled erfc, $\exp(x^2)\cdot\mathrm{erfc}(x)$ — overflow-free EMG tail
+    wofz,  # Faddeeva function for the true Voigt profile
+)
+from spectrafit_core.models import ModelType
+
+from oracles import jax_kernels
+from oracles.exceptions import BackendUnavailableError, UnknownKeyError
+
+Array = NDArray[np.float64]
+_erfc = np.vectorize(math.erfc)  # numpy has no erfc; math.erfc is stdlib
+_erf = np.vectorize(math.erf)  # numpy has no erf; math.erf is stdlib
+_SQRT2 = math.sqrt(2.0)
+
+# --------------------------------------------------------------------------- #
+# Wheel-eval helper — PARITY-ONLY (DECISIONS.md 2026-06-10 fairness revert)
+# --------------------------------------------------------------------------- #
+# ``_CORE_WHEEL`` is intentionally ``Any``-typed because it must be assignable
+# either to the imported ``spectrafit_core._core`` extension module (happy
+# path) or to ``None`` (wheel unavailable). Using a single ``Any``-typed
+# declaration with an explicit cast avoids the conflicting-declarations
+# diagnostic that ``ty`` raises when the import-narrowed and ``None`` arms
+# would otherwise produce two incompatible declared types.
+_CORE_WHEEL: Any = None
+_WHEEL_AVAILABLE = False
+try:
+    from spectrafit_core import _core as _core_extension
+
+    _CORE_WHEEL = _core_extension
+    _WHEEL_AVAILABLE = True
+except ImportError:  # pragma: no cover - exercised by the fallback test
+    pass
+
+
+def _wheel_eval(model_type: str, x: Array, params: dict[str, float]) -> Array:
+    """Evaluate a model kernel via the Rust wheel.
+
+    Constructs a single-node FitGraph JSON for ``model_type``, calls
+    ``_core.evaluate(graph_json, params_json, data_json)``, and returns the
+    resulting numpy array. ``model_type`` must be one of the keys accepted by
+    ``spectrafit_models::model_from_str``; ``params`` keys must be the bare
+    parameter names (without the node prefix).
+
+    Raises :class:`RuntimeError` when the wheel is unavailable. This helper is
+    a **parity instrument only** — the parity tests skip when the wheel is
+    absent; production ``evaluate`` bodies are pure numpy and never call it.
+
+    Note:
+        The numpy formulas in this module are the canonical, timing-fair
+        oracle implementations: lmfit and scipy-ls introspect and call
+        ``evaluate`` inside their *timed* fit loops, so those bodies must
+        never pay wheel/JSON overhead (CLAUDE.md: "per-point array
+        serialization never pollutes the comparison"). The Rust kernels
+        registered in ``crates/spectrafit-models/src/lib.rs::model_from_str``
+        are mathematically identical; that parity is enforced by
+        ``tests/unit/oracles/test_wheel_eval.py`` via :func:`_wheel_eval` and
+        :func:`wheel_parity_pairs` — NOT by routing the hot path through the
+        wheel (DECISIONS.md 2026-06-10 fairness revert).
+    """
+    if not _WHEEL_AVAILABLE or _CORE_WHEEL is None:
+        msg = "spectrafit_core wheel unavailable — run `maturin develop` to build"
+        raise BackendUnavailableError(msg)
+    node_id = "k"  # short fixed node id keeps the param prefix predictable
+    nodes = [
+        {
+            "id": node_id,
+            "model_type": model_type,
+            "parameters": {
+                name: {
+                    "value": float(v),
+                    "min": None,
+                    "max": None,
+                    "vary": True,
+                    "expr": None,
+                    "scale": None,
+                }
+                for name, v in params.items()
+            },
+        },
+    ]
+    graph_json = json.dumps({"schema_version": "0.1", "nodes": nodes, "expr_edges": []})
+    params_json = json.dumps({f"{node_id}.{k}": float(v) for k, v in params.items()})
+    x_arr = np.asarray(x, dtype=np.float64)
+    data_json = json.dumps(
+        {
+            "schema_version": "0.1",
+            "x": [[float(v)] for v in x_arr.tolist()],
+            "y": [0.0] * x_arr.size,
+            "sigma": None,
+            "label": None,
+        },
+    )
+    result = json.loads(_CORE_WHEEL.evaluate(graph_json, params_json, data_json))
+    return np.asarray(result, dtype=np.float64)
+
+
+# --------------------------------------------------------------------------- #
+# Peak formulas (numpy) — canonical spectrafit conventions
+# --------------------------------------------------------------------------- #
+
+
+def gaussian(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    """Gaussian peak: ``amplitude`` at ``center``, std-dev ``sigma``."""
+    return amplitude * np.exp(-0.5 * ((x - center) / sigma) ** 2)
+
+
+def lorentzian(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    """Lorentzian peak normalized to ``amplitude`` at ``center`` (HWHM ``sigma``)."""
+    return amplitude / (1.0 + ((x - center) / sigma) ** 2)
+
+
+def pseudo_voigt(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    fraction: float,
+) -> Array:
+    r"""Pseudo-Voigt: fraction-weighted Lorentzian + Gaussian mix (peak ``amplitude``).
+
+    $\mathrm{fraction}\cdot\text{Lorentzian} + (1-\mathrm{fraction})\cdot\text{Gaussian}$.
+    Formulas are inlined (not calls to :func:`lorentzian` / :func:`gaussian`)
+    so this hot-path body has no coupling to sibling function bodies.
+    """
+    mix = float(np.clip(fraction, 0.0, 1.0))
+    z = (x - center) / sigma
+    lorentz = amplitude / (1.0 + z**2)
+    gauss = amplitude * np.exp(-0.5 * z**2)
+    return mix * lorentz + (1.0 - mix) * gauss
+
+
+def fano(x: Array, amplitude: float, center: float, gamma: float, q: float) -> Array:
+    r"""Fano resonance $A\cdot(q+\varepsilon)^2/(1+\varepsilon^2)$.
+
+    $\varepsilon=(x-\mathrm{center})/\gamma$.
+    """
+    eps = (x - center) / gamma
+    return amplitude * (q + eps) ** 2 / (1.0 + eps**2)
+
+
+def constant(x: Array, c: float) -> Array:
+    """Constant background ``c``."""
+    return np.full_like(x, c)
+
+
+def linear(x: Array, slope: float, intercept: float) -> Array:
+    r"""Linear background $\mathrm{slope}\cdot x + \mathrm{intercept}$."""
+    return slope * x + intercept
+
+
+def quadratic(x: Array, amplitude: float, center: float, offset: float) -> Array:
+    r"""Quadratic bowl $A\cdot(x-\mathrm{center})^2 + \mathrm{offset}$."""
+    return amplitude * (x - center) ** 2 + offset
+
+
+def arctan_step(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    r"""Arctan edge (rising).
+
+    $A\cdot(\tfrac{1}{2} + \tfrac{1}{\pi}\arctan((x-\mathrm{center})/\mathrm{sigma}))$.
+    """
+    return amplitude * (0.5 + np.arctan((x - center) / sigma) / np.pi)
+
+
+def tanh_step(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    r"""Tanh edge (rising).
+
+    $(A/2)\cdot(1 + \tanh((x-\mathrm{center})/\mathrm{sigma}))$.
+    """
+    return 0.5 * amplitude * (1.0 + np.tanh((x - center) / sigma))
+
+
+def erfc_step(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    r"""Erfc edge (falling).
+
+    $(A/2)\cdot\mathrm{erfc}((x-\mathrm{center})/(\mathrm{sigma}\sqrt{2}))$.
+    """
+    return 0.5 * amplitude * _erfc((x - center) / (sigma * math.sqrt(2.0)))
+
+
+def double_exponential(
+    x: Array,
+    A1: float,
+    lam1: float,
+    A2: float,
+    lam2: float,
+) -> Array:
+    r"""Bi-exponential decay $A_1 e^{-\lambda_1 x} + A_2 e^{-\lambda_2 x}$."""
+    return A1 * np.exp(-lam1 * x) + A2 * np.exp(-lam2 * x)
+
+
+# --------------------------------------------------------------------------- #
+# Asymmetric / true-Voigt lineshapes
+# --------------------------------------------------------------------------- #
+def true_voigt(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    gamma: float,
+) -> Array:
+    r"""True Voigt (Gaussian $\otimes$ Lorentzian) via the Faddeeva fn.
+
+    Peak height ``amplitude``.
+
+    Note:
+        This formula (and its siblings in this section — ``skewed_gaussian``,
+        ``emg``, ``doniach``) must stay IDENTICAL to the Rust kernels in
+        ``crates/spectrafit-models/src/{voigt_true,skewed_gaussian,emg,doniach}.rs``
+        so numpy↔Rust kernel parity holds. See DECISIONS.md / the deep-research
+        report for the parity requirement's origin.
+
+    $$
+    A\cdot\mathrm{Re}[w(z)]/\mathrm{Re}[w(z_0)],\quad z=\dfrac{(x-c)+i\gamma}{\sigma\sqrt{2}},\quad z_0=\dfrac{i\gamma}{\sigma\sqrt{2}}
+    $$
+
+    NOTE: the Rust kernel uses the Hui–Armstrong–Wray Faddeeva approximation
+    (~1e-6 accuracy) while the numpy fallback uses ``scipy.special.wofz``, so
+    wheel-vs-numpy parity here is ~1e-4 — see ``test_kernel_parity.py``.
+    """
+    inv = 1.0 / (sigma * _SQRT2)
+    z = ((x - center) + 1j * abs(gamma)) * inv
+    z0 = 1j * abs(gamma) * inv
+    return amplitude * wofz(z).real / wofz(z0).real
+
+
+def skewed_gaussian(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    gamma: float,
+) -> Array:
+    r"""Skewed Gaussian ($\gamma$ = skew).
+
+    $A\exp(-\tfrac12((x-c)/\sigma)^2)\cdot(1+\mathrm{erf}(\gamma(x-c)/(\sigma\sqrt2)))$.
+    """
+    dx = x - center
+    g = np.exp(-0.5 * (dx / sigma) ** 2)
+    return amplitude * g * (1.0 + _erf(gamma * dx / (sigma * _SQRT2)))
+
+
+def exp_gaussian(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    gamma: float,
+) -> Array:
+    r"""Exponentially-modified Gaussian (asymmetric tail); non-finite → 0 (Rust parity).
+
+    Numerically stable, overflow-free, and exact — **no clamp**. The naive form
+    $\exp(\mathrm{arg\_exp})\cdot\mathrm{erfc}(z)$ overflows to $\mathrm{inf}\cdot 0$ → ``NaN`` once ``arg_exp > 709``
+    (e.g. ``gamma*sigma > 37``). Using the algebraic identity
+    $\mathrm{arg\_exp} - z^2 = -(x-\mathrm{center})^2/(2\sigma^2)$ we split on the sign of ``z``:
+
+    * $z \ge 0$: $A\cdot(\gamma/2)\cdot\exp(-(x-\mathrm{center})^2/(2\sigma^2))\cdot\mathrm{erfcx}(z)$ — both factors are
+      bounded ($\mathrm{erfcx}(z) \in (0,1]$, Gaussian $\le 1$), so no overflow.
+    * $z < 0$: $A\cdot(\gamma/2)\cdot\exp(\mathrm{arg\_exp})\cdot\mathrm{erfc}(z)$ — here ``arg_exp < 0`` so ``exp``
+      is safe, and $\mathrm{erfc}(z) \in (1,2)$.
+
+    The branches are continuous at ``z = 0``. ``scipy.special.erfcx`` is
+    machine-precision; the Rust kernel uses the identical split with a Cody
+    ``erfcx`` port, so numpy↔Rust parity holds to ~1e-9 even in the extreme tail.
+    """
+    arg_exp = gamma * (center - x) + 0.5 * (gamma * sigma) ** 2
+    z = (center + gamma * sigma * sigma - x) / (_SQRT2 * sigma)
+    gauss = np.exp(-((x - center) ** 2) / (2.0 * sigma * sigma))
+    pref = amplitude * 0.5 * gamma
+    with np.errstate(over="ignore", invalid="ignore"):
+        v = np.where(
+            z >= 0.0,
+            pref * gauss * erfcx(z),
+            pref * np.exp(np.where(z >= 0.0, 0.0, arg_exp)) * _erfc(z),
+        )
+    return np.where(np.isfinite(v), v, 0.0)
+
+
+def doniach_sunjic(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    gamma: float,
+) -> Array:
+    r"""Doniach–Šunjić lineshape ($\gamma$ = asym), $u=(x-c)/\sigma$.
+
+    $A\cos[\pi\gamma/2+(1-\gamma)\arctan(u)]/(1+u^2)^{(1-\gamma)/2}$.
+    """
+    u = (x - center) / sigma
+    num = np.cos(0.5 * math.pi * gamma + (1.0 - gamma) * np.arctan(u))
+    den = (1.0 + u * u) ** ((1.0 - gamma) / 2.0)
+    return amplitude * num / den
+
+
+def log_normal(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    r"""Log-normal peak, zero for ``x<=0``.
+
+    $A\exp(-(\ln(x/\mathrm{center}))^2/(2\sigma^2))$ for ``x>0`` (else 0).
+    Numerically identical to the Rust ``log_normal`` kernel (the parity oracle):
+    ``amplitude`` is the peak height at ``x=center>0``, ``sigma`` the log-space width.
+    """
+    with np.errstate(divide="ignore", invalid="ignore"):
+        val = amplitude * np.exp(-((np.log(x / center)) ** 2) / (2.0 * sigma**2))
+    return np.where(x > 0.0, val, 0.0)
+
+
+def pearson7(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    m: float,
+) -> Array:
+    r"""Pearson VII; $\sigma$ = HWHM, m→1 Lorentzian, m→$\infty$ Gaussian.
+
+    $A/[1+((x-c)/\sigma)^2\cdot(2^{1/m}-1)]^m$.
+    Numerically identical to the Rust ``pearson7`` kernel (the parity oracle).
+    """
+    z = (x - center) / sigma
+    return amplitude / (1.0 + z * z * (2.0 ** (1.0 / m) - 1.0)) ** m
+
+
+def split_gaussian(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma_l: float,
+    sigma_r: float,
+) -> Array:
+    r"""Split (asymmetric) Gaussian.
+
+    Width ``sigma_l`` for x<center, ``sigma_r`` for $x \ge$ center. Covers
+    catalog #6 (asymmetric split-$\sigma$ Gaussian) and #10 (bi-Gaussian) — the
+    same shape. Numerically identical to the Rust ``split_gaussian`` kernel.
+    """
+    return np.where(
+        x < center,
+        amplitude * np.exp(-0.5 * ((x - center) / sigma_l) ** 2),
+        amplitude * np.exp(-0.5 * ((x - center) / sigma_r) ** 2),
+    )
+
+
+def moffat(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    beta: float,
+) -> Array:
+    r"""Moffat profile; parity oracle for the Rust ``moffat`` kernel.
+
+    $A/(((x-c)/\sigma)^2+1)^\beta$.
+    """
+    return amplitude / (((x - center) / sigma) ** 2 + 1.0) ** beta
+
+
+def students_t(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    nu: float,
+) -> Array:
+    r"""Student's-t lineshape; oracle for the Rust ``students_t`` kernel.
+
+    $A/(1+((x-c)/\sigma)^2/\nu)^{(\nu+1)/2}$.
+    """
+    return amplitude / (1.0 + ((x - center) / sigma) ** 2 / nu) ** ((nu + 1.0) / 2.0)
+
+
+def split_pearson7(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma_l: float,
+    sigma_r: float,
+    m_l: float,
+    m_r: float,
+) -> Array:
+    """Split Pearson VII; oracle for the Rust kernel.
+
+    Split width and exponent, one side each of ``center``.
+    """
+    left = amplitude / (1.0 + ((x - center) / sigma_l) ** 2 * (2.0 ** (1.0 / m_l) - 1.0)) ** m_l
+    right = amplitude / (1.0 + ((x - center) / sigma_r) ** 2 * (2.0 ** (1.0 / m_r) - 1.0)) ** m_r
+    return np.where(x < center, left, right)
+
+
+def breit_wigner(
+    x: Array,
+    amplitude: float,
+    center: float,
+    sigma: float,
+    q: float,
+) -> Array:
+    r"""Breit-Wigner-Fano lineshape, $g=\sigma/2$; oracle for the Rust kernel.
+
+    $A\cdot(qg+(x-c))^2/(g^2+(x-c)^2)$.
+    """
+    g = sigma / 2.0
+    return amplitude * (q * g + (x - center)) ** 2 / (g * g + (x - center) ** 2)
+
+
+def asym_ir(x: Array, amplitude: float, center: float, sigma: float, k: float) -> Array:
+    r"""Asymmetric IR band $A\cdot G\cdot\text{sigmoid}$.
+
+    Sigmoid exponent clamped to match the Rust kernel.
+    """
+    g = amplitude * np.exp(-((x - center) ** 2) / (2.0 * sigma**2))
+    arg = np.clip(-k * (x - center), None, 50.0)
+    return g / (1.0 + np.exp(arg))
+
+
+def harmonic_ir(x: Array, amplitude: float, center: float, sigma: float) -> Array:
+    r"""Harmonic-oscillator IR lineshape; oracle for the Rust ``harmonic_ir`` kernel.
+
+    $A/((c^2-x^2)^2+(\sigma x)^2)$.
+    """
+    return amplitude / ((center**2 - x**2) ** 2 + (sigma * x) ** 2)
+
+
+def tauc(x: Array, amplitude: float, e_gap: float, exponent: float) -> Array:
+    r"""Tauc band-gap edge; oracle for the Rust kernel.
+
+    $A\cdot(x-e_{\mathrm{gap}})^p$ for ``x>e_gap`` (else 0). Heaviside cut-off
+    at the gap keeps the fractional power real; numerically identical
+    to the Rust ``tauc`` kernel (``np.where(x>e_gap, A*(x-e_gap)**p, 0)``). Param order
+    (``amplitude, e_gap, exponent``) is identical on both sides — verified against
+    ``crates/spectrafit-models/src/tauc.rs::param_names`` during the C2 migration.
+    """
+    excess = x - e_gap
+    return np.where(
+        excess > 0.0,
+        amplitude * np.where(excess > 0.0, excess, 1.0) ** exponent,
+        0.0,
+    )
+
+
+def cauchy_dispersion(x: Array, a: float, b: float, c: float) -> Array:
+    r"""Cauchy dispersion; oracle for the Rust kernel.
+
+    $n(x)=a+b/x^2+c/x^4$ for ``x>0`` (else 0).
+    """
+    with np.errstate(divide="ignore", invalid="ignore"):
+        val = a + b / x**2 + c / x**4
+    return np.where(x > 0.0, val, 0.0)
+
+
+def kww(x: Array, amplitude: float, tau: float, beta: float) -> Array:
+    r"""KWW stretched exponential; oracle for the Rust kernel.
+
+    $A\exp(-(x/\tau)^\beta)$ for $x \ge 0$ (else 0). The base $x/\tau$ is
+    masked to a safe ``1.0`` where ``x<0`` so the fractional power
+    never produces a NaN before ``np.where`` selects the ``0`` branch.
+    """
+    safe = np.where(x >= 0.0, x / tau, 1.0)
+    return np.where(x >= 0.0, amplitude * np.exp(-(safe**beta)), 0.0)
+
+
+def saturating_exponential(x: Array, amplitude: float, rate: float) -> Array:
+    r"""Saturating exponential (BoxBOD model).
+
+    $\mathrm{amplitude}\cdot(1-\exp(-\mathrm{rate}\cdot x))$. Rises monotonically
+    from 0 toward *amplitude* with characteristic rate *rate*.
+    Numerically identical to the Rust kernel ``SaturatingExponential``.
+    """
+    return amplitude * (1.0 - np.exp(-rate * x))
+
+
+def power_saturation(x: Array, amplitude: float, rate: float) -> Array:
+    r"""Power-law saturation (Misra1b model).
+
+    $\mathrm{amplitude}\cdot(1-(1+\mathrm{rate}\cdot x/2)^{-2})$. Rises
+    monotonically from 0 toward *amplitude* with characteristic rate *rate*.
+    Numerically identical to the Rust kernel ``PowerSaturation``.
+    """
+    return amplitude * (1.0 - (1.0 + rate * x / 2.0) ** (-2.0))
+
+
+def power_law_offset(x: Array, amplitude: float, offset: float, shape: float) -> Array:
+    r"""Power-law with offset (Bennett5 model).
+
+    $\mathrm{amplitude}\cdot(\mathrm{offset}+x)^{-1/\mathrm{shape}}$.
+    Numerically identical to the Rust kernel ``PowerLawOffset``.  The caller must
+    ensure ``offset + x > 0`` for all data points; negative or zero arguments yield
+    ``nan`` (matching the Rust domain guard).
+    """
+    return amplitude * (offset + x) ** (-1.0 / shape)
+
+
+def mgh09_rational(
+    x: Array,
+    amplitude: float,
+    num_lin: float,
+    den_lin: float,
+    den_const: float,
+) -> Array:
+    r"""Kowalik–Osborne rational function (NIST StRD MGH09 model).
+
+    $$
+    \mathrm{amplitude}\cdot\dfrac{x^2+\mathrm{num\_lin}\cdot x}{x^2+\mathrm{den\_lin}\cdot x+\mathrm{den\_const}}
+    $$
+
+    Numerically identical to the Rust kernel ``Mgh09Rational``.  The denominator
+    must be non-zero; at the MGH09 certified parameters the discriminant
+    $\mathrm{den\_lin}^2 - 4\cdot\mathrm{den\_const} < 0$, ensuring D > 0 for all x.
+
+    Param mapping to NIST b-parameters:
+        amplitude = b1, num_lin = b2, den_lin = b3, den_const = b4
+    """
+    n = x**2 + num_lin * x
+    d = x**2 + den_lin * x + den_const
+    return amplitude * n / d
+
+
+def rational_cubic(
+    x: Array,
+    a0: float,
+    a1: float,
+    a2: float,
+    a3: float,
+    b1: float,
+    b2: float,
+    b3: float,
+) -> Array:
+    r"""Rational cubic over cubic with the denominator constant pinned at 1.
+
+    $$
+    \dfrac{a_0 + a_1 x + a_2 x^2 + a_3 x^3}{1 + b_1 x + b_2 x^2 + b_3 x^3}
+    $$
+
+    Numerically identical to the Rust kernel ``RationalCubic``. A lower-order
+    rational is this form with the unused coefficients at zero, so NIST StRD
+    Kirby2 (quadratic/quadratic) fixes $a_3$ and $b_3$ while Hahn1 and Thurber
+    (cubic/cubic) vary all seven.
+
+    The denominator constant is pinned rather than fitted: scaling numerator and
+    denominator together leaves the curve unchanged, so fitting it would hand the
+    solver an exact rank deficiency.
+    """
+    n = a0 + a1 * x + a2 * x**2 + a3 * x**3
+    d = 1.0 + b1 * x + b2 * x**2 + b3 * x**3
+    return n / d
+
+
+def generalised_logistic(
+    x: Array,
+    amplitude: float,
+    shift: float,
+    rate: float,
+    shape: float,
+) -> Array:
+    r"""Generalised logistic (Richards) curve.
+
+    $$
+    \dfrac{A}{\left(1 + e^{\,\text{shift} - \text{rate}\cdot x}\right)^{1/\text{shape}}}
+    $$
+
+    Numerically identical to the Rust kernel ``GeneralisedLogistic``. NIST StRD
+    Rat43 uses all four parameters; Rat42 is this curve with $\text{shape} = 1$.
+    """
+    return amplitude / (1.0 + np.exp(shift - rate * x)) ** (1.0 / shape)
+
+
+def exp_over_linear(
+    x: Array,
+    rate: float,
+    lin_const: float,
+    lin_slope: float,
+) -> Array:
+    r"""Exponential decay over a line.
+
+    $$
+    \dfrac{e^{-\text{rate}\cdot x}}{\text{lin\_const} + \text{lin\_slope}\cdot x}
+    $$
+
+    Numerically identical to the Rust kernel ``ExpOverLinear``. This is the NIST
+    StRD Chwirut model, shared by Chwirut1 and Chwirut2.
+    """
+    return np.exp(-rate * x) / (lin_const + lin_slope * x)
+
+
+# --------------------------------------------------------------------------- #
+# Registry record
+# --------------------------------------------------------------------------- #
+class PeakModel(BaseModel):
+    """One registered fittable shape: formula + per-backend adapters + metadata."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
+
+    key: str
+    """Registry key, e.g. ``"gaussian"`` (also the catalog/case ``model`` field)."""
+    spectrafit_type: str
+    """Name of the spectrafit ``ModelType`` enum member, e.g. ``"GAUSSIAN"``."""
+    param_names: tuple[str, ...]
+    """Canonical per-peak parameter names in order."""
+    evaluate: Callable[..., Array]
+    """``evaluate(x, **params) -> y`` numpy formula for one peak."""
+    formula_latex: str = ""
+    """LaTeX formula string for this model shape (compact, uses the model reference's param names).
+    Empty string for shapes without a simple closed-form (landscapes, etc.)."""
+    jax_evaluate: Callable[..., Any] | None = None
+    """``jax_evaluate(x, **params) -> y`` jax twin of :attr:`evaluate`, or ``None``.
+
+    Registered from :mod:`oracles.jax_kernels`, whose bodies import ``jax``
+    lazily — so carrying a kernel here costs nothing when the optional ``jax``
+    extra is absent. Parity with :attr:`evaluate` is enforced by
+    ``tests/unit/test_jax_kernel_parity.py``, which parametrises over this field.
+    """
+    extra_defaults: dict[str, float] = {}
+    """Defaults for non-amplitude/center/sigma params (e.g. ``fraction``)."""
+
+    @property
+    def jax_supported(self) -> bool:
+        """Whether the jax oracle implements this shape.
+
+        DERIVED from :attr:`jax_evaluate` rather than stored, so the flag the
+        jax backend gates on cannot drift out of sync with whether a kernel
+        actually exists (a stored bool could claim either direction wrongly).
+        A plain property, not a ``computed_field``: :class:`PeakModel` is never
+        serialized (it carries ``Callable`` fields), and keeping it off the
+        schema means adding it changes no wire contract.
+        """
+        return self.jax_evaluate is not None
+
+    @model_validator(mode="after")
+    def _spectrafit_type_is_known_member(self) -> PeakModel:
+        """Bind ``spectrafit_type`` to a real ``ModelType`` member at registration.
+
+        ``spectrafit_type`` carries the enum *member name* (e.g. ``"GAUSSIAN"``,
+        ``"DONIACH"``), resolved at fit time via ``getattr(ModelType, …)``. Pinning
+        it to ``ModelType.__members__`` here turns a typo or a future member rename
+        into a registration-time ``ValidationError`` instead of a fit-time
+        ``AttributeError``.
+        """
+        if self.spectrafit_type not in ModelType.__members__:
+            msg = (
+                f"PeakModel(key={self.key!r}): spectrafit_type "
+                f"{self.spectrafit_type!r} is not a ModelType member name "
+                f"(expected one of {sorted(ModelType.__members__)})"
+            )
+            raise ValueError(msg)
+        return self
+
+    def one(self, x: Array, params: dict[str, float]) -> Array:
+        """Evaluate a single peak from a param dict."""
+        return self.evaluate(x, **{k: params[k] for k in self.param_names})
+
+    def sum(self, x: Array, peaks: list[dict[str, float]]) -> Array:
+        """Sum this model over a list of peak-parameter dicts (zeros if empty)."""
+        out = np.zeros_like(x)
+        for peak in peaks:
+            out = out + self.one(x, peak)
+        return out
+
+
+SHAPE_BOUNDS: dict[str, tuple[float, float]] = {
+    "m": (1.05, 50.0),
+    "m_l": (1.05, 50.0),
+    "m_r": (1.05, 50.0),
+    "beta": (0.1, 50.0),
+    "nu": (0.5, 200.0),
+    "q": (-100.0, 100.0),
+    "k": (-50.0, 50.0),
+}
+"""Keyed by shape-parameter name. See the module docstring's Note for the rationale.
+
+- pearson7: ``m``
+- split_pearson7: ``m_l``/``m_r``
+- moffat: ``beta``
+- students_t: ``nu``
+- fano/breit_wigner: ``q``
+- asym_ir: ``k``
+"""
+
+
+MODEL_REGISTRY: dict[str, PeakModel] = {}
+
+
+def register_model(model: PeakModel) -> PeakModel:
+    """Register *model* under its key (idempotent overwrite) and return it."""
+    MODEL_REGISTRY[model.key] = model
+    return model
+
+
+def get_model(key: str) -> PeakModel:
+    """Look up a registered model by key."""
+    try:
+        return MODEL_REGISTRY[key]
+    except KeyError:  # pragma: no cover - guarded by CaseSpec validation
+        msg = f"unknown model {key!r}; registered: {sorted(MODEL_REGISTRY)}"
+        raise UnknownKeyError(msg) from None
+
+
+_PSEUDO_VOIGT = PeakModel(
+    key="pseudo_voigt",
+    spectrafit_type="PSEUDO_VOIGT",
+    param_names=("amplitude", "center", "sigma", "fraction"),
+    evaluate=pseudo_voigt,
+    jax_evaluate=jax_kernels.pseudo_voigt,
+    extra_defaults={"fraction": 0.5},
+    formula_latex=(
+        r"A\!\left[\mathrm{fraction}\cdot\frac{1}{1+\!\left(\frac{x-c}{\sigma}\right)^{\!2}}"
+        r"+(1-\mathrm{fraction})\cdot e^{-\frac{(x-c)^2}{2\sigma^2}}\right]"
+    ),
+)
+
+_BUILTIN_MODELS: tuple[PeakModel, ...] = (
+    PeakModel(
+        key="gaussian",
+        spectrafit_type="GAUSSIAN",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=gaussian,
+        jax_evaluate=jax_kernels.gaussian,
+        formula_latex=r"A \cdot \exp\!\left(-\dfrac{(x-c)^2}{2\sigma^2}\right)",
+    ),
+    PeakModel(
+        key="lorentzian",
+        spectrafit_type="LORENTZIAN",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=lorentzian,
+        jax_evaluate=jax_kernels.lorentzian,
+        formula_latex=r"\dfrac{A}{1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}}",
+    ),
+    _PSEUDO_VOIGT,
+    _PSEUDO_VOIGT.model_copy(update={"key": "voigt", "spectrafit_type": "VOIGT"}),
+    PeakModel(
+        key="fano",
+        spectrafit_type="FANO",
+        param_names=("amplitude", "center", "gamma", "q"),
+        evaluate=fano,
+        jax_evaluate=jax_kernels.fano,
+        formula_latex=r"A \cdot \dfrac{(q + \varepsilon)^2}{1 + \varepsilon^2},\quad \varepsilon=\dfrac{x-c}{\gamma}",
+    ),
+    PeakModel(
+        key="constant",
+        spectrafit_type="CONSTANT",
+        param_names=("c",),
+        evaluate=constant,
+        jax_evaluate=jax_kernels.constant,
+        formula_latex=r"c",
+    ),
+    PeakModel(
+        key="linear",
+        spectrafit_type="LINEAR",
+        param_names=("slope", "intercept"),
+        evaluate=linear,
+        jax_evaluate=jax_kernels.linear,
+        formula_latex=r"\mathrm{slope} \cdot x + \mathrm{intercept}",
+    ),
+    PeakModel(
+        key="quadratic",
+        spectrafit_type="QUADRATIC",
+        param_names=("amplitude", "center", "offset"),
+        evaluate=quadratic,
+        jax_evaluate=jax_kernels.quadratic,
+        formula_latex=r"A \cdot (x - c)^2 + \mathrm{offset}",
+    ),
+    PeakModel(
+        key="arctan_step",
+        spectrafit_type="ARCTAN_STEP",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=arctan_step,
+        jax_evaluate=jax_kernels.arctan_step,
+        formula_latex=r"A \cdot \left(\tfrac{1}{2} + \dfrac{1}{\pi}\arctan\!\left(\dfrac{x-c}{\sigma}\right)\right)",
+    ),
+    PeakModel(
+        key="tanh_step",
+        spectrafit_type="TANH_STEP",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=tanh_step,
+        jax_evaluate=jax_kernels.tanh_step,
+        formula_latex=r"A \cdot \left(\tfrac{1}{2} + \dfrac{1}{2}\tanh\!\left(\dfrac{x-c}{\sigma}\right)\right)",
+    ),
+    PeakModel(
+        key="erfc_step",
+        spectrafit_type="ERFC_STEP",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=erfc_step,
+        jax_evaluate=jax_kernels.erfc_step,
+        formula_latex=r"A \cdot \dfrac{1}{2}\,\mathrm{erfc}\!\left(\dfrac{x-c}{\sigma\sqrt{2}}\right)",
+    ),
+    PeakModel(
+        key="double_exponential",
+        spectrafit_type="DOUBLE_EXPONENTIAL",
+        param_names=("A1", "lam1", "A2", "lam2"),
+        evaluate=double_exponential,
+        jax_evaluate=jax_kernels.double_exponential,
+        formula_latex=r"A_1\,e^{-\lambda_1 x} + A_2\,e^{-\lambda_2 x}",
+    ),
+    PeakModel(
+        key="true_voigt",
+        spectrafit_type="TRUE_VOIGT",
+        param_names=("amplitude", "center", "sigma", "gamma"),
+        evaluate=true_voigt,
+        jax_evaluate=jax_kernels.true_voigt,
+        formula_latex=(
+            r"A \cdot \mathrm{Re}\!\left[W\!\left(\dfrac{x-c+i\gamma}{\sigma\sqrt{2}}\right)\right]"
+            r"\,/\,\mathrm{Re}\!\left[W\!\left(\dfrac{i\gamma}{\sigma\sqrt{2}}\right)\right]"
+        ),
+    ),
+    PeakModel(
+        key="skewed_gaussian",
+        spectrafit_type="SKEWED_GAUSSIAN",
+        param_names=("amplitude", "center", "sigma", "gamma"),
+        evaluate=skewed_gaussian,
+        jax_evaluate=jax_kernels.skewed_gaussian,
+        formula_latex=(
+            r"A \cdot \exp\!\left(-\dfrac{(x-c)^2}{2\sigma^2}\right)"
+            r"\cdot \left(1 + \mathrm{erf}\!\left(\dfrac{\gamma(x-c)}{\sigma\sqrt{2}}\right)\right)"
+        ),
+    ),
+    PeakModel(
+        key="exp_gaussian",
+        spectrafit_type="EXP_GAUSSIAN",
+        param_names=("amplitude", "center", "sigma", "gamma"),
+        evaluate=exp_gaussian,
+        jax_evaluate=jax_kernels.exp_gaussian,
+        formula_latex=(
+            r"A \cdot \dfrac{\gamma}{2}\exp\!\left(\dfrac{\gamma}{2}(2c-2x+\gamma\sigma^2)\right)"
+            r"\cdot\mathrm{erfc}\!\left(\dfrac{c-x+\gamma\sigma^2}{\sigma\sqrt{2}}\right)"
+        ),
+    ),
+    PeakModel(
+        key="doniach_sunjic",
+        spectrafit_type="DONIACH",
+        param_names=("amplitude", "center", "sigma", "gamma"),
+        evaluate=doniach_sunjic,
+        jax_evaluate=jax_kernels.doniach_sunjic,
+        formula_latex=(
+            r"A \cdot \dfrac{\cos\!\left(\tfrac{\pi\gamma}{2}+(1-\gamma)\arctan\!\left(\tfrac{x-c}{\sigma}\right)\right)}"
+            r"{\left(1+\left(\tfrac{x-c}{\sigma}\right)^{\!2}\right)^{(1-\gamma)/2}}"
+        ),
+    ),
+    PeakModel(
+        key="log_normal",
+        spectrafit_type="LOG_NORMAL",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=log_normal,
+        jax_evaluate=jax_kernels.log_normal,
+        formula_latex=(
+            r"A \cdot \exp\!\left(-\dfrac{\left(\ln(x/c)\right)^2}{2\sigma^2}\right),\quad x>0"
+        ),
+    ),
+    PeakModel(
+        key="pearson7",
+        spectrafit_type="PEARSON7",
+        param_names=("amplitude", "center", "sigma", "m"),
+        evaluate=pearson7,
+        jax_evaluate=jax_kernels.pearson7,
+        formula_latex=r"A \cdot \left(1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}\left(2^{1/m}-1\right)\right)^{\!-m}",
+    ),
+    PeakModel(
+        key="split_gaussian",
+        spectrafit_type="SPLIT_GAUSSIAN",
+        param_names=("amplitude", "center", "sigma_l", "sigma_r"),
+        evaluate=split_gaussian,
+        jax_evaluate=jax_kernels.split_gaussian,
+        formula_latex=(
+            r"A \cdot \exp\!\left(-\dfrac{(x-c)^2}{2\sigma_{\mathrm{L/R}}^2}\right),"
+            r"\quad \sigma_\mathrm{L}\text{ for }x<c,\;\sigma_\mathrm{R}\text{ for }x\ge c"
+        ),
+    ),
+    PeakModel(
+        key="moffat",
+        spectrafit_type="MOFFAT",
+        param_names=("amplitude", "center", "sigma", "beta"),
+        evaluate=moffat,
+        jax_evaluate=jax_kernels.moffat,
+        formula_latex=r"A \cdot \left(1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}\right)^{\!-\beta}",
+    ),
+    PeakModel(
+        key="students_t",
+        spectrafit_type="STUDENTS_T",
+        param_names=("amplitude", "center", "sigma", "nu"),
+        evaluate=students_t,
+        jax_evaluate=jax_kernels.students_t,
+        formula_latex=r"A \cdot \left(1 + \dfrac{(x-c)^2}{\nu\,\sigma^2}\right)^{\!-(\nu+1)/2}",
+    ),
+    PeakModel(
+        key="split_pearson7",
+        spectrafit_type="SPLIT_PEARSON7",
+        param_names=("amplitude", "center", "sigma_l", "sigma_r", "m_l", "m_r"),
+        evaluate=split_pearson7,
+        jax_evaluate=jax_kernels.split_pearson7,
+        formula_latex=(
+            r"A \cdot \left(1+\left(\dfrac{x-c}{\sigma_{\mathrm{L/R}}}\right)^{\!2}"
+            r"\left(2^{1/m_{\mathrm{L/R}}}-1\right)\right)^{\!-m_{\mathrm{L/R}}},"
+            r"\quad \text{L/R by side}"
+        ),
+    ),
+    PeakModel(
+        key="breit_wigner",
+        spectrafit_type="BREIT_WIGNER",
+        param_names=("amplitude", "center", "sigma", "q"),
+        evaluate=breit_wigner,
+        jax_evaluate=jax_kernels.breit_wigner,
+        formula_latex=(r"A \cdot \dfrac{(q\sigma/2 + x - c)^2}{(x-c)^2 + (\sigma/2)^2}"),
+    ),
+    PeakModel(
+        key="asym_ir",
+        spectrafit_type="ASYM_IR",
+        param_names=("amplitude", "center", "sigma", "k"),
+        evaluate=asym_ir,
+        jax_evaluate=jax_kernels.asym_ir,
+        formula_latex=(
+            r"\dfrac{A \cdot \exp\!\left(-\dfrac{(x-c)^2}{2\sigma^2}\right)}"
+            r"{1+\exp\!\left(-k(x-c)\right)}"
+        ),
+    ),
+    PeakModel(
+        key="harmonic_ir",
+        spectrafit_type="HARMONIC_IR",
+        param_names=("amplitude", "center", "sigma"),
+        evaluate=harmonic_ir,
+        jax_evaluate=jax_kernels.harmonic_ir,
+        formula_latex=r"\dfrac{A}{(c^2-x^2)^2+(\sigma x)^2}",
+    ),
+    PeakModel(
+        key="tauc",
+        spectrafit_type="TAUC",
+        param_names=("amplitude", "e_gap", "exponent"),
+        evaluate=tauc,
+        jax_evaluate=jax_kernels.tauc,
+        formula_latex=r"A \cdot (x - E_\mathrm{gap})^{\mathrm{exponent}},\quad x>E_\mathrm{gap}",
+    ),
+    PeakModel(
+        key="cauchy_dispersion",
+        spectrafit_type="CAUCHY_DISPERSION",
+        param_names=("a", "b", "c"),
+        evaluate=cauchy_dispersion,
+        jax_evaluate=jax_kernels.cauchy_dispersion,
+        formula_latex=r"a + \dfrac{b}{x^2} + \dfrac{c}{x^4}",
+    ),
+    PeakModel(
+        key="kww",
+        spectrafit_type="KWW",
+        param_names=("amplitude", "tau", "beta"),
+        evaluate=kww,
+        jax_evaluate=jax_kernels.kww,
+        formula_latex=r"A \cdot \exp\!\left(-\left(\dfrac{x}{\tau}\right)^{\!\beta}\right),\quad x\ge 0",
+    ),
+    PeakModel(
+        key="saturating_exponential",
+        spectrafit_type="SATURATING_EXPONENTIAL",
+        param_names=("amplitude", "rate"),
+        evaluate=saturating_exponential,
+        jax_evaluate=jax_kernels.saturating_exponential,
+        formula_latex=r"A \cdot \left(1 - e^{-k\,x}\right)",
+    ),
+    PeakModel(
+        key="power_saturation",
+        spectrafit_type="POWER_SATURATION",
+        param_names=("amplitude", "rate"),
+        evaluate=power_saturation,
+        jax_evaluate=jax_kernels.power_saturation,
+        formula_latex=r"A \cdot \left(1 - \left(1 + \dfrac{k\,x}{2}\right)^{\!-2}\right)",
+    ),
+    PeakModel(
+        key="power_law_offset",
+        spectrafit_type="POWER_LAW_OFFSET",
+        param_names=("amplitude", "offset", "shape"),
+        evaluate=power_law_offset,
+        jax_evaluate=jax_kernels.power_law_offset,
+        formula_latex=r"A \cdot (b + x)^{-1/s}",
+    ),
+    PeakModel(
+        key="mgh09_rational",
+        spectrafit_type="MGH09_RATIONAL",
+        param_names=("amplitude", "num_lin", "den_lin", "den_const"),
+        evaluate=mgh09_rational,
+        jax_evaluate=jax_kernels.mgh09_rational,
+        formula_latex=r"A \cdot \dfrac{x^2 + b_2\,x}{x^2 + b_3\,x + b_4}",
+    ),
+    PeakModel(
+        key="rational_cubic",
+        spectrafit_type="RATIONAL_CUBIC",
+        param_names=("a0", "a1", "a2", "a3", "b1", "b2", "b3"),
+        evaluate=rational_cubic,
+        jax_evaluate=jax_kernels.rational_cubic,
+        formula_latex=(
+            r"\dfrac{a_0 + a_1 x + a_2 x^2 + a_3 x^3}"
+            r"{1 + b_1 x + b_2 x^2 + b_3 x^3}"
+        ),
+    ),
+    PeakModel(
+        key="generalised_logistic",
+        spectrafit_type="GENERALISED_LOGISTIC",
+        param_names=("amplitude", "shift", "rate", "shape"),
+        evaluate=generalised_logistic,
+        jax_evaluate=jax_kernels.generalised_logistic,
+        formula_latex=r"\dfrac{A}{\left(1 + e^{\,b - k x}\right)^{1/s}}",
+    ),
+    PeakModel(
+        key="exp_over_linear",
+        spectrafit_type="EXP_OVER_LINEAR",
+        param_names=("rate", "lin_const", "lin_slope"),
+        evaluate=exp_over_linear,
+        jax_evaluate=jax_kernels.exp_over_linear,
+        formula_latex=r"\dfrac{e^{-k x}}{c + m\,x}",
+    ),
+)
+"""The built-in model catalogue as pure data; `voigt` is a frozen copy of
+pseudo-Voigt (same formula/params) so the two can never silently diverge.
+"""
+
+
+def _register_builtin_models() -> None:
+    """Populate :data:`MODEL_REGISTRY` from the built-in catalogue (idempotent)."""
+    for model in _BUILTIN_MODELS:
+        register_model(model)
+
+
+_register_builtin_models()
+
+
+_WHEEL_PARITY_KEYS: tuple[str, ...] = (
+    "gaussian",
+    "lorentzian",
+    "pseudo_voigt",
+    "voigt",
+    "fano",
+    "constant",
+    "linear",
+    "quadratic",
+    "arctan_step",
+    "tanh_step",
+    "erfc_step",
+    "double_exponential",
+    "true_voigt",
+    "skewed_gaussian",
+    "exp_gaussian",
+    "doniach_sunjic",
+    "log_normal",
+    "pearson7",
+    "split_gaussian",
+    "moffat",
+    "students_t",
+    "split_pearson7",
+    "breit_wigner",
+    "asym_ir",
+    "harmonic_ir",
+    "tauc",
+    "cauchy_dispersion",
+    "kww",
+    "saturating_exponential",
+    "power_saturation",
+    "power_law_offset",
+    "mgh09_rational",
+)
+"""Registry keys whose Rust wheel kernel must stay numerically identical to the
+numpy ``evaluate`` body (the 29 MIGRATE-classified kernels of the C2 study).
+"""
+
+
+def wheel_parity_pairs() -> list[tuple[str, PeakModel]]:
+    """(wheel_key, model) pairs for the 29 MIGRATE-classified kernels.
+
+    The numpy ``evaluate`` bodies ARE the timing-fair oracle implementations
+    (lmfit / scipy-ls introspect and call them inside their timed fit loops —
+    they must never pay wheel/JSON overhead). Parity with the Rust kernels is
+    enforced by tests/unit/oracles/test_wheel_eval.py via ``_wheel_eval``,
+    NOT by routing the hot path through the wheel. See DECISIONS.md
+    [2026-06-10] benchmark-fairness revert.
+
+    ``voigt`` is a frozen copy of ``pseudo_voigt`` on the Python side, so it
+    maps to the ``pseudo_voigt`` wheel key here (the dedicated ``voigt`` Rust
+    kernel is cross-checked separately in the parity test).
+    """
+    return [
+        ("pseudo_voigt" if key == "voigt" else key, MODEL_REGISTRY[key])
+        for key in _WHEEL_PARITY_KEYS
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Optimization landscapes — moved to oracles.opt_func (separation of concerns).
+# Re-exported here for backward compatibility; all consumers using
+# ``models.LANDSCAPE_REGISTRY``, ``models.get_landscape``, or
+# ``models.landscape`` continue to work unchanged.
+# --------------------------------------------------------------------------- #
+from oracles.opt_func import (  # noqa: F401
+    LANDSCAPE_REGISTRY,
+    get_landscape,
+    landscape,
+)

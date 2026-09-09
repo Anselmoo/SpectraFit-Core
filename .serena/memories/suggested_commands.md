@@ -1,0 +1,1 @@
+Key commands: `uv run ruff check .`, `uv run pytest --tb=line -q`, targeted benchmark tests with `PYTHONPATH=python uv run pytest tests/test_benchmark_sweeps.py -v`, benchmark suite with `poe benchmark`, quick validation via `poe quick_validation_single_gaussian`, and package import checks from repo root via `python -c "from extras.benchmark import CATALOG"`.
