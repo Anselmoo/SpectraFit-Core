@@ -1,0 +1,157 @@
+{#-
+  Site-wide template override, at overrides/main.html (repo root, matching
+  [theme].custom_dir in zensical.toml — resolved relative to the config
+  file's own directory, not docs_dir). custom_dir is searched ahead of the
+  theme's bundled templates, so this shadows Zensical's own main.html for
+  every page, including overrides/home.html which extends "main.html" and
+  picks up this file. Extends base.html directly and fills two blocks
+  base.html already declares empty:
+
+  - `extrahead`: Open Graph / Twitter Card meta tags, sourced from
+    zensical.toml's existing site_name / site_description — no new copy.
+  - `announce`:  a text-only line restating the beta-status disclosure
+    already in docs/index.md's second blockquote — not new copy.
+
+  og:image/twitter:image URL note: `config.site_url` is intentionally unset
+  (see the comment in zensical.toml) until the GitLab Pages docs URL is
+  finalized, so `og:image`/`twitter:image` below can't yet resolve to a true
+  absolute URL (scheme+host) as the spec technically wants. Verified by
+  temporarily setting site_url and rebuilding: the `| url` filter is
+  page-relative-depth-aware (`./images/...` at the site root, `../images/...`
+  one level down), so `config.site_url ~ ('images/social-card.png' | url)`
+  is actively wrong on any non-root page once site_url is set (the `../`
+  walks back out of the site_url's own path prefix, e.g.
+  ".../spectrafit-core/../images/..."). The safe pattern is a plain
+  site-root-relative concat with NO `| url` filter:
+  `(config.site_url or '') ~ 'images/social-card.png'`. Today (site_url
+  unset) this renders the bare relative path `images/social-card.png`
+  (still not spec-perfect, and only correct as-is at the site root today —
+  verified live: a subpage such as
+  site/getting-started/installation/index.html emits the same
+  document-relative `images/social-card.png`, which resolves incorrectly
+  from that depth; least-broken option available while site_url stays
+  unset). Once site_url is set, this same pattern automatically becomes
+  correct at every page depth without further changes here.
+-#}
+{% extends "base.html" %}
+
+{#-
+  htmltitle override, added 2026-08-22.
+
+  Zensical's base.html emits `{{ page.title }} - {{ config.site_name }}` for any
+  page where `page.title` is set and `page.is_homepage` is false. docs/index.md
+  carries `# SpectraFit-Core` as its H1 and renders through `home.html`, and the
+  homepage was measured live emitting `<title>SpectraFit-Core - SpectraFit-Core</title>`
+  — the site name twice, on the first tab every visitor opens.
+
+  Rather than rename the H1 (it is the wordmark and belongs there) or depend on
+  `page.is_homepage` behaving a particular way under a custom template, this
+  collapses the duplicate wherever it occurs: if the page title IS the site name,
+  emit the site name once.
+-#}
+{% block htmltitle %}
+  {%- set _title = page.meta.title if page.meta and page.meta.title
+                    else (page.title | striptags if page.title else none) -%}
+  {% if _title and _title != config.site_name %}
+    <title>{{ _title }} - {{ config.site_name }}</title>
+  {% else %}
+    <title>{{ config.site_name }}</title>
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set title = page.meta.title if page.meta and page.meta.title
+                  else (page.title | striptags if page.title and not page.is_homepage
+                  else config.site_name) %}
+  {% set description = page.meta.description if page.meta and page.meta.description
+                        else config.site_description %}
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ title }}">
+  {% if description %}
+  <meta property="og:description" content="{{ description }}">
+  {% endif %}
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}">
+  {% if description %}
+  <meta name="twitter:description" content="{{ description }}">
+  {% endif %}
+  <meta property="og:image" content="{{ (config.site_url or '') ~ 'images/social-card.png' }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:image" content="{{ (config.site_url or '') ~ 'images/social-card.png' }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'images/favicon-32.png' | url }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ 'images/favicon-16.png' | url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'images/apple-touch-icon.png' | url }}">
+{% endblock %}
+
+{% block announce %}
+  Status: beta (0.1.0) — public sneak preview. APIs and the benchmark
+  contract may still change before the stable 1.0 release. See
+  <a href="{{ 'limitations/' | url }}">Limitations</a> for disclosed gaps.
+{% endblock %}
+
+{#-
+  scripts override, added 2026-08-22 (docs review item 5.1).
+
+  zensical.toml's `extra_javascript` is unconditional by construction —
+  base.html's own `scripts` block just loops over it and emits a tag for
+  every entry on every page (see that template's `{% for script in
+  config.extra_javascript %}`). mermaid.min.js is 3.57 MB raw / ~985 KB
+  gzipped, vendored and hash-pinned in scripts/vendored_assets.toml, and at
+  measurement time only a few pages under docs/ actually contained a mermaid
+  diagram — every other page was downloading that entire runtime for a
+  fence it never renders.
+
+  So mermaid.min.js and mermaid-init.js are deliberately left OUT of
+  zensical.toml's extra_javascript list (see that file's comment on the
+  entry) and emitted here instead, gated on whether the page actually
+  contains one. `super()` first renders the unmodified base loop over
+  whatever IS still in extra_javascript (KaTeX, GLightbox, the abbreviation
+  map, etc.) exactly as before — this block only adds to that, never
+  replaces it, so nothing about the base template's own script loading
+  needs to be duplicated or kept in sync here.
+
+  The detection signal is `page.content` — the fully rendered per-page HTML
+  string, already used elsewhere in Zensical's own bundled templates (see
+  the installed `templates/partials/content.html`'s
+  `{% if "<h1" not in page.content %}`), so this is an existing,
+  supported template-time value, not a guessed one. `docs/reference/rust/
+  overview.md`, `docs/getting-started/installation.md`,
+  `docs/contributor-guide/architecture.md`, and the `graph.py` docstring
+  rendered onto `docs/reference/python/core-api.md` are the pages presently
+  affected; verified by grepping the built `site/**/index.html` for
+  `sf-mermaid` before and after this change (see zensical.toml's
+  `custom_fences` entry for why that's the fence's literal rendered class,
+  not "mermaid" — Zensical's own bundle would otherwise claim and mis-render
+  it).
+
+  A substring check is deliberately loose rather than parsing the DOM: the
+  failure direction that matters is a false NEGATIVE dropping a real
+  diagram, and `'sf-mermaid' in page.content` can only be a false positive
+  (loading the runtime on a page that turns out not to need it) — safe by
+  construction, never the reverse.
+
+  `script_tag` (a Rust-side Jinja filter, `zensical::template::filter::
+  script_tag_filter`) does NOT accept a bare string the way it looks like it
+  might from base.html's own loop — that loop works only because Zensical's
+  Rust core has already parsed each raw `extra_javascript` TOML string into a
+  `{path, type, async, defer}` struct before it ever reaches Jinja (confirmed
+  by dumping `config.extra_javascript` from this block: each entry prints as
+  that dict, not a plain string). Passing `script_tag` a literal string here
+  instead silently emits a garbage tag (`<script src="../.." type="">`, the
+  page-root `base` value, not a 404 or a template error) rather than failing
+  loudly — so the two script objects below are built as dicts with the same
+  four keys the Rust struct expects, which round-trips through the filter
+  correctly.
+-#}
+{% block scripts %}
+  {{ super() }}
+  {% if "sf-mermaid" in (page.content or "") %}
+    {%- set _mermaid_script = {"path": "javascripts/mermaid.min.js", "type": none, "async": false, "defer": false} -%}
+    {%- set _mermaid_init_script = {"path": "javascripts/mermaid-init.js", "type": none, "async": false, "defer": false} -%}
+    {{ _mermaid_script | script_tag }}
+    {{ _mermaid_init_script | script_tag }}
+  {% endif %}
+{% endblock %}

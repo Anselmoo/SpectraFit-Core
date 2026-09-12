@@ -1,0 +1,1 @@
+After benchmark or Python changes, run Ruff on touched files, run targeted pytest from repo root, and validate imports or entrypoints using the `extras.*` package path from the repository root. Avoid mutating catalog cases in place; clone BenchmarkCase instances for synthetic variants.

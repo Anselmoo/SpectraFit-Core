@@ -1,0 +1,23 @@
+[package]
+name = "spectrafit-trust-region"
+description = "faer-native trust-region core shared by spectrafit-core's LM/TRF/geodesic/dogleg/Newton-CG solvers."
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+documentation = { workspace = true }
+repository = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+spectrafit-types = { workspace = true }
+faer = { workspace = true }
+
+[dev-dependencies]
+approx = { workspace = true }
+
+[lints]
+workspace = true

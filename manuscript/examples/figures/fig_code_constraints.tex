@@ -1,0 +1,75 @@
+% Figure: Listing 2, constraint hypotheses as expression edges.
+%
+% Source for fig_code_constraints.pdf / .png. Build with the sibling driver:
+%
+%     uv run --group manuscript python manuscript/examples/figures/fig_code_constraints.py
+%
+% The caption is set INSIDE the float and there is no caption paragraph beneath
+% the image, matching Algorithm 1 and Listing 1.
+%
+% These are the bind() calls made by
+% manuscript/examples/fecl4/fecl4_constraint_scenarios.py, whose printed table
+% is Table 3. If that script changes, this listing is stale until rebuilt.
+\documentclass[border=6pt,varwidth=15.2cm]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\definecolor{kw}{RGB}{0,90,160}
+\definecolor{str}{RGB}{160,60,20}
+\definecolor{cmt}{RGB}{110,110,110}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{cmt}\itshape,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  breaklines=false,
+  aboveskip=0.6em,
+  belowskip=0pt,
+  mathescape=true,
+}
+
+\captionsetup{labelfont=bf,skip=0.4em,justification=justified,
+              singlelinecheck=false,font=small}
+\renewcommand{\lstlistingname}{Listing}
+
+\begin{document}
+% Each standalone document restarts the listings counter, so the number is set
+% explicitly to match the manuscript's registry. Listing 1 is fig_code_compose.
+\setcounter{lstlisting}{1}
+\begin{minipage}{15.2cm}
+\hrule height 0.9pt
+\vspace{0.5em}
+\captionof{lstlisting}{Three constraint hypotheses, as expression edges on the
+same components. Each \texttt{bind} states a relationship the analyst believes
+and the fit must then honour; none of them is expressible to
+\texttt{curve\_fit}. The last ties a parameter of one spectrum to a parameter of
+another, which is what makes scenario D a single joint fit rather than two fits
+compared afterwards.}
+\vspace{0.2em}
+\hrule height 0.4pt
+\begin{lstlisting}
+# B: the 2p$_{3/2}$:2p$_{1/2}$ edge-jump degeneracy, 2:1
+graph = compose(nodes).bind("step_l3.amplitude / 2", to="step_l2.amplitude")
+
+# C: the L2 white line sits one spin-orbit splitting above the L3 white line,
+#    the splitting being the fitted separation of the two continuum steps
+graph = graph.bind("p1.center + step_l2.center - step_l3.center", to="p7.center")
+
+# D: ...and that splitting is the SAME atom in both complexes, so the d6 white
+#    line is displaced by the splitting the d5 spectrum determines
+graph = graph.bind("b_p1.center + a_step_l2.center - a_step_l3.center",
+                   to="b_p8.center")
+\end{lstlisting}
+\vspace{0.3em}
+\hrule height 0.9pt
+\end{minipage}
+\end{document}
