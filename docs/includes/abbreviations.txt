@@ -1,0 +1,45 @@
+<!--
+Sitewide tooltip glossary (pymdownx.snippets `auto_append`, see zensical.toml).
+Each `*[TERM]: definition` line makes TERM render with a dotted underline and
+a hover definition wherever it appears as plain prose text on any page (not
+inside a code span, not inside a link). These are short, hover-only
+one-liners derived from docs/glossary.md — that page remains the canonical,
+fuller-prose explanation; do not duplicate its wording verbatim here, and do
+not edit glossary.md to keep the two in sync manually.
+-->
+
+*[VarPro]: Variable Projection — a solver strategy for separable nonlinear least squares: linear amplitude coefficients are solved analytically, leaving only the nonlinear shape parameters for the outer optimization.
+*[DAG IR]: The directed-acyclic-graph intermediate representation models compile to (ModelNodeSpec + ExprEdge), serialized to JSON and evaluated entirely in Rust.
+*[DOF]: Degrees of freedom, N_points - N_free (summed across datasets for multi-dataset global fits).
+*[AIC]: Akaike Information Criterion, derived from a proper Gaussian deviance term rather than raw chi2.
+*[BIC]: Bayesian Information Criterion, derived from a proper Gaussian deviance term rather than raw chi2.
+*[ExprEdge]: A graph-level parameter tie added to a fit graph's edge list — one of two equivalent ways to constrain a parameter to another's value or a formula, the other being Parameter.expr.
+*[trust-region]: A family of solver strategies (trf, dogleg, newton-cg) that bound each optimization step within an explicit radius rather than taking an unconstrained Gauss-Newton step.
+*[PyO3]: The Rust-to-Python FFI framework spectrafit-core uses to expose its Rust kernel as Python functions.
+*[Wire string]: The canonical, serialized name for a model type (e.g. gaussian, pseudo_voigt), generated from the Rust model manifest — the source of truth Python's ModelType enum is pinned against.
+*[oracle]: An independent reference implementation (lmfit, jax/optimistix, or hand-written numpy formulas) that spectrafit's Rust kernel is cross-verified against.
+*[Parameter.expr]: A per-parameter tie set directly on a Parameter's `expr` field — equivalent to an ExprEdge.
+*[tied parameters]: Parameters whose value is derived from another parameter or expression on every solver iteration, via ExprEdge or Parameter.expr, rather than being independently optimized.
+*[win rate]: The fraction of benchmark cases won by spectrafit, where the winner is the backend maximising the composite score r2 * speedup — accuracy and speed together, not a count of faster fits.
+*[LM]: Levenberg-Marquardt — the default damped Gauss-Newton solver family (`lm`, `lm-legacy`, geodesic), which bounds its step via the damping term $\lambda I$ rather than an explicit trust-region radius.
+*[TRF]: Trust Region Reflective — a bounds-aware solver strategy that scales its step by Coleman-Li reflection as it nears a parameter's bound.
+*[DE]: Differential Evolution — the stochastic population search phase of the `global` solver, run before a post-search LM refinement pass; not guaranteed to reach the global optimum on hard multimodal landscapes.
+*[IRLS]: Iteratively Reweighted Least Squares — solver variants that down-weight outlier residuals each iteration instead of assuming Gaussian errors, for data with outliers.
+*[Jacobian]: The matrix of each residual's partial derivatives with respect to every free parameter; spectrafit-core ships hand-derived closed-form Jacobians for nearly every model rather than finite differences.
+*[chi2]: The unweighted sum of squared residuals reported alongside a fit — distinct from the weighted objective the solver actually minimizes, and the term AIC/BIC are derived from.
+*[residual]: The per-point difference between a measured and a fitted value; the quantity every solver here minimizes (weighted) and every diagnostic residual plot inspects (unweighted).
+*[geomean]: The geometric mean of spectrafit's per-case speedup over the baseline solver across the benchmark catalog — the dashboard's headline number and one axis of the regression gate.
+*[ill-conditioned]: Describes a Jacobian (or $J^\top J$) that is rank-deficient or has a poorly separated singular-value spectrum, making the normal equations unstable to solve directly.
+*[StRD]: NIST's Statistical Reference Datasets — certified nonlinear-regression problems with published parameter values that spectrafit-core's Rust kernel is checked against.
+*[LRE]: Log-relative error, $-\log_{10}(|f - c| / |c|)$ for a fitted value $f$ against its NIST-certified value $c$ — the accuracy score in each NIST StRD comparison.
+*[NIST]: The (US) National Institute of Standards and Technology, whose certified StRD nonlinear-regression datasets spectrafit-core validates its Rust kernel against.
+*[HWHM]: Half width at half maximum — the lineshape scale several peak models here report directly as `sigma`, rather than the more familiar FWHM.
+*[FWHM]: Full width at half maximum — the peak-width convention most spectroscopy software reports, related to this project's `sigma` parameter by a per-lineshape conversion factor.
+*[XPS]: X-ray Photoemission Spectroscopy — a core-level spectroscopy technique whose asymmetric peaks (e.g. Doniach-Sunjic) and tied spin-orbit doublets motivate several benchmark cases and models here.
+*[XAS]: X-ray Absorption Spectroscopy — an edge/pre-edge spectroscopy technique represented in the benchmark model catalog's K-edge, L-edge and time-resolved cases.
+*[Pydantic]: The Python data-validation library spectrafit-core's model graph, parameters, fit options and results are all built on, as `BaseModel` subclasses rather than dataclasses.
+*[maturin]: The build tool that compiles spectrafit-core's Rust kernel into an installable Python extension via PyO3 — `maturin develop` is what makes a Rust change visible to Python.
+*[OpenAPI]: The schema FastAPI generates from spectrafit-core's Python API; the web dashboard's TypeScript types are code-generated from it rather than hand-kept in sync.
+*[ADR]: Architecture Decision Record — a dated entry in `DECISIONS.md` (or its archive) recording why a specific design choice was made, cited here as the source for claims not otherwise re-derivable from the code.
+*[mkdocstrings]: The Zensical plugin that generates the Python API reference pages directly from source docstrings, rather than a hand-kept copy of the signatures.
+*[TOST]: Two one-sided tests — the equivalence-testing procedure the benchmark uses to claim two backends' accuracy is statistically indistinguishable, rather than merely failing to reject a difference.

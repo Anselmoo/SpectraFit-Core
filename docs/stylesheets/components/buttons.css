@@ -1,0 +1,47 @@
+/*
+ * CTA-style buttons — `.sf-button` / `.sf-button--primary` /
+ * `.sf-button--secondary`. Consumed by the homepage hero's 6 CTA buttons
+ * (see `overrides/home.html`'s `.sf-hero__content` block and
+ * pages/hero.css's `.sf-hero__content`). The class names are load-bearing
+ * for that template — do not rename.
+ */
+.sf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-5, 24px);
+  border-radius: var(--radius-lg, 16px);
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.sf-button:active {
+  transform: scale(0.98);
+}
+
+.sf-button--primary {
+  background-color: var(--md-primary-fg-color--dark);
+  color: var(--md-primary-bg-color);
+}
+
+.sf-button--primary:hover {
+  background-color: var(--md-primary-fg-color--darker, #0055b3);
+  color: var(--md-primary-bg-color);
+}
+
+.sf-button--secondary {
+  background-color: transparent;
+  border-color: var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color);
+}
+
+.sf-button--secondary:hover {
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+}

@@ -1,0 +1,64 @@
+{#-
+  Tab-icon override, at overrides/partials/tabs-item.html (repo root, under
+  the same custom_dir search path overrides/home.html and overrides/main.html
+  already use — see their own header comments for why the path is rooted
+  there and not under docs/overrides/).
+
+  This is Zensical's own bundled partials/tabs-item.html, unchanged, with
+  exactly one addition to `render_content`: the same
+  `{% if nav_item.meta.icon %}{% include ".icons/" ~ ... %}{% endif %}` check
+  partials/nav-item.html (the left sidebar) already has. The top tab bar was
+  the one place that check was missing — nav_item.meta.icon already exists
+  today on 6 section-index pages (reference/index.md, how-to/index.md,
+  tutorials/gallery/index.md, explanation/index.md, getting-started/index.md,
+  contributor-guide/index.md) and now on the remaining top-level pages too
+  (docs/index.md, performance/index.md, release-notes/changelog.md,
+  security.md, limitations.md) — this override is the only piece that was
+  missing to make all of them render.
+
+  No new CSS needed: Zensical's own compiled theme already sizes and colors
+  tab icons via `.md-tabs__link svg{fill:currentcolor;height:1.3em}` —
+  confirmed by reading the built site's own
+  site/assets/stylesheets/modern/main.*.min.css rather than assuming.
+-#}
+{% macro render_content(nav_item, ref) %}
+  {% set ref = ref or nav_item %}
+  {% if nav_item.meta and nav_item.meta.icon %}
+    {% include ".icons/" ~ nav_item.meta.icon ~ ".svg" %}
+  {% endif %}
+  {{ ref.title or nav_item.title }}
+{% endmacro %}
+{% macro render(nav_item, ref) %}
+  {% set ref = ref or nav_item %}
+  {% set class = "md-tabs__item" %}
+  {% if ref.active %}
+    {% set class = class ~ " md-tabs__item--active" %}
+  {% endif %}
+  {% if nav_item.children %}
+    {% set _ = namespace(index = none) %}
+      {% if "navigation.indexes" in features %}
+      {% for item in nav_item.children %}
+        {% if item.is_index and _.index is none %}
+          {% set _.index = item %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {% set index = _.index %}
+    {% set first = index or nav_item.children | first %}
+    {% if first.children %}
+      {{ render(first, ref) }}
+    {% else %}
+      <li class="{{ class }}">
+        <a href="{{ first.url | url }}" class="md-tabs__link">
+          {{ render_content(first, ref) }}
+        </a>
+      </li>
+    {% endif %}
+  {% else %}
+    <li class="{{ class }}">
+      <a href="{{ nav_item.url | url }}" class="md-tabs__link">
+        {{ render_content(nav_item) }}
+      </a>
+    </li>
+  {% endif %}
+{% endmacro %}

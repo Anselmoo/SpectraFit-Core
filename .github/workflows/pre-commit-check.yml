@@ -1,0 +1,150 @@
+name: Pre-Commit Check
+
+# Trigger on pull request and push to main
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# The success/failure PR-comment steps below use the github-script action to call
+# the issues/PR comment API; without an explicit grant the default GITHUB_TOKEN is
+# read-only on many repos and `createComment` 403s, failing an otherwise-green job.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pre-commit:
+    # CWE-829 hardening ("pwn request"): this job checks out and EXECUTES PR
+    # content (pre-commit hooks — several `language: system` — plus `cargo
+    # clippy`/`cargo check`, which runs arbitrary `build.rs`). Only run it for
+    # trusted triggers: a push (only maintainers can push to main), Dependabot
+    # (a fixed, trusted GitHub App identity), or a PR author who is already a
+    # repo owner/member/collaborator. A first-time external contributor's PR
+    # is skipped here until a maintainer signals trust (e.g. by pushing a
+    # commit themselves, which re-triggers this job under the push condition).
+    if: >-
+      github.event_name == 'push' ||
+      github.actor == 'dependabot[bot]' ||
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    # The cargo-clippy / cargo-check pre-commit hooks compile the workspace; with the
+    # Cargo cache below a warm run is fast, but a cold run (cache miss) needs >15 min.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0  # Full history needed for some checks
+
+      - name: Set up Python
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c  # v4
+        with:
+          python-version: "3.13"
+
+      - name: Set up Rust (with clippy)
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+        with:
+          components: clippy
+
+      - name: Install LAPACK/OpenBLAS (nalgebra-lapack, needed by cargo-clippy's --all-features)
+        run: sudo apt-get install -y liblapack-dev libopenblas-dev
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-precommit-${{ hashFiles('**/Cargo.lock') }}
+          # Bare `-cargo-` fallback dropped: this block caches `target/`, and
+          # that prefix matches every profile's entry — it could restore the
+          # instrumented or release tree the `-cargo-precommit-` namespace
+          # exists to keep out.
+          restore-keys: |
+            ${{ runner.os }}-cargo-precommit-
+
+      - name: Install dependencies with uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # `--extra benchmark` installs the LIGHT optional deps (fastapi, typer,
+          # lmfit→scipy) so the `ty` hook can resolve+type-check the bench/api
+          # modules' imports. The HEAVY `jax` extra is intentionally omitted to keep
+          # this governance job fast; `jax`/`optimistix` imports are declared in
+          # `[tool.ty.analysis] allowed-unresolved-imports` so they don't error here.
+          uv sync --extra benchmark
+        shell: bash
+
+      - name: Install pinned ShellCheck
+        # Version-pinned rather than trusting whatever ships on the runner image
+        # (ubuntu-latest/24.04 pre-installs 0.9.0-1, per actions/runner-images'
+        # Ubuntu2404-Readme.md) — the shellcheck-ci hook's SC2015 finding on
+        # 2026-08-03 could not be reproduced against a contributor's newer local
+        # shellcheck (0.11.0, Homebrew), because SC2015's heuristic differs
+        # between those two releases. Pinning both sides to the SAME version
+        # closes that "green locally, red in CI" gap for every future run —
+        # see `.pre-commit-config.yaml`'s `shellcheck-ci` entry for the version
+        # to install locally to match.
+        env:
+          SHELLCHECK_VERSION: "0.11.0"
+          SHELLCHECK_SHA256: "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
+        run: |
+          curl -LsSf "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            -o /tmp/shellcheck.tar.xz
+          echo "${SHELLCHECK_SHA256}  /tmp/shellcheck.tar.xz" | sha256sum -c -
+          tar -xf /tmp/shellcheck.tar.xz -C /tmp
+          sudo install "/tmp/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+          shellcheck --version
+        shell: bash
+
+      - name: Run pre-commit hooks on all files
+        id: precommit
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          # rustfmt isn't in dtolnay/rust-toolchain's default minimal profile —
+          # mirrors ci.yml's lint job, which hit and fixed this same gap.
+          rustup component add rustfmt
+          # pre-commit is installed into the uv-managed .venv (not on PATH); invoke
+          # via `uv run` so it is found and so hooks inherit the venv environment.
+          uv run pre-commit run --all-files --show-diff-on-failure --color always
+        continue-on-error: true
+        shell: bash
+
+      - name: Post PR comment on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true  # cosmetic; a comment failure must not mask/replace the real status
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Pre-commit validation failed\n\nPlease run `pre-commit run --all-files` locally and fix violations before pushing.'
+            })
+
+      - name: Fail if hooks failed
+        if: steps.precommit.outcome == 'failure'
+        run: |
+          echo "::error::Pre-commit validation failed — review the hook output above."
+          exit 1
+        shell: bash
+
+      - name: Comment success
+        if: success() && github.event_name == 'pull_request'
+        continue-on-error: true  # cosmetic ✅ note; must never turn a green gate red
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ All pre-commit checks passed'
+            })

@@ -1,0 +1,77 @@
+/*
+ * "See also" cross-reference block.
+ *
+ * Twenty pages close with a `## See also` section. Measured across the corpus,
+ * the shape is completely regular: 61 bullets, every one of the form
+ * `- **Category**: <links and prose>`, drawn from a closed six-term vocabulary
+ * (Related examples 17, API docs 15, Reference 10, Glossary 9, Tests 5,
+ * Related explanation 5). Zero freeform bullets. It is structured data that
+ * happens to be authored as prose, and until this file it rendered as an
+ * undifferentiated bullet list indistinguishable from body content.
+ *
+ * Keyed on `h2#see-also` rather than a class because pymdownx slugifies that
+ * heading to the same id on every page, so the component needs no edit to any
+ * of the twenty pages and no front-matter migration. Authors keep writing
+ * ordinary Markdown bullets.
+ *
+ * DELIBERATE LIMIT — per-category treatment is NOT possible here. CSS cannot
+ * select an element by its text content, so `**API docs**` (a flat list of
+ * object refs that wants chips) is indistinguishable from `**Reference**` (an
+ * annotated link that wants a description card). Both therefore get the same
+ * label treatment below. Splitting them needs a real hook — a per-category
+ * class emitted from typed front matter — which is the deferred half of this
+ * work; see the "See also" entry in the docs-review worklist.
+ *
+ * The `.headerlink` permalink is deliberately left untouched: `utilities/
+ * focus.css` styles `.headerlink:focus-visible`, so suppressing it here would
+ * silently remove a keyboard affordance the theme already accounts for.
+ */
+
+.md-typeset h2#see-also {
+  margin-top: 2.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Adjacent-sibling selector: the list markdown always emits directly after the
+   heading. Guarded to `ul` so a page that ever opens the section with a
+   paragraph degrades to plain body styling instead of rendering half-themed. */
+.md-typeset h2#see-also + ul {
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.md-typeset h2#see-also + ul > li {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-left: 2px solid var(--md-accent-fg-color);
+  border-radius: 0 var(--radius-sm, 0.15rem) var(--radius-sm, 0.15rem) 0;
+  /* `color-mix` degrades to the plain token on browsers without support, so the
+     row keeps a readable background either way. */
+  background: var(--md-default-fg-color--lightest);
+  background: color-mix(in srgb, var(--md-accent-fg-color) 6%, transparent);
+  line-height: 1.55;
+}
+
+/* The category label. `:first-child` keeps this off any other bold run later in
+   the same bullet — several bullets bold a second term mid-sentence. */
+.md-typeset h2#see-also + ul > li > strong:first-child {
+  display: inline-block;
+  margin-right: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--md-accent-fg-color);
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset h2#see-also + ul > li { padding: 0.5rem 0.65rem; }
+}

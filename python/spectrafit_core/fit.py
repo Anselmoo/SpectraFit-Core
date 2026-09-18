@@ -1,0 +1,250 @@
+"""Entry point: [`fit`][spectrafit_core.fit] bridges Python contracts to the engine."""
+
+from __future__ import annotations
+
+from importlib import import_module
+from types import ModuleType
+from typing import cast
+
+import numpy as np
+from numpy.typing import NDArray
+
+from .data import MeasurementData, MeasurementInput, normalize_measurement_input
+from .graph import FitGraph
+from .options import FitOptions
+from .result import FitResult
+
+# ---------------------------------------------------------------------------
+# Private phase helpers
+# ---------------------------------------------------------------------------
+
+
+def _require_uniform_n_dims(
+    datasets_with_typed_x: list[tuple[MeasurementData, list[list[float]]]],
+) -> int:
+    """Return the x-dimensionality shared by every point of every dataset.
+
+    The flat ``x`` buffer handed to the Rust executor is point-major with a
+    single stride, so one dimensionality has to hold across the whole request.
+    Until 2026-09-08 short rows were silently zero-padded up to the widest row
+    seen, which fabricated coordinates: a 1-D dataset fitted alongside a 2-D one
+    was quietly given ``x[1] = 0.0`` for every point and produced a wrong fit
+    with no error. The JSON entrypoint (`fit` in ``crates/spectrafit-core``)
+    already rejected ragged ``x``; this makes the array entrypoint agree.
+
+    Within a single dataset, ``MeasurementData._validate_x`` has already
+    rejected ragged rows (they cannot be coerced to a float64 matrix), so in
+    practice this fires on a dimensionality mismatch *between* datasets — but
+    it is checked per row so the guard does not depend on that invariant.
+
+    Args:
+        datasets_with_typed_x: Each dataset paired with its coordinate matrix.
+
+    Returns:
+        The common number of x-dimensions; ``1`` when there are no points.
+
+    Raises:
+        ValueError: If any two points differ in their number of x-coordinates.
+    """
+    n_dims: int | None = None
+    ref_dataset = 0
+    for ds_index, (_ds, x) in enumerate(datasets_with_typed_x):
+        for row in x:
+            if n_dims is None:
+                n_dims, ref_dataset = len(row), ds_index
+                continue
+            if len(row) != n_dims:
+                msg = (
+                    f"inconsistent x dimensionality: dataset {ds_index} has a point "
+                    f"with {len(row)} coordinate(s) but dataset {ref_dataset} has "
+                    f"points with {n_dims}; every dataset must share the same number "
+                    f"of x-dimensions"
+                )
+                raise ValueError(msg)
+    return 1 if n_dims is None else n_dims
+
+
+def _phase_validate_graph_options(
+    graph: FitGraph,
+    options: FitOptions | None,
+) -> tuple[FitGraph, FitOptions]:
+    """Validate and coerce graph + options; returns validated instances."""
+    return FitGraph.model_validate(graph), FitOptions.model_validate(
+        options or FitOptions(),
+    )
+
+
+def _phase_prepare_arrays(
+    data: MeasurementInput,
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    NDArray[np.float64] | None,
+    list[int],
+    int,
+]:
+    r"""Normalise measurement input and build flat numpy arrays for the Rust executor.
+
+    Any ``n_dims >= 1`` flows through end-to-end: the executor strides the
+    flat ``x`` buffer by ``n_dims`` and reshapes each per-dataset chunk to
+    ``dims x points``. 1-D and 2-D fits use the fixed ``gaussian``/
+    ``gaussian2d`` kernels; $\ge 3$-D fits use the parametric ``gaussian_nd``
+    kernel, whose dimensionality the Rust compiler infers from the
+    node's indexed ``center_<i>`` parameters.
+
+    Returns:
+        ``(x_arr, y_arr, sigma_arr, sizes, n_dims)`` where *sigma_arr* is
+        ``None`` when no dataset supplies uncertainties.
+
+    Raises:
+        ValueError: If the datasets do not all share the same number of
+            x-dimensions (see
+            [`_require_uniform_n_dims`][spectrafit_core.fit._require_uniform_n_dims]).
+    """
+    normalised = normalize_measurement_input(data)
+    datasets: list[MeasurementData] = (
+        [normalised] if isinstance(normalised, MeasurementData) else normalised
+    )
+
+    # ds.x is normalised to a list[list[float]] (N, D) matrix by
+    # MeasurementData._validate_x. Cast to guarantee type safety for
+    # len/list operations below.
+    datasets_with_typed_x: list[tuple[MeasurementData, list[list[float]]]] = [
+        (ds, cast("list[list[float]]", ds.x)) for ds in datasets
+    ]
+    # A single stride has to hold across the whole flat buffer, so a mismatch is
+    # an error rather than something to paper over with fabricated zeros.
+    n_dims = _require_uniform_n_dims(datasets_with_typed_x)
+
+    # Build flat numpy arrays — eliminates JSON serialisation of measurement
+    # data, which scales O(n) and was the dominant bottleneck for large arrays.
+    # x is laid out point-major (stride == n_dims): point i occupies the slice
+    # x[i*n_dims : (i+1)*n_dims], which the Rust executor reshapes to dims $\times$
+    # points per dataset.
+    x_parts = [
+        np.asarray([c for row in x for c in row], dtype=np.float64)
+        for _ds, x in datasets_with_typed_x
+    ]
+    y_parts = [np.asarray(ds.y, dtype=np.float64) for ds in datasets]
+    has_sigma = any(ds.sigma is not None for ds in datasets)
+    sigma_parts = [
+        np.asarray(ds.sigma, dtype=np.float64)
+        if ds.sigma is not None
+        else np.ones(len(ds.y), dtype=np.float64)
+        for ds in datasets
+    ]
+
+    x_arr = np.concatenate(x_parts)
+    y_arr = np.concatenate(y_parts)
+    sigma_arr = np.concatenate(sigma_parts) if has_sigma else None
+    sizes = [len(ds.y) for ds in datasets]
+    return x_arr, y_arr, sigma_arr, sizes, n_dims
+
+
+def _phase_load_core() -> ModuleType:
+    """Import and return the compiled ``spectrafit_core._core`` extension."""
+    return import_module("spectrafit_core._core")
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+def fit(
+    graph: FitGraph,
+    data: MeasurementInput,
+    options: FitOptions | None = None,
+) -> FitResult:
+    r"""Run a fit with the solver named in ``options`` and return the result.
+
+    Runs the solver named by ``options.solver`` (default ``"lm"``,
+    Levenberg-Marquardt on the faer-native trust-region core); see
+    [`FitOptions.solver`][spectrafit_core.FitOptions] for the full list of
+    supported solvers.
+
+    Args:
+        graph (FitGraph): Model topology as a ``FitGraph``.  ``expr_edges``
+            and per-parameter ``Parameter.expr`` (both equivalent constraint
+            surfaces) are supported and evaluated per solver iteration by
+            the engine.
+        data (MeasurementInput): One or more ``MeasurementData`` datasets.
+            All datasets must share the same number of x-dimensions.  1-D,
+            2-D, and N-D x are accepted ($\geq 3$-D is fit by the parametric
+            ``gaussian_nd`` kernel).
+        options (FitOptions | None): Solver configuration; defaults to
+            ``FitOptions()``.
+
+    Returns:
+        A ``FitResult`` with fitted parameters, uncertainties, and
+        goodness-of-fit statistics.
+
+    Raises:
+        ValueError: If the datasets do not all share the same number of
+            x-dimensions (the mismatching dataset indices and coordinate counts
+            are named in the message), or if the graph, options, or array
+            shapes are rejected by the engine.
+
+    """
+    validated_graph, validated_options = _phase_validate_graph_options(graph, options)
+    core = _phase_load_core()
+    x_arr, y_arr, sigma_arr, sizes, n_dims = _phase_prepare_arrays(data)
+
+    result_json = core.fit_arrays(
+        validated_graph.model_dump_json(),
+        x_arr,
+        y_arr,
+        sigma_arr,
+        sizes,
+        n_dims,
+        validated_options.model_dump_json(),
+    )
+    return FitResult.model_validate_json(result_json)
+
+
+def fit_fast(
+    graph: FitGraph,
+    data: MeasurementInput,
+    options: FitOptions | None = None,
+) -> tuple[FitResult, np.ndarray]:
+    """Run a fit and return both the result and the best-fit curve as a NumPy array.
+
+    Identical to [`fit`][spectrafit_core.fit] but avoids JSON-serialising the per-point arrays
+    (best_fit, residuals, init_fit, components).  The best-fit curve is returned
+    directly as the second element of the tuple, saving ~2 ms per call on typical
+    spectra (~500 points).  The ``FitResult.best_fit`` field will be empty —
+    use the returned array instead.
+
+    Args:
+        graph (FitGraph): Model topology as a ``FitGraph``.  ``expr_edges``
+            and per-parameter ``Parameter.expr`` are both supported.
+        data (MeasurementInput): One or more ``MeasurementData`` datasets.
+            All datasets must share the same number of x-dimensions.
+        options (FitOptions | None): Solver configuration; defaults to
+            ``FitOptions()``.
+
+    Returns:
+        Tuple of ``(FitResult, best_fit_array)`` where ``best_fit_array`` is a
+        1-D float64 NumPy array of length ``n_data_points``.
+
+    Raises:
+        ValueError: If the datasets do not all share the same number of
+            x-dimensions (the mismatching dataset indices and coordinate counts
+            are named in the message), or if the graph, options, or array
+            shapes are rejected by the engine.
+
+    """
+    validated_graph, validated_options = _phase_validate_graph_options(graph, options)
+    core = _phase_load_core()
+    x_arr, y_arr, sigma_arr, sizes, n_dims = _phase_prepare_arrays(data)
+
+    compact_json, best_fit_arr = core.fit_arrays_numpy(
+        validated_graph.model_dump_json(),
+        x_arr,
+        y_arr,
+        sigma_arr,
+        sizes,
+        n_dims,
+        validated_options.model_dump_json(),
+    )
+    return FitResult.model_validate_json(compact_json), best_fit_arr

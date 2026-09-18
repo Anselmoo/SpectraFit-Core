@@ -1,0 +1,727 @@
+# spectrafit-core project configuration.
+#
+# This file is configuration only. Every explanation of WHY a setting has the
+# value it does lives in docs/contributor-guide/project-configuration.md --
+# including the measured counts behind each ruff rule, the rejected candidates,
+# the rrt version-target reasoning, and the regressions individual settings
+# exist to prevent. Change a value here without reading that page and you are
+# likely re-opening something it records as closed.
+
+[project]
+name = "spectrafit-core"
+version = "0.1.0"
+description = "High-performance numerical fitting framework: Rust kernel + Pydantic schemas"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Anselm W. Hahn", email = "anselm.hahn@gmail.com" }]
+maintainers = [{ name = "Anselm W. Hahn", email = "anselm.hahn@gmail.com" }]
+keywords = ["curve-fitting", "spectroscopy", "levenberg-marquardt", "rust", "pydantic", "benchmark"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+requires-python = ">=3.13"
+dependencies = ["numpy>=2.4.4", "pydantic>=2.13.3"]
+
+
+[project.urls]
+Homepage = "https://github.com/Anselmoo/spectrafit-core"
+Repository = "https://github.com/Anselmoo/spectrafit-core"
+Issues = "https://github.com/Anselmoo/spectrafit-core/issues"
+Changelog = "https://github.com/Anselmoo/spectrafit-core/blob/main/CHANGELOG.md"
+
+
+[project.optional-dependencies]
+
+benchmark = [
+    "lmfit>=1.3.4",
+    "typer>=0.12",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "matplotlib>=3.8",
+]
+
+jax = [
+    "jax>=0.10.0",
+    "jaxlib>=0.10.0",
+    "optimistix>=0.0.2",
+]
+
+
+[dependency-groups]
+manuscript = [
+    "matplotlib>=3.9",
+]
+
+dev = [
+    "poethepoet>=0.34",
+    "pre-commit>=4.0",
+    "pytest-cov>=5.0",
+    "pytest>=8.0",
+    "pytest-xdist>=3.6",
+    "hypothesis>=6.88.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "ty>=0.0.69",
+    "repo-release-tools>=1.15.0",
+    "maturin>=1.7",
+    # Required by .claude/skills/scripts/validate_index.py: without it the
+    # validator skips schema validation *silently* and still exits 0 (GOV-04).
+    "jsonschema>=4.23",
+]
+docs = [
+    "zensical>=0.0.51",
+    "mkdocstrings>=1.0.6",
+    "mkdocstrings-python>=2.0.5",
+    "griffe-pydantic>=1.3.1",
+    "matplotlib>=3.8",
+    "lmfit>=1.3.4",
+]
+
+
+[tool.rrt]
+primary_remote = "gitlab"
+release_branch = "release/v{version}"
+changelog_file = "CHANGELOG.md"
+
+
+[[tool.rrt.version_targets]]
+path = "pyproject.toml"
+kind = "pep621"
+ci_format = "pep440"
+
+[[tool.rrt.version_targets]]
+path = "Cargo.toml"
+section = "workspace.package"
+field = "version"
+ci_format = "semver_pre"
+
+[[tool.rrt.version_targets]]
+path = "CITATION.cff"
+kind = "pattern"
+pattern = '^version: (\S+)$'
+
+[[tool.rrt.version_targets]]
+path = "codemeta.json"
+kind = "pattern"
+pattern = '^  "version": "([^"]+)",$'
+
+[[tool.rrt.version_targets]]
+path = "web/package.json"
+kind = "package_json"
+ci_format = "semver_pre"
+
+[[tool.rrt.version_targets]]
+path = "LIMITATIONS.md"
+kind = "pattern"
+pattern = '\*\*beta\*\* software \(`([^`]+)`,'
+
+[[tool.rrt.version_targets]]
+path = "README.md"
+kind = "pattern"
+pattern = '\*\*Status: beta \(`([^`]+)`\) — public sneak preview\.\*\*'
+
+[[tool.rrt.version_targets]]
+path = "docs/getting-started/installation.md"
+kind = "pattern"
+pattern = '\*\*Status: beta \(`([^`]+)`\)\.\*\*'
+
+[[tool.rrt.version_targets]]
+path = "overrides/home.html"
+kind = "pattern"
+pattern = '<span class="sf-hero__status">Status: beta \(([^)]+)\)</span>'
+
+[[tool.rrt.version_targets]]
+path = "overrides/main.html"
+kind = "pattern"
+pattern = 'Status: beta \(([^)]+)\) — public sneak preview\.'
+
+[tool.rrt.publish_targets.github]
+remote = "github"
+branch = "main"
+message = "Initial commit"
+exclude = [
+    "docs/superpowers/plans/*",
+    "docs/superpowers/specs/*",
+    "docs/superpowers/ledgers/*",
+    ".claude/audit/*.jsonl",
+    "DECISIONS.md",
+    "DECISIONS-archive.md",
+    ".claude/docs/*",
+    "docs/audit-2026-07-02-*.md",
+    "docs/cycle11-backend-card-*.png",
+    "analysis/*",
+    ".superpowers/*",
+    "superpowers/*",
+    "manuscript/draft/*",
+    "manuscript/readiness/*",
+    "manuscript/review/*",
+    "manuscript/review-2/*",
+    "manuscript/literature/*",
+    "manuscript/author-check/*",
+    "manuscript/_archive/*",
+    "ADR-INDEX.md",
+]
+
+
+[tool.rrt.folders]
+
+
+[[tool.rrt.folders.templates]]
+name = "repo-root-required-files"
+description = "Root-level files required for spectrafit-core repo"
+strictness = "strict"
+exact = false
+required_files = [
+    "README.md",
+    "CHANGELOG.md",
+    "DECISIONS.md",
+    "pyproject.toml",
+    "Cargo.toml",
+    "LICENSE",
+    "CITATION.cff",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "LIMITATIONS.md",
+]
+
+[[tool.rrt.folders.templates]]
+name = "repo-root-required-dirs"
+description = "Root-level directories required for spectrafit-core repo structure"
+strictness = "strict"
+exact = false
+required_dirs = [
+    "python",
+    "python/oracles",
+    "python/oracles/backends",
+    "python/spectrafit_core",
+    "crates",
+    "crates/spectrafit-core",
+    "crates/spectrafit-core/src",
+    "crates/spectrafit-graph",
+    "crates/spectrafit-graph/src",
+    "crates/spectrafit-models",
+    "crates/spectrafit-models/src",
+    "crates/spectrafit-solver",
+    "crates/spectrafit-solver/src",
+    "crates/spectrafit-levenberg-marquardt",
+    "crates/spectrafit-levenberg-marquardt/src",
+    "crates/spectrafit-dogleg",
+    "crates/spectrafit-dogleg/src",
+    "crates/spectrafit-newton-cg",
+    "crates/spectrafit-newton-cg/src",
+    "crates/spectrafit-trust-region",
+    "crates/spectrafit-trust-region/src",
+    "crates/spectrafit-types",
+    "crates/spectrafit-types/src",
+    "crates/spectrafit-varpro",
+    "crates/spectrafit-varpro/src",
+    "tests",
+    ".github",
+    "scripts",
+    "python/oracles",
+    "python/oracles/audit",
+]
+
+
+[[tool.rrt.folders.templates]]
+name = "solver-crate"
+description = "Canonical per-method solver crate layout (driver/step/problem/lib/tests)"
+strictness = "loose"
+exact = false
+required_files = [
+    "Cargo.toml",
+    "src/lib.rs",
+    "src/driver.rs",
+    "src/step.rs",
+    "src/problem.rs",
+    "src/tests.rs",
+]
+
+[[tool.rrt.folders.rules]]
+name = "repo-structure"
+selector = "."
+mode = "strict"
+templates = [
+    "repo-root-required-files",
+    "repo-root-required-dirs",
+]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-levenberg-marquardt"
+selector = "crates/spectrafit-levenberg-marquardt"
+mode = "strict"
+templates = ["solver-crate"]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-dogleg"
+selector = "crates/spectrafit-dogleg"
+mode = "strict"
+templates = ["solver-crate"]
+
+[[tool.rrt.folders.rules]]
+name = "solver-crate-newton-cg"
+selector = "crates/spectrafit-newton-cg"
+mode = "strict"
+templates = ["solver-crate"]
+
+
+[tool.maturin]
+python-source = "python"
+python-packages = ["spectrafit_core"]
+module-name = "spectrafit_core._core"
+features = ["pyo3/extension-module"]
+manifest-path = "crates/spectrafit-core/Cargo.toml"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py", "*_test.py"]
+xfail_strict = true
+addopts = "-m 'not slow'"
+markers = [
+    "speedboat: performance assertion tests — go red on regression, green when optimization lands",
+    "slow: end-to-end checks against the real latest benchmark run (skipped when none on disk)",
+]
+
+[tool.coverage.run]
+source = ["python/spectrafit_core", "python/oracles"]
+branch = false
+parallel = false
+
+[tool.coverage.report]
+fail_under = 94
+show_missing = true
+skip_empty = true
+precision = 1
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.poe.env]
+PYTHONPATH = "python"
+
+
+[tool.poe.tasks._setup_benchmark]
+sequence = [
+    { cmd = "uv sync --extra benchmark --extra jax" },
+    { cmd = "uv run --with maturin maturin develop --release" },
+]
+
+
+[tool.poe.tasks.lint]
+help = "Run ruff and ty static checks"
+cmd = "ruff check . && ty check"
+
+[tool.poe.tasks.lint_ci]
+help = "Mirror .gitlab/20-lint.yml lint:python (no autofix, CI-strict)"
+shell = """
+  set -e
+  uv run --no-sync ruff format --check .
+  uv run --no-sync ruff check .
+  uv run --no-sync ty check python/spectrafit_core python/oracles
+  # Offline integrity check of the vendored third-party web assets (mermaid,
+  # KaTeX, GLightbox). Hash-only by default, so it adds no network dependency
+  # to the lint gate; `--check-upstream` is opt-in and warns rather than fails.
+  uv run --no-sync python scripts/check_vendored_assets.py
+  # Generated-page guard. CI already enforces scripts/binding_audit_notes.toml
+  # against the Rust source, but nothing enforced the PAGE against the TOML: a
+  # contributor could add a #[pyfunction], update the TOML (CI forces that) and
+  # skip `poe audit_bindings_regen`, shipping a stale page silently. Safe to gate
+  # on now that --write is byte-lossless — before this it would have failed on
+  # front matter the renderer did not know how to emit.
+  uv run --no-sync python scripts/audit_bindings.py --check
+"""
+
+[tool.poe.tasks.manuscript_deps]
+help = "Print the manuscript's Availability dependency block, derived from the real manifests"
+cmd = "python scripts/extract_dependencies.py"
+
+[tool.poe.tasks.manuscript_deps_check]
+help = "Fail if the manuscript's dependency list has drifted from pyproject/Cargo/package.json"
+cmd = "python scripts/extract_dependencies.py --check"
+
+[tool.poe.tasks.manuscript_models]
+help = "Regenerate the manuscript's registered-model inventory table from MODEL_REGISTRY"
+cmd = "python scripts/model_inventory.py"
+
+[tool.poe.tasks.manuscript_models_check]
+help = "Fail if the manuscript's model inventory has drifted from MODEL_REGISTRY"
+cmd = "python scripts/model_inventory.py --check"
+
+# Deliberately NOT in `lint_ci` yet: it currently reports 6 real drifts, and the
+# fix needs the ladder re-run (`poe terra_ladder`) because evidence.md's counts
+# and its per-category performance columns are one coupled table. Wire it into
+# lint_ci in the same change that lands the refreshed numbers.
+[tool.poe.tasks.manuscript_bench_check]
+help = "Fail if the manuscript's benchmark denominators have drifted from the live case registry"
+cmd = "python scripts/manuscript_bench_check.py --check"
+
+
+[tool.poe.tasks.audit_latex]
+help = "Audit docs/**/*.md for unbalanced $ delimiters, bare | inside table-cell math, and drifted plain-text formula notation"
+cmd = "python scripts/audit_latex.py"
+
+[tool.poe.tasks.docstring]
+help = "Check docstrings via ruff's built-in pydocstyle (D) rules"
+cmd = "ruff check . --select D"
+
+[tool.poe.tasks.self_heal]
+help = "Auto-fix safe issues detected by self-heal automation"
+cmd = "uv run python scripts/self_heal_automation.py --mode fix-safe"
+
+[tool.poe.tasks.self_heal_check]
+help = "Dry-run self-heal and fail if any fixes are needed"
+cmd = "uv run python scripts/self_heal_automation.py --mode check --fail-on-fixes"
+
+[tool.poe.tasks.upgrade-deps]
+help = "Upgrade all lock-files (uv, cargo) then rebuild the Rust extension"
+shell = """
+  set -e
+  echo "[upgrade-deps] Upgrading Python lock-file..."
+  uv lock --upgrade
+
+  echo "[upgrade-deps] Updating Rust lock-file..."
+  cargo update || echo "[upgrade-deps] WARN: cargo update failed (non-fatal)"
+
+  echo "[upgrade-deps] Rebuilding Rust extension..."
+  uv run --with maturin maturin develop
+
+  echo "[upgrade-deps] Done. Run: uv run poe qv"
+"""
+
+
+[tool.poe.tasks.benchmark]
+help = "Run the benchmark engine; write results.json + manifest.json into a run dir"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python -m oracles.cli run" },
+]
+
+[tool.poe.tasks.benchmark_quick]
+help = "Fast benchmark (lean reps) for local iteration"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python -m oracles.cli run --reps 3 --mc 6" },
+]
+
+[tool.poe.tasks.bench_bg]
+help = "Start a detached benchmark ladder in the background (local workstation)"
+sequence = [
+    { ref = "_setup_benchmark" },
+    { cmd = "uv run python scripts/bench_background.py start" },
+]
+
+[tool.poe.tasks.bench_bg_status]
+help = "Report whether the background benchmark is alive and which rungs finished"
+cmd = "uv run python scripts/bench_background.py status"
+
+[tool.poe.tasks.bench_bg_collect]
+help = "Copy completed background rungs into artifacts/deep/ (CI artifact layout)"
+cmd = "uv run python scripts/bench_background.py collect"
+
+[tool.poe.tasks.bench_bg_stop]
+help = "Terminate the background benchmark; completed rungs are kept"
+cmd = "uv run python scripts/bench_background.py stop"
+
+[tool.poe.tasks.terra_push]
+help = "Put the current branch on the benchmark host, sync deps (incl. jax), build --release"
+cmd = "bash scripts/remote_bench.sh push"
+
+[tool.poe.tasks.terra_bench]
+help = "Launch a detached benchmark run on the host (REPS=25 default); returns immediately"
+cmd = "bash scripts/remote_bench.sh bench"
+
+[tool.poe.tasks.terra_ladder]
+help = "Launch the full FAIR reps ladder (2,4,10,25,50,100) detached, with provenance per rung"
+cmd = "bash scripts/remote_bench.sh ladder"
+
+[tool.poe.tasks.terra_status]
+help = "Is the remote run alive, how long has it been going, tail of its log"
+cmd = "bash scripts/remote_bench.sh status"
+
+[tool.poe.tasks.terra_pull]
+help = "Copy the finished remote run back into .spectrafit_reports/remote/"
+cmd = "bash scripts/remote_bench.sh pull"
+
+[tool.poe.tasks.benchmark_gate]
+help = "Run the spectrafit-vs-lmfit regression gate on the latest run"
+cmd = "uv run python -m oracles.cli gate"
+
+[tool.poe.tasks.coverage]
+help = "Run pytest with coverage and echo aggregate + 4 critical-path floors"
+shell = """
+  set -e
+  PYTHONPATH=python uv run pytest -q \
+    --cov=python/spectrafit_core --cov=python/oracles \
+    --cov-report=term --cov-report=xml
+  echo ""
+  echo "── critical-path floors ─────────────────────────────────────────"
+  uv run coverage report --include='python/oracles/engine.py'        --fail-under=85
+  uv run coverage report --include='python/spectrafit_core/fit.py'        --fail-under=90
+  uv run coverage report --include='python/spectrafit_core/evaluate.py'   --fail-under=90
+  uv run coverage report --include='python/spectrafit_core/graph.py'      --fail-under=80
+"""
+
+[tool.poe.tasks.coverage_html]
+help = "Coverage with HTML report under htmlcov/ (browse module-by-module)"
+shell = """
+  set -e
+  PYTHONPATH=python uv run pytest -q \
+    --cov=python/spectrafit_core --cov=python/oracles \
+    --cov-report=term --cov-report=xml --cov-report=html
+  echo ""
+  echo "→ open htmlcov/index.html"
+"""
+
+[tool.poe.tasks.serve]
+help = "Serve the latest BenchReport over FastAPI for the web UI (http://localhost:8000)"
+cmd = "uv run --extra benchmark python -m uvicorn oracles.api:app --port 8000"
+
+[tool.poe.tasks.docs_build]
+help = "Build the Zensical docs site (site/) — run docs/tutorials/gallery/_render.py first"
+shell = """
+set -e
+uv run --group docs python docs/tutorials/gallery/_render.py
+uv run --group docs python docs/_render_benchmark_summary.py
+uv run --group docs python docs/_render_nist_tables.py
+uv run --group docs python docs/_render_model_formulas.py
+uv run --group docs python docs/_render_tags.py
+uv run --group docs python docs/_render_abbr_map.py
+uv run --group docs python docs/_render_references.py
+uv run --group docs zensical build --clean
+"""
+
+[tool.poe.tasks.docs_serve]
+help = "Serve the Zensical docs site locally with live reload"
+shell = """
+set -e
+uv run --group docs python docs/tutorials/gallery/_render.py
+uv run --group docs python docs/_render_benchmark_summary.py
+uv run --group docs python docs/_render_nist_tables.py
+uv run --group docs python docs/_render_model_formulas.py
+uv run --group docs python docs/_render_tags.py
+uv run --group docs python docs/_render_abbr_map.py
+uv run --group docs python docs/_render_references.py
+uv run --group docs zensical serve ${dev_addr:+--dev-addr ${dev_addr}}
+"""
+args = [
+    { name = "dev_addr", options = [
+        "--dev-addr",
+    ], default = "", help = "host:port to serve on, e.g. 127.0.0.1:8081 (default: zensical's own)" },
+]
+
+[tool.poe.tasks.contract_regen]
+help = "Regenerate ALL contract-derived artifacts (Python golden + web TS + web snapshot) after a contract.py change"
+shell = """
+set -euo pipefail
+uv run pytest tests/audit/test_audit_openapi_watchdog.py --update-golden -q
+( kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true )
+nohup uv run --extra benchmark python -m uvicorn oracles.api:app --port 8000 >/tmp/sf-api-regen.log 2>&1 & disown
+for i in $(seq 1 30); do curl -sf localhost:8000/openapi.json >/dev/null && break; sleep 1; done
+curl -sf localhost:8000/openapi.json >/dev/null || { echo "API did not start on :8000"; tail -20 /tmp/sf-api-regen.log; kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true; exit 1; }
+( cd web && npm run contract )
+curl -s localhost:8000/openapi.json | python3 -m json.tool > web/openapi.snapshot.json
+kill $(lsof -tiTCP:8000 -sTCP:LISTEN) 2>/dev/null || true
+echo "contract_regen done — review: git status --porcelain"
+"""
+
+[tool.poe.tasks.audit_bindings_regen]
+help = "Regenerate docs/reference/rust/binding-audit.md from lib.rs + dispatch.rs + binding_audit_notes.toml"
+shell = """
+set -eu
+uv run python scripts/audit_bindings.py --write
+echo "audit_bindings_regen done — review: git status --porcelain docs/reference/rust/binding-audit.md"
+"""
+
+[tool.poe.tasks.audit_bindings_check]
+help = "Check docs/reference/rust/binding-audit.md isn't stale relative to binding_audit_notes.toml (not wired into lint_ci yet)"
+shell = "uv run python scripts/audit_bindings.py --check"
+
+[tool.poe.tasks.web_smoke]
+help = "Build the web UI and runtime-smoke the 5 views (no browser needed)"
+shell = "cd web && npm ci && npm run typecheck && npm run smoke && npm run build"
+
+[tool.poe.tasks.web_e2e]
+help = "Run web Playwright wired tests (requires `npx playwright install chromium`)"
+shell = "cd web && npx playwright test"
+
+[tool.poe.tasks.report_e2e]
+help = "Playwright UX test on the bundled report.html (requires `poe report_html` first or REPORT_HTML_PATH env)"
+shell = """
+  set -e
+  REPORT="${REPORT_HTML_PATH:-$(uv run python -c 'from pathlib import Path; from oracles.reports import latest_results; p = latest_results("benchmark"); print(str((p.parent / "report.html").resolve()) if p else "")')}"
+  if [ -z "$REPORT" ] || [ ! -f "$REPORT" ]; then
+    echo "ERROR: report.html not found. Run 'uv run poe report_html' first or set REPORT_HTML_PATH."
+    exit 1
+  fi
+  cd web && REPORT_HTML_PATH="$REPORT" npx playwright test tests/e2e/report-ux.spec.ts
+"""
+
+[tool.poe.tasks._bundle_report_html]
+help = "Bundle the LATEST benchmark run into a self-contained, offline report.html"
+shell = """
+RESULTS=$(uv run python -c "from oracles.reports import latest_results; p=latest_results('benchmark'); print(p.resolve() if p else '')")
+if [ -z "$RESULTS" ]; then echo "no benchmark run found — run 'uv run poe benchmark' first" >&2; exit 1; fi
+RESULTS=$(uv run python -c "from oracles.migrate import migrate_to_current; print(migrate_to_current('$RESULTS'))")
+cd web && npm ci && npm run typecheck && BENCH_JSON="$RESULTS" npm run build:html
+DEST="$(dirname "$RESULTS")/report.html"
+cp dist-html/index.html "$DEST"
+echo "self-contained report -> $DEST ($(du -h "$DEST" | cut -f1))"
+"""
+
+[tool.poe.tasks.report_html]
+help = "Pipeline: build extension -> benchmark -> self-contained, deployable report.html (data inlined, opens offline)"
+sequence = [
+  { ref = "_setup_benchmark" },
+  { cmd = "uv run python -m oracles.cli run" },
+  { ref = "_bundle_report_html" },
+]
+
+[tool.poe.tasks.bundle_report_only]
+help = "Bundle latest results.json into report.html WITHOUT re-running the benchmark"
+sequence = [ { ref = "_bundle_report_html" } ]
+
+[tool.poe.tasks.scenario_smoke]
+help = "Fast pre-merge smoke gate: spectrafit vs lmfit on the canonical regression scenario"
+cmd = "uv run pytest tests/scenario/test_smoke.py -v"
+
+[tool.poe.tasks.trust_audit]
+help = "Run the W1–W6 V&V trust audit test set (Plan E ground-truth harness)"
+cmd = "pytest tests/audit/ -v"
+
+[tool.poe.tasks.migration_smoke]
+help = "30s sanity check: verify new import paths resolve after the bench → oracles restructure"
+cmd = "uv run pytest tests/unit/benchmark/test_contract.py tests/integration/benchmark/test_engine.py tests/audit/test_audit_trust_ledger_contract.py -q"
+
+
+[tool.poe.tasks.run_bg]
+help = "Universal background dispatcher: uv run poe run_bg <task>  (e.g. run_bg benchmark_super)"
+cmd = "scripts/run_pytest_bg.sh --poe ${task}"
+args = [
+    { name = "task", positional = true, help = "Any poe task name, e.g. benchmark_super, benchmark_cold_hot, qv_all" },
+]
+
+[tool.poe.tasks.bg_status]
+help = "Check background job status (all by default; optional --job and --tail)"
+cmd = "scripts/check_pytest_bg.sh ${job:+--job ${job}} ${tail:+--tail ${tail}}"
+args = [
+    { name = "job", options = [
+        "--job",
+    ], default = "", help = "Optional job id" },
+    { name = "tail", options = [
+        "--tail",
+    ], default = "", help = "Optional tail line count" },
+]
+
+[tool.poe.tasks.prune_worktrees]
+help = "On-demand worktree hygiene: prune stale registrations, auto-remove merged worktrees, flag unmerged/locked ones. GIT_HYGIENE_PRUNE_OFF=1 for warn-only."
+shell = "source .claude/hooks/lib/git-hygiene.sh && prune_worktrees"
+
+[tool.poe.tasks.backport_github]
+help = "List commits on a GitHub branch not yet on local main, with a cherry-pick/squash recipe (uv run poe backport_github [branch] [--squash])"
+cmd = "python3 scripts/backport_from_github.py --github-branch ${branch} ${squash:+--squash}"
+args = [
+    { name = "branch", positional = true, default = "main", help = "GitHub branch to check — default 'main' covers direct-edit-in-transit; pass a feature-branch name for the GitHub-first iteration lane" },
+    { name = "squash", options = ["--squash"], type = "boolean", help = "Suggest a squash-merge recipe instead of per-commit cherry-picks" },
+]
+
+[tool.poe.tasks.check_stale_github_branches]
+help = "List GitHub-mirror branches with un-backported commits older than N days (uv run poe check_stale_github_branches [--min-age-days N] [--strict])"
+cmd = "python3 scripts/check_stale_github_branches.py --min-age-days ${min_age_days} ${strict:+--strict}"
+args = [
+    { name = "min_age_days", options = ["--min-age-days"], default = "14", help = "only flag branches whose newest commit is at least this many days old" },
+    { name = "strict", options = ["--strict"], type = "boolean", help = "exit 1 if any stale branch is found, instead of always exiting 0" },
+]
+
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+
+[tool.ty.src]
+include = ["python/oracles", "python/spectrafit_core"]
+
+[tool.ty.analysis]
+allowed-unresolved-imports = ["jax", "jax.**", "optimistix", "optimistix.**"]
+
+[tool.ty.rules]
+possibly-unresolved-reference = "warn"
+unused-ignore-comment = "warn"
+
+pydantic-discarded-extra-argument = "warn"  # Pydantic-first codebase: catches a
+unused-awaitable = "warn"  # Only python/oracles/api.py is async (FastAPI); a
+possibly-missing-attribute = "warn"  # Catches typo'd/renamed attribute access
+possibly-missing-import = "warn"  # Same class as above for module-level
+unsupported-dynamic-base = "warn"  # Flags a class base that ty can't
+blanket-ignore-comment = "warn"  # Flags a bare `# ty: ignore` with no
+division-by-zero = "warn"  # Numerics-heavy codebase (chi-square, residuals,
+
+missing-override-decorator = "warn"  # Was 28 hits (17 main + 11 tests) at
+missing-type-argument = "warn"  # Was 91 hits (bare `dict`/`list` annotations)
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = [".claude", "*.md"]
+
+[tool.ruff.lint]
+extend-select = [
+    "D",    # pydocstyle (pre-existing) — Google convention, see below.
+    "I",    # isort — deterministic import ordering under the same tool that
+    "UP",   # pyupgrade — keeps syntax idiomatic for the pinned
+    "PIE",  # flake8-pie — misc anti-patterns (e.g. redundant dict-call literals,
+    "SIM",  # flake8-simplify — redundant control flow (e.g. if/else that's a
+    "C4",   # flake8-comprehensions — unnecessary list()/dict()/set() wrapping a
+    "RET",  # flake8-return — unreachable/redundant return/assign patterns.
+    "PTH",  # flake8-use-pathlib — os.path.* where pathlib.Path is already this
+    "B",    # flake8-bugbear — real correctness catches for a numerics-heavy
+    "RUF",  # ruff-specific rules (unused-noqa, collection-literal-concat,
+    "ICN",  # flake8-import-conventions -- enforces `import numpy as np` (etc).
+    "TRY003",  # tryceratops -- long/dynamic exception messages built inline at
+    "EM101",  # flake8-errmsg -- string-literal exception message, same
+    "EM102",  # flake8-errmsg -- f-string exception message; the other half
+
+    "DTZ",  # flake8-datetimez -- naive `datetime.now()`/`utcnow()` calls. 0
+    "NPY",  # NumPy-specific rules (legacy `np.random` global-state RNG,
+    "FURB",  # refurb -- general Python modernization suggestions (e.g.
+    "LOG",  # flake8-logging -- logging-module misuse (e.g. calling the root
+    "G",    # flake8-logging-format -- the paired rule family for LOG above,
+    "PLW2901",  # pylint -- `for` loop variable reassigned inside the loop
+    "PLC0207",  # pylint -- `str.split(sep)[0]`/`[-1]` without the `maxsplit`
+
+    "PERF",  # perflint -- 12 violations measured, all `PERF401` (manual-list
+    "ISC",  # flake8-implicit-str-concat -- accidental same-line string
+    "RSE",  # flake8-raise -- unnecessary parens on a raised exception
+    "FLY",  # flynt -- `str.join([...])` calls that could be a plainer
+    "TID",  # flake8-tidy-imports -- bans parent-relative imports
+    "BLE",  # flake8-blind-except -- catching `Exception`/bare `except:`
+
+    "PT018",  # flake8-pytest-style -- a combined `assert A and B` hides
+    "PT006",  # flake8-pytest-style -- `@pytest.mark.parametrize("a,b", ...)`
+    "PT019",  # flake8-pytest-style -- a fixture listed as a test parameter
+    "PT001",  # flake8-pytest-style -- `@pytest.fixture()` instead of the
+
+    "COM812",  # flake8-commas -- missing trailing comma on the last element of
+]
+ignore = [
+    "RUF001",  # ambiguous-unicode-character-string
+    "RUF002",  # ambiguous-unicode-character-docstring
+    "RUF003",  # ambiguous-unicode-character-comment
+]
+external = ["FBT003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D", "TRY003", "EM101", "EM102", "PERF"]
+"scripts/*.py" = ["TRY003", "EM101", "EM102", "PERF"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

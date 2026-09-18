@@ -1,0 +1,97 @@
+# Fingerprint stage — the 2-minute red/green, not the authority.
+#
+# GitLab has no per-job priority knob, so "give these two checks priority"
+# translates into structural properties instead:
+#   (a) `needs: []` so each job starts the moment the pipeline is created —
+#       it does NOT wait on `setup` (unlike every job in 20-lint.yml onward).
+#   (b) cheap: no compiled extension, no `cargo build`/`clippy`, no maturin.
+#   (c) `interruptible: true` so a new push to the same ref cancels a stale
+#       run instead of racing it (paired with GitLab's auto-cancel setting).
+#   (d) `stage: fingerprint`, which .gitlab-ci.yml lists FIRST (before
+#       `setup`), so the pipeline graph renders these jobs first.
+#
+# These jobs deliberately DUPLICATE the fastest checks already run by
+# lint:rust / lint:python (20-lint.yml): `cargo fmt --check`, `ruff
+# format --check`, `ruff check`, and the two Python-boundary hooks. The
+# heavier lint:* jobs remain the real gate (they also run clippy, `ty
+# check`, the manuscript/docs checks, etc.) — this stage exists only to
+# surface the fastest, most common class of MR failure (a formatting or
+# lint drift) in ~1-2 minutes instead of waiting for `setup` to finish
+# installing the full toolchain first.
+
+fingerprint:rust-fmt:
+  rules: !reference [.rules_default, rules]
+  stage: fingerprint
+  needs: []
+  interruptible: true
+  timeout: 10m
+  # No cache: block. rustfmt reformats source in place from a fresh
+  # checkout — it does not touch Cargo's registry or `.venv/`, so there is
+  # nothing here worth restoring from a cache bucket.
+  script:
+    - |
+      # rustfmt only — no clippy, no `cargo build`/`check`. A pure
+      # syntax-tree reformat needs no crate compilation, so this finishes in
+      # seconds even on a cold runner.
+      #
+      # The baked CI image's minimal Rust profile ships `clippy` but not
+      # `rustfmt` (see .gitlab/docker/Dockerfile.ci's rustup install step) —
+      # lint:rust (20-lint.yml) hits the same gap and fixes it the same way.
+      # `rustup component add` is idempotent and near-instant when the
+      # component is already present, so this costs nothing on a warm image.
+      rustup component add rustfmt
+      cargo fmt --all --check
+
+fingerprint:python-static:
+  rules: !reference [.rules_default, rules]
+  stage: fingerprint
+  needs: []
+  interruptible: true
+  timeout: 15m
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      # Same bucket `setup` (10-setup.yml) writes and `lint:python`
+      # (20-lint.yml) reads. On a branch's first push this job races
+      # `setup` and finds the bucket cold — `uv sync` below does the real
+      # work itself. On every push after that, `setup`'s prior run has
+      # already pushed a warm `.venv/`, so this job's `uv sync
+      # --frozen --no-install-project` is a fast no-op verification instead
+      # of a real install.
+      fallback_keys:
+        - "static-$CI_DEFAULT_BRANCH"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      # `--only-group dev` installs ruff + ty + poe + repo-release-tools —
+      # everything this job's checks below need — without the `benchmark`
+      # extra (FastAPI/uvicorn/lmfit) `setup` installs for the heavier
+      # jobs. `--no-install-project` skips the maturin build of the local
+      # `spectrafit-core` wheel, same reasoning as `setup` (10-setup.yml).
+      # `--frozen` refuses to touch `uv.lock` — a lockfile drift must fail
+      # loudly here, not get silently resolved away.
+      UV_CACHE_DIR=.uv-cache uv sync --frozen --no-install-project --only-group dev
+      # Duplicates lint:python's `ruff format --check` — the single most
+      # common MR-blocking failure, surfaced here in under a minute instead
+      # of after `setup` finishes installing the `benchmark` extra.
+      UV_CACHE_DIR=.uv-cache uv run --no-sync ruff format --check .
+      # Duplicates lint:python's `ruff check` (lint rules, not just format).
+      UV_CACHE_DIR=.uv-cache uv run --no-sync ruff check .
+      # LaTeX-in-docstrings gate (CLAUDE.md's Python doc-notation rule) —
+      # pure stdlib AST parse, no compiled extension needed.
+      UV_CACHE_DIR=.uv-cache uv run --no-sync python scripts/audit_latex.py
+      # PyO3/Solver TOML-manifest drift check only (no flags): confirms
+      # `scripts/binding_audit_notes.toml` still lists every `#[pyfunction]`
+      # and `Solver::` variant found in source. The slower doc-staleness
+      # check (`--check`, regenerating `binding-audit.md`) stays in
+      # lint:python's superset.
+      UV_CACHE_DIR=.uv-cache uv run --no-sync python scripts/audit_bindings.py
+      # PyO3 boundary + Python<->Rust schema-sync hooks: both are pure
+      # grep/awk/stdlib-AST, no build required, so they cost ~0s here and
+      # catch the two classes of cross-language drift CLAUDE.md's
+      # `pre-merge-pyO3` / `pre-merge-schema-sync` rows describe — today
+      # only wired into local pre-commit/pre-push, not CI.
+      bash .claude/hooks/pre-merge-pyO3.sh
+      bash .claude/hooks/pre-merge-schema-sync.sh

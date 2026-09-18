@@ -1,0 +1,73 @@
+# Install all deps once; downstream jobs inherit `.venv/` + `web/node_modules/`
+# via artifacts (3-hour TTL) and warm caches via the three cache buckets below.
+#
+# Three named buckets, all policy: pull-push here (setup is the ONLY writer):
+#   rust-*   — .cargo/ (registry index only; target/ deliberately excluded)
+#   static-* — .uv-cache/ (uv wheel cache) + .venv/ (installed env)
+#   web-*    — web/node_modules/
+# Downstream jobs declare only the bucket(s) they need, all with policy: pull.
+# See docs/contributor-guide/ci-pipeline.md for the cache-bucket rationale.
+#
+# The `*` in the key is $CI_COMMIT_REF_SLUG so caches are branch-scoped and
+# don't cross-contaminate MR branches.
+
+setup:
+  rules: !reference [.rules_default, rules]
+  stage: setup
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      # New branches seed from the default branch's warm .cargo registry
+      # instead of a cold fetch.
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull-push
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull-push
+    - key: "web-$CI_COMMIT_REF_SLUG"
+      paths:
+        - web/node_modules/
+      policy: pull-push
+  script:
+    - |
+      # Python deps (benchmark extra carries FastAPI + uvicorn + lmfit).
+      # `--no-install-project` skips building the local editable
+      # spectrafit-core package — that triggers `maturin pep517 build-wheel`
+      # which needs cmake + gfortran + LAPACK (netlib-src). Letting
+      # test:python own the maturin compile keeps `setup` lean.
+      # lint:python (ruff, ty) and test:web (uvicorn + synth fixture) don't
+      # need the compiled .so to function, so the lighter setup is sufficient.
+      UV_CACHE_DIR=.uv-cache uv sync --no-install-project --extra benchmark
+      # Pre-fetch Cargo deps so test:python / test:rust / lint:rust hit
+      # a warm registry (no build, just download).
+      cargo fetch
+      # Web deps
+      cd web && npm ci
+  artifacts:
+    # 1 day TTL. This value has now been raised twice for the same failure, so
+    # the rule is: it must exceed the LONGEST chain from setup to any job that
+    # `needs:` its artifacts — not the longest single job.
+    #
+    #   1h  -> raced build:report_html's real ~67min runtime; build:docs failed
+    #          with missing_dependency_failure before starting (pipeline 362092,
+    #          job 5076994).
+    #   3h  -> covered the 2h build-stage timeouts, but not the deep-bench
+    #          ladder: benchmark:deep's reps=25 cell runs 2.25h and
+    #          benchmark:deep:merge only starts after it, so merge failed the
+    #          same way (pipeline 366836, job 5120665) with every matrix cell
+    #          green and its own artifacts intact.
+    #   1 day -> covers benchmark:deep:centennial, whose reps=100 rung is
+    #          budgeted at ~6.8h with an 8h job timeout. A scheduled run would
+    #          otherwise fail its merge EVERY week, with nothing wrong except
+    #          the clock.
+    #
+    # The artifact is a .venv plus node_modules; a longer TTL costs storage, not
+    # correctness, and is far cheaper than re-running a multi-hour ladder.
+    expire_in: 1 day
+    paths:
+      - .venv/
+      - web/node_modules/

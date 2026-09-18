@@ -1,0 +1,1 @@
+Use Python 3.13 typing with from __future__ import annotations, Google-style docstrings, and strict typed Pydantic models for public contracts. For benchmark code, keep payloads as typed Pydantic models rather than raw dicts. JSON boundaries must use model_dump_json/model_validate_json. Ruff with pydocstyle D rules is enforced.

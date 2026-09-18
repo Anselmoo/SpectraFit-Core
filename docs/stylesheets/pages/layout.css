@@ -1,0 +1,116 @@
+/*
+ * Content-grid re-proportioning.
+ *
+ * Targets Zensical's OWN internal selector (.md-grid), not a documented
+ * public API — Zensical exposes no CSS custom property or config knob for
+ * grid/sidebar width (confirmed by grepping the installed theme's compiled
+ * CSS and its bootstrap zensical.toml reference; see the design pipeline
+ * that produced this value for the exact check). This is a known, accepted
+ * fragility (flagged by that pipeline's cupertino-longevity pass): if a
+ * Zensical upgrade renames/restructures this class, this rule silently
+ * stops applying rather than erroring — re-verify with a real
+ * getComputedStyle check (not just a visual glance) after any Zensical
+ * version bump. This CSS layer has already hit that same "looks fine in
+ * source, isn't applying" risk twice for an unrelated reason too: a stray
+ * comment-close sequence — asterisk immediately followed by slash — inside
+ * a CSS comment ends it early and silently drops the rule that follows.
+ *
+ * 80rem (up from Zensical's default 61rem) was chosen after a real build
+ * spike measured the resulting content:chrome ratio shift. The shipped
+ * layout has TWO fixed-width sidebar panes: the primary navigation sidebar
+ * on the left, and the secondary table-of-contents sidebar on the right.
+ * The wider grid hands its extra width to .md-content, balanced between
+ * the two sidebars and the center prose column — see the nav.css header
+ * comment for the full feature roster that enabled this layout.
+ *
+ * That wider .md-content, left unchecked, let body prose run to roughly
+ * 200 characters per line at a 1920px viewport — well past any comfortable
+ * reading measure (45-75ch is comfortable; ~90ch is usually treated as a
+ * hard ceiling).
+ */
+.md-grid {
+  /* Tokenised — pages/hero.css binds to the same value. */
+  max-width: var(--layout-grid, 80rem);
+}
+
+/* Prose-measure cap — see the header comment above.
+ *
+ * [cupertino-council pass, 2026-08-01, round 2]: this rule went through two
+ * wrong shapes before landing here, both the same mistake in different
+ * clothes. Round 1 capped only p/li and explicitly EXCLUDED admonitions —
+ * a live report showed a capped paragraph sitting next to a full-grid-width
+ * callout right below it. Round 2 "fixed" that by adding admonition/details
+ * to the capped list — and a second live report immediately showed the
+ * exact same mismatch one level down, this time with a full-grid-width
+ * TABLE. Enumerating child selectors one content-type at a time is a
+ * whack-a-mole game against every element type Markdown can produce
+ * (headings, blockquotes, images, custom sf-section-hero blocks, mermaid
+ * diagrams, ...) — the actual bug was never "which selectors are we
+ * missing," it was capping children individually instead of the container.
+ *
+ * `.md-typeset > *` bounds every top-level block uniformly, by construction
+ * — no enumeration to keep in sync as new content types get used. Elements
+ * that legitimately need more room than the cap handle it internally rather
+ * than by escaping the shared column: Material already wraps tables in
+ * `overflow:auto` (confirmed in the compiled theme's own
+ * `.md-typeset table:not([class]){max-width:100%;overflow:auto;...}`), and
+ * code fences get the same horizontal-scroll treatment — both scroll inside
+ * their own box instead of pushing the page wider than its neighbors.
+ *
+ * [2026-08-02 follow-up]: round 2's flat `90ch` was a fixed value that
+ * never accounted for .md-grid's own OWN responsiveness above — Zensical's
+ * "modern" theme scales the root font-size up at wide viewports (measured
+ * live: 16px at narrow widths, 20px at 1440px, plateauing at 24px from
+ * ~1920px through 4K/3840px and beyond), which grows `.md-grid`'s 80rem cap
+ * right along with it, but a flat `ch` value doesn't grow with anything —
+ * so the gap between "how wide the column could be" and "how wide prose
+ * actually renders" only got worse the wider the viewport.
+ *
+ * First attempt at the fix used `min(115ch, 100%)` — 115ch being the same
+ * "outer edge" value this comment already cited (45-75ch comfortable,
+ * ~90ch usual ceiling, ~100-120ch outer edge), just applied at the width
+ * the grid actually reaches at large viewports instead of the narrower
+ * width it had when 90ch was first measured. That reintroduced the EXACT
+ * class of bug round 1/round 2 above already fought, through a different
+ * door: `ch` is relative to the MATCHED ELEMENT's own font-size, not a
+ * shared one, and `.admonition` renders at a smaller font-size than body
+ * `<p>` (measured live: 14.08px vs 16.5px at a 1920px/22px-root viewport)
+ * — so the same `115ch` computed to a genuinely NARROWER pixel cap for
+ * admonitions (971.5px) than for paragraphs (1138.5px) one column over, a
+ * visible right-edge mismatch a user caught immediately. Uniform SELECTOR
+ * coverage (`.md-typeset > *`) doesn't guarantee uniform WIDTH when the
+ * cap's own unit isn't uniform across differently-sized children.
+ *
+ * Fix: express the same target in `rem` (root-relative, not
+ * element-font-size-relative) instead of `ch`. `.md-typeset`'s own base
+ * font-size is a fixed `0.75rem` of the root at every breakpoint (verified:
+ * 16.5px/22px and 18px/24px both = 0.75 exactly), so `51.75rem` reproduces
+ * the *exact* pixel value `115ch` gave at the typeset's own font-size,
+ * confirmed by re-deriving all three already-measured checkpoints from
+ * this constant alone: 51.75 x 20px-root = 1035px (matches the 1440px
+ * reading), x 22px = 1138.5px (1920px), x 24px = 1242px (2000px/4K) — but
+ * now applies identically to EVERY child regardless of that child's own
+ * font-size, closing the admonition mismatch instead of reproducing it.
+ * `min()` still can't overflow: at any viewport where the article column
+ * itself is narrower than 51.75rem, `100%` wins, same as before. Verified
+ * live at 1440px/1920px/2000px/3840px, admonition-vs-paragraph included —
+ * see .superpowers/specs/2026-08-02-docs-prose-width-4k-design.md. */
+.md-typeset > * {
+  max-width: min(51.75rem, 100%);
+}
+
+/* Scoped exception, not a change to the rule above: `.sf-section-hero` and
+ * `.sf-card-grid` are identity banners / layout grids, not prose columns —
+ * on the 6 section-index pages (overrides/section-index.html), the hero's
+ * own border-bottom rule and the card grid's tile row were getting cut off
+ * at 51.75rem instead of spanning the full article column, most visible on
+ * a section with few cards (e.g. how-to/index.md's 2 cards read as two
+ * narrow tiles with a hard right edge inside an already-narrowed box).
+ * `.sf-section-hero__tagline` keeps its own prose cap (60ch,
+ * pages/section-hero.css) unaffected by this — only the two *container*
+ * elements are exempted here, not the running text inside them.
+ */
+.md-typeset > .sf-section-hero,
+.md-typeset > .sf-card-grid {
+  max-width: 100%;
+}

@@ -1,0 +1,35 @@
+# Code owners for spectrafit-core.
+#
+# TWO COPIES EXIST ON PURPOSE: this file and /CODEOWNERS (repo root). GitLab
+# (the primary remote / merge target, see CONTRIBUTING.md) never reads
+# .github/ — only the repo root, docs/, or .gitlab/ — so a CODEOWNERS living
+# only here would be inert on the source of truth and would only ever govern
+# PRs on the disposable GitHub mirror. Keep both files' content in sync by
+# hand; there is no generator for this today.
+#
+# GitHub matches this file only as `CODEOWNERS` (or `.github/CODEOWNERS`), and on
+# a case-insensitive filesystem a lowercase `codeowners` is the SAME file locally
+# while being invisible to GitHub. Keep the name uppercase.
+#
+# Single maintainer today; every other committer is a CI automation account. The
+# per-area lines are not redundant with the catch-all — they are where a second
+# maintainer gets added without having to reason about the whole tree.
+
+*                       @Anselmoo
+
+# Rust solver workspace
+/crates/                @Anselmoo
+
+# Python engine, oracles and the benchmark harness
+/python/                @Anselmoo
+
+# Web dashboard
+/web/                   @Anselmoo
+
+# Release, CI and publication tooling
+/scripts/               @Anselmoo
+/.github/               @Anselmoo
+/.gitlab/               @Anselmoo
+
+# Manuscript and its reproducible artifacts
+/manuscript/            @Anselmoo

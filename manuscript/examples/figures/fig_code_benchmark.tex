@@ -1,0 +1,71 @@
+% Figure: Listing 3, running the benchmark suite.
+%
+% Source for fig_code_benchmark.pdf / .png. Build with the sibling driver:
+%
+%     uv run --group manuscript python manuscript/examples/figures/fig_code_benchmark.py
+%
+% The two caveats are comments on the commands they qualify rather than prose
+% after the block: the release-build requirement belongs on the build line and
+% the halved-repetition count belongs on the run line, because that is where a
+% reader recomputing the figures will be looking when it bites them.
+\documentclass[border=6pt,varwidth=15.2cm]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+
+\definecolor{kw}{RGB}{0,90,160}
+\definecolor{str}{RGB}{160,60,20}
+\definecolor{cmt}{RGB}{110,110,110}
+
+\lstset{
+  language=bash,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{kw}\bfseries,
+  stringstyle=\color{str},
+  commentstyle=\color{cmt}\itshape,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  breaklines=false,
+  aboveskip=0.6em,
+  belowskip=0pt,
+}
+
+\captionsetup{labelfont=bf,skip=0.4em,justification=justified,
+              singlelinecheck=false,font=small}
+\renewcommand{\lstlistingname}{Listing}
+
+\begin{document}
+% Listings 1 and 2 are fig_code_compose and fig_code_constraints.
+\setcounter{lstlisting}{2}
+\begin{minipage}{15.2cm}
+\hrule height 0.9pt
+\vspace{0.5em}
+\captionof{lstlisting}{Running the benchmark suite, which writes a run directory
+holding the per-case results and a manifest. Both caveats are load-bearing for
+anyone recomputing the reported figures.}
+\vspace{0.2em}
+\hrule height 0.4pt
+\begin{lstlisting}
+# The release profile is not optional for a timing run: a debug build of
+# the extension is one to two orders of magnitude slower, and measures the
+# build profile rather than the solver.
+uv sync --extra benchmark && uv run maturin develop --release
+
+# --reps and --mc set the depth. The suite phase runs HALF the requested
+# repetitions, so 2, 4 and 10 time each case 1, 2 and 5 times; both counts
+# are recorded per rung as reps_requested and reps_effective, and the
+# figures in Validation are indexed by the effective value -- to reproduce
+# the reported depth-50 rung, pass --reps 100.
+uv run python -m oracles.cli run --reps 2
+
+# Four-axis regression gate against the pinned baseline.
+uv run python -m oracles.cli gate
+\end{lstlisting}
+\vspace{0.3em}
+\hrule height 0.9pt
+\end{minipage}
+\end{document}

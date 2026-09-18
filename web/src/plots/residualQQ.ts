@@ -1,0 +1,59 @@
+import * as Plot from "@observablehq/plot";
+import type { QQBackend } from "../series/residualQQ";
+import { axes } from "./grammar";
+import { PLOT_SPECS } from "./spec";
+import { toSvg } from "./toSvg";
+
+/**
+ * QQ plot of standardised residuals vs theoretical normal quantiles.
+ * One colored dot series per backend; the y = x reference line shows
+ * where perfectly Gaussian residuals would fall.
+ */
+export function residualQQPlot(
+  series: QQBackend[],
+  o: { colors: Record<string, string>; width?: number }
+): SVGSVGElement {
+  const ids = series.map((s) => s.backend);
+  const dots = series.flatMap((s) => s.points.map((p) => ({ ...p, backend: s.backend })));
+
+  // Reference line: y = x through the range of theoretical quantiles
+  const allTheoretical = dots.map((d) => d.theoretical).filter(Number.isFinite);
+  const xMin = allTheoretical.length > 0 ? Math.min(...allTheoretical) : -3;
+  const xMax = allTheoretical.length > 0 ? Math.max(...allTheoretical) : 3;
+  const refLine = [
+    { theoretical: xMin, sample: xMin },
+    { theoretical: xMax, sample: xMax },
+  ];
+
+  return toSvg(
+    Plot.plot({
+      width: o.width,
+      height: 320,
+      marginLeft: 56,
+      marginRight: 24,
+      marginBottom: 48,
+      style: { background: "transparent", color: "var(--text-secondary)", fontSize: "11px" },
+      color: { domain: ids, range: ids.map((i) => o.colors[i] ?? "var(--system-blue)") },
+      ...axes(PLOT_SPECS["residual-qq"]),
+      marks: [
+        // Reference diagonal y = x
+        Plot.line(refLine, {
+          x: "theoretical",
+          y: "sample",
+          stroke: "var(--text-tertiary)",
+          strokeWidth: 1,
+          strokeDasharray: "4 3",
+        }),
+        // Per-backend dots
+        Plot.dot(dots, {
+          x: "theoretical",
+          y: "sample",
+          stroke: "backend",
+          fill: "backend",
+          fillOpacity: 0.5,
+          r: 2.5,
+        }),
+      ],
+    })
+  );
+}

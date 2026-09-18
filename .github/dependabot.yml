@@ -1,0 +1,42 @@
+# Dependabot — weekly dependency-update PRs across the four ecosystems this
+# repo actually carries. Grouped so a week's bumps arrive as a few reviewable
+# PRs, not dozens. `pip` reads [project.dependencies] in pyproject.toml (it
+# opens version-bump PRs against the declared ranges; uv.lock is regenerated
+# by the existing CI sync). github-actions keeps the workflow action pins fresh.
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      rust-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      web-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]

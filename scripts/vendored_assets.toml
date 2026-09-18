@@ -1,0 +1,213 @@
+# Vendored third-party web assets — the single source of truth for what is
+# checked into docs/ from outside this project.
+#
+# Why this file exists. Three libraries are vendored into the docs site so the
+# published pages make no third-party CDN request: KaTeX, GLightbox, and (as of
+# 2026-08-13) mermaid. Until now the only record of WHICH version each one was
+# lived in prose comments in zensical.toml, and nothing verified that the files
+# on disk still matched. A vendored asset with no recorded provenance is
+# strictly worse than a CDN reference: you cannot tell what it is, whether it
+# has been modified, or whether it carries a known vulnerability.
+#
+# `sha256` is the authoritative field. It is what `scripts/check_vendored_assets.py`
+# enforces on every run, offline, and it catches a truncated download, a hand
+# edit, or a silent replacement. `version` is metadata: useful for deciding when
+# to upgrade, but only as trustworthy as `version_verified` says it is.
+#
+# Adding or upgrading an asset:
+#   1. download it from the pinned `url`
+#   2. `uv run python scripts/check_vendored_assets.py --update` to rewrite the
+#      hashes from what is now on disk
+#   3. review the diff — an unexpected hash change is the whole point of this file
+#
+# `--check-upstream` re-fetches each pinned URL and compares. It is opt-in and
+# never runs in the default check, so CI does not depend on npm being reachable
+# and an upstream release is information rather than a red pipeline.
+
+[[asset]]
+name = "mermaid"
+version = "11.16.1"
+version_verified = true          # downloaded from this exact pinned URL, 2026-08-13
+url = "https://unpkg.com/mermaid@11.16.1/dist/mermaid.min.js"
+path = "docs/javascripts/mermaid.min.js"
+sha256 = "18327bef70d96fb505fe7287d9f6a7362ebf07ff6576ddfaffb1a06f3e1a2954"
+license = "docs/javascripts/mermaid.LICENSE"
+# Vendored specifically to stop the docs executing an UNPINNED major: Zensical's
+# bundle fetched `unpkg.com/mermaid@11` at page load, so every reader ran
+# whatever upstream had published that day. Vendoring also enables the
+# `sf-mermaid` fence rename — the bundle used the `.mermaid` class as its
+# trigger to fetch mermaid, so the rename would otherwise leave it unloaded.
+notes = "3.4 MB; the largest vendored asset by far, and the price of not running an unpinned CDN major"
+
+[[asset]]
+name = "katex"
+version = "0.18.1"
+version_verified = true          # sha256 matches unpkg katex@0.18.1, checked 2026-08-13
+url = "https://unpkg.com/katex@0.18.1/dist/katex.min.js"
+path = "docs/javascripts/katex.min.js"
+sha256 = "68b9115510b8cedb9909a10de7799c94c0707481296f755c0a8888cb8fcde216"
+license = ""                     # upstream LICENSE not vendored alongside — see below
+# RESOLVED 2026-08-13. The earlier probe searched 0.16.8-0.16.22 and found no
+# match, because it was searching the wrong minor line entirely: the bundle
+# self-reports `version:"0.18.1"` internally, and a direct hash comparison
+# against unpkg katex@0.18.1 matches exactly. The lesson is worth keeping —
+# the probe was bounded by an assumption ("it is 0.16.x") inherited from a
+# zensical.toml prose comment, so it could only ever confirm or fail to
+# confirm that assumption, never correct it.
+# Upstream latest at the time of writing is 0.18.4, so this is three patch
+# releases behind. Not urgent, and deliberately not bumped as part of a
+# provenance fix: changing bytes and recording what the bytes are should be
+# two separate commits.
+# Still open: vendor the upstream LICENSE beside it, as mermaid and GLightbox
+# have. The sha256 pins the bytes regardless.
+
+[[asset]]
+name = "katex-auto-render"
+version = "0.18.1"
+version_verified = true          # sha256 matches unpkg katex@0.18.1, checked 2026-08-13
+url = "https://unpkg.com/katex@0.18.1/dist/contrib/auto-render.min.js"
+path = "docs/javascripts/katex-auto-render.min.js"
+sha256 = "e5372d199bcdae8b4de71d0f7ceba72a4ba12774a27c60a6f1f77d03b3228ee4"
+license = ""
+notes = "ships with katex; must stay on the same version as katex.min.js"
+
+[[asset]]
+name = "katex-css"
+version = "0.18.1"
+version_verified = true          # provenance confirmed via the katex.min.js it ships with
+modified = true                  # see notes — this file is a DERIVATIVE, not a copy
+url = "https://unpkg.com/katex@0.18.1/dist/katex.min.css"
+path = "docs/stylesheets/katex.min.css"
+sha256 = "46a93d0090b5625b84849f5c4b8fc7439f97f5aa07fec00c684c24593f6dd208"
+license = "docs/fonts/katex/LICENSE"
+# DELIBERATE DERIVATIVE — do not "fix" the hash mismatch by re-downloading.
+# Upstream declares each font three times (ttf/woff/woff2) at `fonts/KaTeX_*`;
+# this copy is rewritten to a woff2-only subset at `../fonts/katex/KaTeX_*`,
+# pointing at the fonts vendored under docs/fonts/katex/. That is what makes
+# the page render without a CDN font fetch, and it is why the file is 22773
+# bytes against upstream's 24727.
+# So `--check-upstream` reports this one as DIFFERING and that is CORRECT.
+# `modified = true` records the intent, so a future reader finds a documented
+# derivative rather than apparent drift.
+notes = "woff2-only font subset with paths rewritten to docs/fonts/katex/; hash will NOT match upstream by design"
+
+[[asset]]
+name = "glightbox"
+version = "3.3.1"
+version_verified = true          # sha256 matches unpkg glightbox@3.3.1, checked 2026-08-13
+url = "https://unpkg.com/glightbox@3.3.1/dist/js/glightbox.min.js"
+path = "docs/javascripts/glightbox.min.js"
+sha256 = "c67c59cdf980793b0216c9de9c6ebf688418838822af1e50b09439e3aa289ff3"
+license = "docs/javascripts/glightbox.LICENSE"
+
+[[asset]]
+name = "glightbox-css"
+version = "3.3.1"
+version_verified = true          # sha256 matches unpkg glightbox@3.3.1, checked 2026-08-13
+url = "https://unpkg.com/glightbox@3.3.1/dist/css/glightbox.min.css"
+path = "docs/stylesheets/glightbox.min.css"
+sha256 = "6d3f62d4d17969f9c70e9438cf671004725019e868123f2ebc295a006f8d5d2d"
+license = "docs/javascripts/glightbox.LICENSE"
+
+# IBM Plex Sans + JetBrains Mono self-hosted webfonts (SpectraFit Design System
+# re-skin, commit 46dd67f6). NOT a byte-for-byte vendoring of an upstream
+# release artifact: `web/src/style/fonts.css`'s own header comment records the
+# source as the `google/fonts` GitHub repo's `ofl/ibmplexsans/` and
+# `ofl/jetbrainsmono/` variable TTFs, "instanced to static weights and
+# converted to woff2 locally" — i.e. these 9 files are a LOCAL DERIVATIVE, like
+# `katex-css` above, not a copy of any single upstream download. `docs/fonts/`
+# reuses the exact same bytes already vendored under `web/src/style/fonts/`
+# (confirmed identical by sha256, no re-fetch) — see DECISIONS-archive.md's
+# 2026-07-28 entry.
+#
+# Left deliberately unverified rather than guessed: `google/fonts` ships no
+# static woff2 for either family (only the variable TTF that was instanced),
+# so there is no single upstream URL whose bytes this file could ever match,
+# and no commit/tag in this repo's history records which `google/fonts`
+# revision the instancing was run against. `url` is omitted rather than
+# pointing at a plausible-but-unconfirmed commit — `version = "unknown"` and
+# `version_verified = false` record that honestly. The sha256 below is real,
+# computed from the files on disk; that is what this manifest can actually
+# guarantee (byte-identity from this commit forward), whatever the exact
+# upstream revision.
+
+[[asset]]
+name = "ibm-plex-sans-400"
+version = "unknown"
+version_verified = false         # no static woff2 exists upstream to compare against — see block comment above
+modified = true                  # instanced (variable TTF -> static weight) + converted to woff2, not a copy
+path = "docs/fonts/ibm-plex-sans-400.woff2"
+sha256 = "d6073f2eaec194daadd914349424b402eef5fe61e09cc5f2c9792f61b1d42d18"
+license = "docs/fonts/OFL-ibm-plex-sans.txt"
+
+[[asset]]
+name = "ibm-plex-sans-400-italic"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/ibm-plex-sans-400-italic.woff2"
+sha256 = "4dfbbe9041f122f34310235302ea360c12d3a308b7c08b9cdf24f51fd90f2f6e"
+license = "docs/fonts/OFL-ibm-plex-sans.txt"
+
+[[asset]]
+name = "ibm-plex-sans-500"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/ibm-plex-sans-500.woff2"
+sha256 = "1180ae9373ae2d2f82478fd06d6454df778ad667a5e275b70eb64f71f6303f59"
+license = "docs/fonts/OFL-ibm-plex-sans.txt"
+
+[[asset]]
+name = "ibm-plex-sans-600"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/ibm-plex-sans-600.woff2"
+sha256 = "6ed0e6ca9bb6d037a16bacce3dd3221ba114dca0119019f1676172e0f66a65f3"
+license = "docs/fonts/OFL-ibm-plex-sans.txt"
+
+[[asset]]
+name = "ibm-plex-sans-700"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/ibm-plex-sans-700.woff2"
+sha256 = "4d2bacc098936014b5087022c93ada144c970f10bc9183388ccc1ceac521268a"
+license = "docs/fonts/OFL-ibm-plex-sans.txt"
+
+[[asset]]
+name = "jetbrains-mono-400"
+version = "unknown"
+version_verified = false         # no static woff2 exists upstream to compare against — see block comment above
+modified = true                  # instanced (variable TTF -> static weight) + converted to woff2, not a copy
+path = "docs/fonts/jetbrains-mono-400.woff2"
+sha256 = "87ba948def76b8c765cfe0ae67dc8f6b7556e4e04c7b0afa04d37e68f15db2da"
+license = "docs/fonts/OFL-jetbrains-mono.txt"
+
+[[asset]]
+name = "jetbrains-mono-500"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/jetbrains-mono-500.woff2"
+sha256 = "e16dc43ab2df25fad69b856ec32479f5bb8ae3634e56be6a987f6f77b8c20380"
+license = "docs/fonts/OFL-jetbrains-mono.txt"
+
+[[asset]]
+name = "jetbrains-mono-600"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/jetbrains-mono-600.woff2"
+sha256 = "41ba1ac4abc5d8cbdfa0b152a2ae56041a75ad58374149421c1db11144008ed0"
+license = "docs/fonts/OFL-jetbrains-mono.txt"
+
+[[asset]]
+name = "jetbrains-mono-700"
+version = "unknown"
+version_verified = false
+modified = true
+path = "docs/fonts/jetbrains-mono-700.woff2"
+sha256 = "44f7fca4746a093e21386bb0c59c094784e53428bea9cf97829cac33a9d52ca5"
+license = "docs/fonts/OFL-jetbrains-mono.txt"

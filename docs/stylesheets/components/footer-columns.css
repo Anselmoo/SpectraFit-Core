@@ -1,0 +1,45 @@
+/*
+ * Footer sitemap columns — cupertino-council pass, 2026-08-02, round 2 (see
+ * overrides/partials/footer.html's header comment for the full brief/
+ * tension log). A real multi-column footer, not a copyright afterthought:
+ * columns fan each top-nav section out into its actual sub-pages, the way
+ * Apple's own footer repeats a category name but goes one level deeper.
+ */
+.sf-footer-columns {
+  background: var(--md-default-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.sf-footer-columns__inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-5, 24px);
+  padding: var(--space-6, 32px) 0;
+}
+
+.sf-footer-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.sf-footer-column__title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: var(--space-1, 4px);
+}
+
+.sf-footer-column a {
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+  text-decoration: none;
+}
+
+.sf-footer-column a:hover,
+.sf-footer-column a:focus-visible {
+  color: var(--md-accent-fg-color);
+  text-decoration: underline;
+}

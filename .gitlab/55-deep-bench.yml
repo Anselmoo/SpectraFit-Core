@@ -1,0 +1,264 @@
+# Deep benchmark — reps-ladder study (manual / scheduled only; never on push).
+#
+# Option C of the publication-uncertainty plan: run the REAL benchmark at
+# reps ∈ {1, 2, 5, 10, 25} in a parallel matrix, then merge the runs into
+# variance-vs-N data (`python -m oracles.cli stability`) for the paper's
+# measurement-uncertainty section. Each matrix cell has its OWN workspace, so
+# the `allocate_run_dir` run_NNN counter cannot collide across concurrent cells.
+#
+# COST MODEL — measured, not estimated (pipeline 366747, 2026-08-13).
+# The original model assumed ~66 s/rep from run_023 on local hardware and warned
+# that GWDG "can be ~1.5-2x slower". It is 3.2x slower. Four completed cells give
+# a two-parameter fit that then predicted the rest to within seconds:
+#
+#     wall_clock ≈ 3298 s fixed  +  210 s × reps
+#
+#     reps=1    3483 s measured   (3508 s predicted)
+#     reps=2    3718 s measured
+#     reps=5    4348 s measured
+#     reps=10   5395 s measured   (5398 s predicted)
+#     reps=25   8548 s predicted  -> needs 2.4 h
+#     reps=50  13798 s predicted  -> needs 3.8 h
+#     reps=100 24298 s predicted  -> needs 6.8 h
+#
+# Under the previous `timeout: 2h`, reps 25/50/100 were all killed at 7201 s.
+# The cap is now 3 h, which admits the ladder up to reps=25. reps=50 is dropped
+# outright — it buys little that 25 does not and does not fit any cap we control.
+# reps=100 moved to its own schedule-only job below; do NOT fold it back into
+# this matrix, where one 7 h cell would hold the merge (and a runner slot)
+# hostage for the whole ladder.
+#
+# Re-derive this model after any change to case count, --mc, or runner class.
+benchmark:deep:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    # `api` covers `glab ci run` / `POST /projects/:id/pipeline`, which reports
+    # source "api" and therefore matched NEITHER clause above — the job simply
+    # did not exist in a glab-triggered pipeline, with no error to explain why.
+    # Manual, like `web`: a CLI trigger must not silently start a five-cell,
+    # multi-hour matrix as a side effect of creating a pipeline.
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+      when: manual
+    - when: never
+  # 3 h: the measured reps=25 cell needs 2.4 h and the previous 2 h cap killed
+  # it at exactly 7201 s. This is also the project's own `build_timeout`, so it
+  # is the largest value that needs no project-setting change.
+  timeout: 3h
+  parallel:
+    matrix:
+      - BENCH_REPS: ["1", "2", "5", "10", "25"]
+  # Same wiring as build:report_html (50-build.yml): inherit `.venv/` from the
+  # setup job's artifact (caches are local-only on GWDG runners — artifacts ARE
+  # cross-runner) and pull the warm static cache bucket. The PyO3 extension
+  # itself is compiled ONCE per pipeline by build:ext:release (50-build.yml,
+  # release profile) and pulled in via `needs:` below — sharing one binary
+  # across all cells instead of each cell recompiling its own is exactly the
+  # compile-count cut this design makes.
+  # See .superpowers/specs/2026-08-01-ci-compile-wallclock-design.md.
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:release
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      set -e
+      # Required-artifact guard (exemplar: .gitlab/40-coverage.yml:25-30). No
+      # silent `maturin develop --release` fallback — that would mask a
+      # broken build:ext:release and reintroduce the compile this design
+      # removes (and would recompile once per matrix cell instead of once).
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:release did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+      # jax/optimistix, installed HERE rather than in `setup`.
+      #
+      # Measured 2026-08-13, which is why it is worth having: jax's hot solve is
+      # 0.26 ms median — faster than every other backend — its JIT compile is
+      # ~6 s across the whole suite, and it adds ~0.015 s to a 210 s rep. The
+      # runtime cost is nil.
+      #
+      # The cost that is NOT nil is the artifact. `setup` publishes `.venv/`,
+      # which every downstream job downloads; the jax stack is 267 MB (jaxlib
+      # alone is 249 MB), taking that artifact from ~424 MB to 691 MB and
+      # multiplying it by ~8 consumers on this pipeline — about 2 GB of extra
+      # transfer, plus a slowdown on every MR pipeline that never needed jax.
+      # Installing it into the inherited venv here confines the cost to the
+      # jobs that actually benchmark.
+      #
+      # Note for reading the results: jax supports 58 of 151 cases (38%). It is
+      # gated out of tied-parameter cases — optimistix cannot express the
+      # expression edges spectrafit uses — out of global-solver cases, and out
+      # of any model without a jax kernel. Its profile curve therefore
+      # asymptotes near 0.38 by construction, which is a property of scope, not
+      # a failure to converge.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv sync --inexact \
+        --extra benchmark --extra jax
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m oracles.cli run --reps "$BENCH_REPS" --mc 4
+      mkdir -p "artifacts/deep/reps-${BENCH_REPS}"
+      cp .spectrafit_reports/benchmark/*/results.json \
+        "artifacts/deep/reps-${BENCH_REPS}/results.json"
+      cp .spectrafit_reports/benchmark/*/manifest.json \
+        "artifacts/deep/reps-${BENCH_REPS}/manifest.json"
+      # trust.json carries the NIST certified-value block the accuracy figure
+      # reads. It was not copied before, so every figure had to fall back to a
+      # local run for it.
+      cp .spectrafit_reports/benchmark/*/trust.json \
+        "artifacts/deep/reps-${BENCH_REPS}/trust.json" || \
+        echo "note: no trust.json in this run — NIST block will be absent"
+      ls -lh "artifacts/deep/reps-${BENCH_REPS}/"
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - artifacts/deep/
+    when: always
+
+# reps=100 — the citation-grade rung, on its own schedule.
+#
+# Split out of the matrix above because it needs ~6.8 h by the measured cost
+# model, against a 3 h project `build_timeout`. A job-level `timeout` overrides
+# the project setting (the runner's own `maximum_timeout` is the real ceiling,
+# and is not queryable without admin), so 8 h is declared here and the first
+# scheduled run will establish empirically whether the runners honour it. If it
+# is killed short of 8 h, that kill time IS the runner cap — record it here
+# rather than guessing again.
+#
+# Schedule-only, deliberately: this must not be playable by hand from a `web` or
+# `api` pipeline, because a 7 h job occupying a shared GWDG runner is a decision
+# about other people's capacity, not just this project's.
+#
+# To wire the schedule (once, in the UI or via the API):
+#   Settings -> CI/CD -> Pipeline schedules -> New schedule
+#   cron: "0 2 * * 6"   (Saturdays 02:00 — off-peak)
+#   ref:  main
+# The schedule fires the whole scheduled pipeline; this job and the ladder above
+# both run, and the merge below picks up whichever rungs produced artifacts.
+benchmark:deep:centennial:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - when: never
+  timeout: 8h
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:release
+      artifacts: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      set -e
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:release did not emit it."
+        exit 1
+      }
+      echo "reps=100 — measured cost model predicts ~6.8 h; job cap is 8 h."
+      # Same jax install as the ladder above, for the same reasons.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv sync --inexact \
+        --extra benchmark --extra jax
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m oracles.cli run --reps 100 --mc 4
+      mkdir -p artifacts/deep/reps-100
+      cp .spectrafit_reports/benchmark/*/results.json artifacts/deep/reps-100/results.json
+      cp .spectrafit_reports/benchmark/*/manifest.json artifacts/deep/reps-100/manifest.json
+      cp .spectrafit_reports/benchmark/*/trust.json artifacts/deep/reps-100/trust.json || \
+        echo "note: no trust.json in this run"
+      ls -lh artifacts/deep/reps-100/
+  artifacts:
+    expire_in: 90 days
+    paths:
+      - artifacts/deep/
+    when: always
+
+# Merge step — collects the matrix cells' artifacts (needing the matrix job by
+# its base name waits for ALL cells), runs `python -m oracles.cli stability` over
+# the reps ladder, and promotes the highest available rung as the canonical
+# publication run. Pure JSON aggregation: no maturin rebuild needed (the
+# stability command never imports the compiled wheel — `spectrafit_core` imports
+# in the engine are lazy, function-local).
+#
+# NOTE for web/api-triggered pipelines: every matrix cell is `when: manual`
+# there — play ALL of them; this merge blocks on the full matrix and the verdict
+# is meaningless over a partial ladder.
+benchmark:deep:merge:
+  stage: build
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+      when: manual
+    - when: never
+  needs:
+    - job: setup
+      artifacts: true
+    - job: benchmark:deep
+      artifacts: true
+    # Optional: reps=100 only exists on a scheduled pipeline. Without
+    # `optional: true` this merge would not exist at all on web/api pipelines,
+    # which is the exact failure mode that rejected the first `glab ci run`.
+    - job: benchmark:deep:centennial
+      artifacts: true
+      optional: true
+  cache:
+    - key: "static-${CI_COMMIT_REF_SLUG}"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      set -e
+      # Required-artifact guard (exemplar: .gitlab/40-coverage.yml). A bare
+      # `ls` here aborted under `set -e` but printed only "No such file or
+      # directory" — it never named benchmark:deep as the producer, and this
+      # job blocks on the FULL matrix, so "which cell didn't run" is exactly
+      # the question the message has to answer.
+      test -d artifacts/deep || {
+        echo "ERROR artifacts/deep/ missing — benchmark:deep did not emit it."
+        echo "ERROR This merge blocks on every BENCH_REPS cell; on a web- or api-triggered pipeline every cell is manual — play them all."
+        exit 1
+      }
+      ls -lh artifacts/deep/
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m oracles.cli stability artifacts/deep --out artifacts/deep
+      # Promote the highest rung that actually produced a run as canonical.
+      # Previously hardcoded to reps-100; that broke silently the moment 100
+      # stopped being part of the matrix, and hardcoding any single rung means
+      # a timed-out top cell yields no canonical pair at all rather than the
+      # best one available.
+      # `find`, not `ls`: shellcheck SC2012, and lint:ci fails on any finding
+      # over its baseline. No -printf (GNU-only) — sed off the path instead.
+      TOP=$(find artifacts/deep -maxdepth 1 -type d -name 'reps-*' \
+            | sed 's#.*/reps-##' | sort -n | tail -1)
+      test -n "$TOP" || { echo "ERROR no artifacts/deep/reps-* directories."; exit 1; }
+      echo "canonical rung: reps-${TOP}"
+      mkdir -p artifacts/deep/canonical
+      cp "artifacts/deep/reps-${TOP}/results.json"  artifacts/deep/canonical/results.json
+      cp "artifacts/deep/reps-${TOP}/manifest.json" artifacts/deep/canonical/manifest.json
+      cp "artifacts/deep/reps-${TOP}/trust.json"    artifacts/deep/canonical/trust.json 2>/dev/null || true
+      echo "${TOP}" > artifacts/deep/canonical/REPS
+      cat artifacts/deep/stability.md
+  artifacts:
+    expire_in: 90 days
+    paths:
+      - artifacts/deep/stability.json
+      - artifacts/deep/stability.md
+      - artifacts/deep/canonical/
+    when: always

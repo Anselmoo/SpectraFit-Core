@@ -1,0 +1,95 @@
+{#-
+  Section-index template override, at overrides/section-index.html (repo
+  root, same custom_dir search path as overrides/home.html / main.html /
+  partials/tabs-item.html — see their own header comments for why).
+  Selected per-page via front-matter `template: section-index.html`
+  (Zensical's documented per-page template override, identical mechanism to
+  docs/index.md's `template: home.html`).
+
+  [cupertino-council pass, 2026-08-01] replaces the previous pattern where
+  each of the 6 top-level section-index pages (contributor-guide, explanation,
+  getting-started, how-to, reference, tutorials/gallery) hand-pasted an
+  identical `<section class="sf-section-hero" markdown>` HTML block directly
+  into its own markdown body — including, in every one of the 6 files, the
+  section icon's full raw <svg> markup copy-pasted inline (not even using the
+  `.icons/lucide/*.svg` include every other icon usage on this site already
+  goes through). A boring-to-brilliant scope-check on "should this be
+  templated" concluded yes: 6 hand-copied blocks is the same class of drift
+  risk that already bit this project once (nav-item.html/tabs-item.html
+  going out of parity on icon support). This template is the single source
+  of the icon-badge wrapper; only `page.meta.icon` (already required) and
+  the H1 + tagline paragraph (still literal markdown, in page.content —
+  keeping the tagline's own inline links intact without needing a markdown
+  filter) are page-specific now.
+
+  New in this pass: the `cards:` front-matter list, rendered below the
+  existing section-hero content as a `.sf-card-grid` — one card per leaf
+  page in this section. See docs/reference/index.md for the first example.
+
+  Also carried forward from the old hand-pasted markup: the optional
+  single "where to go first" CTA (`.sf-section-hero__action`, cupertino
+  Decision A — see docs/stylesheets/pages/section-hero.css) is now a
+  `cta: {text, link}` front-matter field per page instead of a literal
+  `[text](link.md){ .sf-button ... }` line, rendered as the last child of
+  `.sf-section-hero` itself (same position it held in the old markup).
+-#}
+{% extends "main.html" %}
+
+{% block content %}
+  {#- partials/actions.html (the edit/view buttons) is float-right —
+     Material/Zensical's own CSS depends on normal block flow for that.
+     Floats compute to `none` on flex items (CSS Display spec), so this
+     MUST render outside .sf-section-hero (display:flex) or the buttons
+     silently stop floating and stack in normal flow instead — verified
+     live: wrapping the whole partials/content.html include inside the
+     hero div fixed their width but left them stacked at the top-left
+     instead of floating top-right beside the H1, because they'd become
+     flex items. Only the H1-fallback + {{ page.content }} (both plain
+     block elements with no floated/positioned children of their own)
+     go inside the hero; everything else partials/content.html normally
+     renders stays in ordinary block flow around it, exactly where it
+     would be without this template at all. -#}
+  {% include "partials/actions.html" %}
+  <div class="sf-section-hero">
+    <span class="sf-section-hero__icon">{% include ".icons/" ~ page.meta.icon ~ ".svg" %}</span>
+    {% if "<h1" not in page.content %}
+      <h1 id="__skip">{{ page.title | d(config.site_name, true) }}</h1>
+    {% endif %}
+    {{ page.content }}
+    {% if page.meta.cta %}
+      <a class="sf-button sf-button--secondary sf-section-hero__action" href="{{ page.meta.cta.link | url }}">{{ page.meta.cta.text }}</a>
+    {% endif %}
+  </div>
+  {% include "partials/tags.html" %}
+  {% include "partials/source-file.html" %}
+  {% include "partials/feedback.html" %}
+  {% include "partials/comments.html" %}
+
+  {#
+    `card.link` MUST be a site-root-relative BUILT url, e.g.
+    `reference/python/core-api/` — not a page-relative source path like
+    `python/core-api.md`.
+
+    Two reasons, both of which broke every card on every section page once:
+      1. `| url` resolves its argument against the SITE ROOT and then prefixes
+         the current page's depth. Given a page-relative value it emits
+         `../python/core-api.md`, pointing one level above where the author
+         meant.
+      2. Zensical publishes directory urls (`reference/python/core-api/`), so
+         no `.md` file exists in the built tree at all — a `.md` suffix cannot
+         resolve even at the right depth.
+
+    Neither failure is visible in source review or in `zensical build
+    --strict`; it only shows up by resolving built hrefs against `site/`.
+  #}
+  {% if page.meta.cards %}
+    <div class="sf-card-grid">
+      {% for card in page.meta.cards %}
+        <a class="sf-card" href="{{ card.link | url }}">
+          <span class="sf-card__icon">{% include ".icons/" ~ card.icon ~ ".svg" %}</span>
+          <span class="sf-card__title">{{ card.title }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

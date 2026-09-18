@@ -1,0 +1,886 @@
+{
+  "$defs": {
+    "AccuracyMethod": {
+      "additionalProperties": false,
+      "description": "How a quality number in this ladder is defined.",
+      "properties": {
+        "primary": {
+          "title": "Primary",
+          "type": "string"
+        },
+        "gate": {
+          "title": "Gate",
+          "type": "string"
+        },
+        "recovered": {
+          "title": "Recovered",
+          "type": "string"
+        },
+        "reduced_chi2_dof": {
+          "title": "Reduced Chi2 Dof",
+          "type": "string"
+        },
+        "information_criteria": {
+          "title": "Information Criteria",
+          "type": "string"
+        },
+        "param_recovery": {
+          "title": "Param Recovery",
+          "type": "string"
+        }
+      },
+      "required": [
+        "primary",
+        "gate",
+        "recovered",
+        "reduced_chi2_dof",
+        "information_criteria",
+        "param_recovery"
+      ],
+      "title": "AccuracyMethod",
+      "type": "object"
+    },
+    "CatalogInfo": {
+      "additionalProperties": false,
+      "description": "Fingerprint of the case set, so two runs can be shown to have fit the same problems.",
+      "properties": {
+        "n_cases": {
+          "title": "N Cases",
+          "type": "integer"
+        },
+        "fingerprint_sha256": {
+          "description": "Digest over every case's id, point count, noise level and component model keys, for the REFERENCE catalogue probed once per experiment. A reps ladder fits this same set at every depth; a seed sweep does not, so read RunParams.catalog_fingerprint_sha256 for what a given point actually fitted.",
+          "title": "Fingerprint Sha256",
+          "type": "string"
+        },
+        "n_points_distinct": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "N Points Distinct",
+          "type": "array"
+        }
+      },
+      "required": [
+        "n_cases",
+        "fingerprint_sha256",
+        "n_points_distinct"
+      ],
+      "title": "CatalogInfo",
+      "type": "object"
+    },
+    "DeterminismMethod": {
+      "additionalProperties": false,
+      "description": "What is reproducible, and what explicitly is not.",
+      "properties": {
+        "catalog_seed": {
+          "title": "Catalog Seed",
+          "type": "integer"
+        },
+        "noise": {
+          "title": "Noise",
+          "type": "string"
+        },
+        "stochastic_solvers": {
+          "title": "Stochastic Solvers",
+          "type": "string"
+        },
+        "known_nondeterminism": {
+          "title": "Known Nondeterminism",
+          "type": "string"
+        }
+      },
+      "required": [
+        "catalog_seed",
+        "noise",
+        "stochastic_solvers",
+        "known_nondeterminism"
+      ],
+      "title": "DeterminismMethod",
+      "type": "object"
+    },
+    "Environment": {
+      "additionalProperties": false,
+      "description": "The FAIR-R half: a speedup ratio is meaningless without the machine.",
+      "properties": {
+        "git": {
+          "$ref": "#/$defs/GitInfo"
+        },
+        "host": {
+          "$ref": "#/$defs/HostInfo"
+        },
+        "versions": {
+          "$ref": "#/$defs/Versions"
+        }
+      },
+      "required": [
+        "git",
+        "host",
+        "versions"
+      ],
+      "title": "Environment",
+      "type": "object"
+    },
+    "GitInfo": {
+      "additionalProperties": false,
+      "description": "Which code ran.",
+      "properties": {
+        "commit": {
+          "title": "Commit",
+          "type": "string"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "dirty": {
+          "description": "A dirty tree means the commit does not identify the code.",
+          "title": "Dirty",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "commit",
+        "branch",
+        "dirty"
+      ],
+      "title": "GitInfo",
+      "type": "object"
+    },
+    "Headline": {
+      "additionalProperties": false,
+      "description": "The manifest's summary numbers, lifted so a depth is readable without opening it.\n\nEvery field is optional: a depth that died before writing a manifest still gets a\nrecord, and an absent number must read as absent rather than as zero.",
+      "properties": {
+        "geomean_speedup_vs_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geomean Speedup Vs Baseline"
+        },
+        "harmonic_mean_speedup_vs_baseline": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Harmonic Mean Speedup Vs Baseline"
+        },
+        "max_abs_delta_r2": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Abs Delta R2"
+        },
+        "spectrafit_win_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spectrafit Win Rate"
+        },
+        "n_cases": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "N Cases"
+        },
+        "regressions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Regressions"
+        },
+        "backends": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backends"
+        },
+        "saturated_categories": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Saturated Categories"
+        },
+        "baseline_solver_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Solver Id"
+        }
+      },
+      "title": "Headline",
+      "type": "object"
+    },
+    "HostInfo": {
+      "additionalProperties": false,
+      "description": "Which machine ran it, including the limits that decide whether it finishes.",
+      "properties": {
+        "hostname": {
+          "title": "Hostname",
+          "type": "string"
+        },
+        "cpu": {
+          "title": "Cpu",
+          "type": "string"
+        },
+        "cores": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cores"
+        },
+        "ram_gb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Total RAM, GiB.",
+          "title": "Ram Gb"
+        },
+        "vm_max_map_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Per-process mmap-region cap. This, not RAM, is what a jax-heavy run exhausts; recorded so a reader can tell 'ran with headroom' from 'ran three mappings under the cap'.",
+          "title": "Vm Max Map Count"
+        },
+        "os": {
+          "title": "Os",
+          "type": "string"
+        },
+        "kernel": {
+          "title": "Kernel",
+          "type": "string"
+        },
+        "thread_env": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Thread-count and backend env vars. These change wall-clock times by integer factors and appear nowhere in a results file. None means unset, i.e. the library chose \u2014 which resolves differently per host.",
+          "title": "Thread Env",
+          "type": "object"
+        },
+        "cpu_flags": {
+          "description": "Vector-ISA flags present (avx2, avx512f, fma, \u2026). Two hosts reporting the same CPU model string can still dispatch different BLAS kernels, so the model name alone does not specify what a reproducer must match.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Cpu Flags",
+          "type": "array"
+        },
+        "cpu_max_mhz": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Advertised maximum clock. With the governor below, this is what separates a throttled run from a boosting one \u2014 worth tens of percent.",
+          "title": "Cpu Max Mhz"
+        },
+        "cpu_governor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Frequency governor (performance / powersave / \u2026).",
+          "title": "Cpu Governor"
+        },
+        "cpu_quota": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Effective CPUs from the cgroup quota, or None when unlimited. THIS, not `cores`, is what the process may actually use: a container on a 16-core host can be capped at 2, and `cores` would report 16 either way.",
+          "title": "Cpu Quota"
+        },
+        "memory_max_gb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "cgroup memory ceiling, or None when unlimited. Distinct from `ram_gb`, which is the machine's total.",
+          "title": "Memory Max Gb"
+        },
+        "container": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Container image or runtime, when detectable. A bare kernel version does not identify the userland a reproducer needs.",
+          "title": "Container"
+        },
+        "ci": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "CI provider and runner identity when the run was not on a dedicated host. A shared runner means uncontrolled contention, and a reader is entitled to know that before trusting a timing.",
+          "title": "Ci"
+        }
+      },
+      "required": [
+        "hostname",
+        "cpu",
+        "cores",
+        "os",
+        "kernel"
+      ],
+      "title": "HostInfo",
+      "type": "object"
+    },
+    "Methodology": {
+      "additionalProperties": false,
+      "description": "The decisions that change the measurement and that a results file never states.",
+      "properties": {
+        "timing": {
+          "$ref": "#/$defs/TimingMethod"
+        },
+        "accuracy": {
+          "$ref": "#/$defs/AccuracyMethod"
+        },
+        "determinism": {
+          "$ref": "#/$defs/DeterminismMethod"
+        },
+        "comparability_caveats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Comparability Caveats",
+          "type": "array"
+        }
+      },
+      "required": [
+        "timing",
+        "accuracy",
+        "determinism",
+        "comparability_caveats"
+      ],
+      "title": "Methodology",
+      "type": "object"
+    },
+    "Resources": {
+      "additionalProperties": false,
+      "description": "What the rung cost the host, and how close it ran to the limit that kills it.",
+      "properties": {
+        "peak_rss_gb": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Peak Rss Gb"
+        },
+        "mmap_regions": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Against host.vm_max_map_count. The quantity that used to run away.",
+          "title": "Mmap Regions"
+        },
+        "jax_cache_clears": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jax Cache Clears"
+        },
+        "jax_compile_budget": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Jax Compile Budget"
+        },
+        "load_average_start": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A timing benchmark on a contended host measures the contention. This is what lets a reader reject a rung instead of averaging a bad one in.",
+          "title": "Load Average Start"
+        },
+        "load_average_end": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Load Average End"
+        }
+      },
+      "title": "Resources",
+      "type": "object"
+    },
+    "RunConfig": {
+      "additionalProperties": false,
+      "description": "What the benchmark was configured to do, probed from the measuring interpreter.",
+      "properties": {
+        "catalog": {
+          "$ref": "#/$defs/CatalogInfo"
+        },
+        "solvers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SolverConfig"
+          },
+          "title": "Solvers",
+          "type": "object"
+        },
+        "backend_support": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "description": "Cases each backend can fit. Backends do not all run the same subset, so a geomean over 'all cases' is not over the same cases.",
+          "title": "Backend Support",
+          "type": "object"
+        },
+        "r2_ceiling_tol": {
+          "title": "R2 Ceiling Tol",
+          "type": "number"
+        },
+        "python_build": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Python Build",
+          "type": "array"
+        }
+      },
+      "required": [
+        "catalog",
+        "solvers",
+        "backend_support",
+        "r2_ceiling_tol"
+      ],
+      "title": "RunConfig",
+      "type": "object"
+    },
+    "RungSummary": {
+      "additionalProperties": false,
+      "description": "One repetition depth's row in the ladder aggregate.\n\nDeclared rather than left as a free-form mapping: this is the shape the web UI\nplots, and an untyped row would push every field name into hand-written\nTypeScript that nothing checks against the writer.",
+      "properties": {
+        "run_uid": {
+          "title": "Run Uid",
+          "type": "string"
+        },
+        "reps_requested": {
+          "title": "Reps Requested",
+          "type": "integer"
+        },
+        "reps_effective": {
+          "title": "Reps Effective",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 20260603,
+          "description": "Catalogue seed for this entry. Constant across a reps ladder and varying across a seed sweep \u2014 the two experiments share this record type, so which axis moved is read off the data rather than declared.",
+          "title": "Seed",
+          "type": "integer"
+        },
+        "exit_status": {
+          "title": "Exit Status",
+          "type": "integer"
+        },
+        "started_utc": {
+          "title": "Started Utc",
+          "type": "string"
+        },
+        "finished_utc": {
+          "title": "Finished Utc",
+          "type": "string"
+        },
+        "wall_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wall Seconds"
+        },
+        "resources": {
+          "$ref": "#/$defs/Resources"
+        },
+        "headline": {
+          "$ref": "#/$defs/Headline"
+        }
+      },
+      "required": [
+        "run_uid",
+        "reps_requested",
+        "reps_effective",
+        "exit_status",
+        "started_utc",
+        "finished_utc",
+        "resources",
+        "headline"
+      ],
+      "title": "RungSummary",
+      "type": "object"
+    },
+    "SolverConfig": {
+      "additionalProperties": false,
+      "description": "One backend's algorithm and stopping criteria, as the adapter reported them.\n\nMirrors ``oracles.backends.SolverSettings``. Backend-specific detail lives in the\ntwo open maps rather than as extra top-level keys, so this model can forbid extras\n(the repo-wide anti-drift rule) and still accept a backend that describes itself\ndifferently. ``stopping`` is the group that decides whether a runtime comparison\nmeans anything: a solver that stops earlier is faster for an uninteresting reason.",
+      "properties": {
+        "library": {
+          "title": "Library",
+          "type": "string"
+        },
+        "algorithm": {
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "bounds": {
+          "title": "Bounds",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "stopping": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Stopping",
+          "type": "object"
+        },
+        "runtime": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "title": "Runtime",
+          "type": "object"
+        }
+      },
+      "required": [
+        "library",
+        "algorithm",
+        "bounds"
+      ],
+      "title": "SolverConfig",
+      "type": "object"
+    },
+    "TimingMethod": {
+      "additionalProperties": false,
+      "description": "How a duration in this ladder was produced.",
+      "properties": {
+        "clock": {
+          "title": "Clock",
+          "type": "string"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "timed_region": {
+          "title": "Timed Region",
+          "type": "string"
+        },
+        "warmup": {
+          "title": "Warmup",
+          "type": "string"
+        },
+        "reps_semantics": {
+          "title": "Reps Semantics",
+          "type": "string"
+        },
+        "aggregate": {
+          "title": "Aggregate",
+          "type": "string"
+        }
+      },
+      "required": [
+        "clock",
+        "unit",
+        "timed_region",
+        "warmup",
+        "reps_semantics",
+        "aggregate"
+      ],
+      "title": "TimingMethod",
+      "type": "object"
+    },
+    "Versions": {
+      "additionalProperties": false,
+      "description": "What the code was built and run against.",
+      "properties": {
+        "python": {
+          "title": "Python",
+          "type": "string"
+        },
+        "rustc": {
+          "title": "Rustc",
+          "type": "string"
+        },
+        "packages": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Packages",
+          "type": "object"
+        },
+        "uv_lock_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Digest of uv.lock \u2014 the exact resolved dependency set including transitive pins, which is what actually has to match for a rerun to be the same experiment.",
+          "title": "Uv Lock Sha256"
+        },
+        "blas": {
+          "additionalProperties": true,
+          "description": "numpy's BLAS provider. OpenBLAS vs MKL is worth a large constant factor on every backend that is not the subject.",
+          "title": "Blas",
+          "type": "object"
+        }
+      },
+      "required": [
+        "python",
+        "rustc",
+        "packages"
+      ],
+      "title": "Versions",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The aggregate across rungs \u2014 the artifact the manuscript paragraph cites.",
+  "properties": {
+    "schema_version": {
+      "default": "spectrafit-core/bench-ladder/2",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "generated_utc": {
+      "title": "Generated Utc",
+      "type": "string"
+    },
+    "environment": {
+      "$ref": "#/$defs/Environment"
+    },
+    "methodology": {
+      "$ref": "#/$defs/Methodology"
+    },
+    "config": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "rungs": {
+      "items": {
+        "$ref": "#/$defs/RungSummary"
+      },
+      "title": "Rungs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "generated_utc",
+    "environment",
+    "methodology",
+    "rungs"
+  ],
+  "title": "LadderRecord",
+  "type": "object"
+}
