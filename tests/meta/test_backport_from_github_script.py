@@ -1005,7 +1005,11 @@ def test_run_open_mr_skips_already_applied_candidate_and_backports_new_one(
 
     assert rc == 0
     methods = [call[0] for call in fake_http.calls]
-    assert methods == ["GET", "POST", "GET"]  # not skipped outright — the new candidate still goes out
+    assert methods == [
+        "GET",
+        "POST",
+        "GET",
+    ]  # not skipped outright — the new candidate still goes out
 
     _post_method, _post_url, post_data = fake_http.calls[1]
     assert post_data is not None
