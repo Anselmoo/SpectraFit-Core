@@ -434,12 +434,30 @@ def _make_open_mr_fixture(tmp_path: Path) -> tuple[Path, Path, list[tuple[str, s
 
 
 class _FakeHttp:
-    """Records every call; GET returns `.get_result`, POST returns `.post_result`."""
+    """Records every call and answers like the GitLab API.
+
+    GET on the MR list returns `.get_result`, GET on one MR returns
+    `.mr_result` (its `head_pipeline`), POST on `/pipelines` returns
+    `.pipeline_result`, any other POST (the MR itself) returns `.post_result`.
+    """
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, dict[str, object] | None]] = []
         self.get_result: list[dict[str, object]] = []
-        self.post_result: dict[str, object] = {"web_url": "https://gitlab.example/mr/1"}
+        self.post_result: dict[str, object] = {"web_url": "https://gitlab.example/mr/1", "iid": 1}
+        self.mr_result: dict[str, object] = {
+            "iid": 1,
+            "head_pipeline": {
+                "id": 77,
+                "status": "created",
+                "web_url": "https://gitlab.example/p/77",
+            },
+        }
+        self.pipeline_result: dict[str, object] = {
+            "id": 88,
+            "status": "created",
+            "web_url": "https://gitlab.example/p/88",
+        }
 
     def __call__(
         self,
@@ -451,7 +469,11 @@ class _FakeHttp:
         self.calls.append((method, url, data))
         assert token == "test-backport-token"
         if method == "GET":
-            return self.get_result
+            return (
+                self.mr_result if url.rstrip("/").endswith("/merge_requests/1") else self.get_result
+            )
+        if url.endswith("/pipelines"):
+            return self.pipeline_result
         return self.post_result
 
 
@@ -484,7 +506,8 @@ def test_run_open_mr_cherry_picks_pushes_and_opens_mr(
 
     assert rc == 0
     methods = [call[0] for call in fake_http.calls]
-    assert methods == ["GET", "POST"]
+    # list open MRs, create the MR, read its head pipeline (GitLab made one).
+    assert methods == ["GET", "POST", "GET"]
 
     get_url = fake_http.calls[0][1]
     assert "state=opened" in get_url
@@ -982,7 +1005,7 @@ def test_run_open_mr_skips_already_applied_candidate_and_backports_new_one(
 
     assert rc == 0
     methods = [call[0] for call in fake_http.calls]
-    assert methods == ["GET", "POST"]  # not skipped outright — the new candidate still goes out
+    assert methods == ["GET", "POST", "GET"]  # not skipped outright — the new candidate still goes out
 
     _post_method, _post_url, post_data = fake_http.calls[1]
     assert post_data is not None
@@ -1044,3 +1067,91 @@ def test_run_open_mr_all_candidates_already_applied_is_clean_noop(
     assert [call[0] for call in fake_http.calls] == ["GET"]  # no POST — nothing left to backport
     branches = _git(gitlab_bare, "branch", "--list").stdout
     assert "backport/github-" not in branches
+
+
+def _run_open_mr_in(ci_checkout: Path) -> int:
+    import argparse
+    import os
+
+    args = argparse.Namespace(
+        gitlab_remote_name="gitlab",
+        gitlab_remote_url=None,
+        target_branch="main",
+        mr_host="https://gitlab.example",
+        mr_project="anhahn/spectrafit-core",
+    )
+    old_cwd = Path.cwd()
+    os.chdir(ci_checkout)
+    try:
+        candidates = backport.candidates_after_boundary(
+            "github/main",
+            backport.find_sync_boundary("github/main") or "",
+        )
+        return backport.run_open_mr(args, "github/main", candidates)
+    finally:
+        os.chdir(old_cwd)
+
+
+def _pipeline_posts(fake_http: _FakeHttp) -> list[str]:
+    return [
+        url for method, url, _ in fake_http.calls if method == "POST" and url.endswith("/pipelines")
+    ]
+
+
+def test_run_open_mr_reuses_gitlabs_own_mr_pipeline(tmp_path: Path, monkeypatch, capsys) -> None:
+    """GitLab attached a merge-request pipeline: no second one is started."""
+    ci_checkout, _gitlab_bare, _candidates = _make_open_mr_fixture(tmp_path)
+    fake_http = _FakeHttp()
+    monkeypatch.setattr(backport, "_http_request", fake_http)
+    monkeypatch.setenv("BACKPORT_TOKEN", "test-backport-token")
+
+    assert _run_open_mr_in(ci_checkout) == 0
+    assert _pipeline_posts(fake_http) == []
+    assert "MR pipeline 77" in capsys.readouterr().out
+
+
+def test_run_open_mr_starts_exactly_one_pipeline_when_gitlab_made_none(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    ci_checkout, _gitlab_bare, _candidates = _make_open_mr_fixture(tmp_path)
+    fake_http = _FakeHttp()
+    fake_http.mr_result = {"iid": 1, "head_pipeline": None}
+    monkeypatch.setattr(backport, "_http_request", fake_http)
+    monkeypatch.setattr(backport, "PIPELINE_WAIT_SECONDS", 0)
+    monkeypatch.setattr(backport, "_sleep", lambda _s: None)
+    monkeypatch.setenv("BACKPORT_TOKEN", "test-backport-token")
+
+    assert _run_open_mr_in(ci_checkout) == 0
+    posts = _pipeline_posts(fake_http)
+    assert len(posts) == 1
+    assert posts[0].endswith("/merge_requests/1/pipelines")
+    out = capsys.readouterr().out
+    assert "MR pipeline 88" in out
+    assert "https://gitlab.example/p/88" in out
+
+
+def test_run_open_mr_fails_loudly_when_the_pipeline_cannot_be_started(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    import urllib.error
+
+    ci_checkout, _gitlab_bare, _candidates = _make_open_mr_fixture(tmp_path)
+    fake_http = _FakeHttp()
+    fake_http.mr_result = {"iid": 1, "head_pipeline": None}
+
+    def failing_http(url: str, token: str, method: str = "GET", data=None) -> object:
+        if method == "POST" and url.endswith("/pipelines"):
+            raise urllib.error.HTTPError(url, 403, "Forbidden", hdrs=None, fp=None)  # type: ignore[arg-type]
+        return fake_http(url, token, method, data)
+
+    monkeypatch.setattr(backport, "_http_request", failing_http)
+    monkeypatch.setattr(backport, "PIPELINE_WAIT_SECONDS", 0)
+    monkeypatch.setattr(backport, "_sleep", lambda _s: None)
+    monkeypatch.setenv("BACKPORT_TOKEN", "test-backport-token")
+
+    assert _run_open_mr_in(ci_checkout) == 1
+    assert "FAILED to ensure a pipeline for !1 — 403 Forbidden" in capsys.readouterr().out

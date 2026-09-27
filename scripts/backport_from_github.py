@@ -61,6 +61,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -74,6 +75,16 @@ DEFAULT_GITHUB_REMOTE_URL = "https://github.com/Anselmoo/SpectraFit-Core.git"
 DEFAULT_GITLAB_HOST = "https://gitlab.mpcdf.mpg.de"
 DEFAULT_GITLAB_PROJECT = "anhahn/spectrafit-core"
 BACKPORT_BRANCH_PREFIX = "backport/github-"
+
+# How long to wait for GitLab to attach its own merge-request pipeline to a
+# freshly opened backport MR before starting one explicitly. GitLab normally
+# creates it within seconds (merge_request_event); the branch push itself gets
+# no pipeline because .gitlab-ci.yml's workflow rules skip branch pipelines
+# once an MR is open. Starting a second one unconditionally would run the
+# whole ~75 min pipeline twice.
+PIPELINE_WAIT_SECONDS = 60
+PIPELINE_POLL_SECONDS = 5
+_sleep = time.sleep
 
 
 def _run(*args: str) -> str:
@@ -510,8 +521,8 @@ def open_merge_request(
     source_branch: str,
     target_branch: str,
     candidates: list[tuple[str, str]],
-) -> str:
-    """POST the merge request; returns its web_url."""
+) -> dict[str, object]:
+    """POST the merge request; returns the API's merge-request object."""
     body_lines = [
         (
             "Automated backport of GitHub-native work onto GitLab, cherry-picked "
@@ -535,7 +546,29 @@ def open_merge_request(
     }
     url = f"{_api_base(host, project)}/merge_requests"
     result = _http_request(url, token, method="POST", data=payload)
-    return str(result.get("web_url", "")) if isinstance(result, dict) else ""
+    return result if isinstance(result, dict) else {}
+
+
+def ensure_mr_pipeline(host: str, project: str, token: str, mr_iid: int) -> dict[str, object]:
+    """Return the backport MR's pipeline, starting one only if GitLab made none.
+
+    Polls the MR's ``head_pipeline`` for up to ``PIPELINE_WAIT_SECONDS``; if
+    GitLab has not attached a merge-request pipeline by then, POSTs exactly one
+    to ``/merge_requests/:iid/pipelines``. HTTP errors propagate to the caller,
+    which reports them and exits non-zero.
+    """
+    mr_url = f"{_api_base(host, project)}/merge_requests/{mr_iid}"
+    deadline = time.monotonic() + PIPELINE_WAIT_SECONDS
+    while True:
+        merge_request = _http_request(mr_url, token, method="GET")
+        head = merge_request.get("head_pipeline") if isinstance(merge_request, dict) else None
+        if isinstance(head, dict) and head.get("id"):
+            return head
+        if time.monotonic() >= deadline:
+            break
+        _sleep(PIPELINE_POLL_SECONDS)
+    started = _http_request(f"{mr_url}/pipelines", token, method="POST")
+    return started if isinstance(started, dict) else {}
 
 
 def run_open_mr(
@@ -615,7 +648,7 @@ def run_open_mr(
         return 1
 
     try:
-        web_url = open_merge_request(
+        merge_request = open_merge_request(
             host,
             project,
             token,
@@ -627,7 +660,33 @@ def run_open_mr(
         print(f"backport_from_github: FAILED to open the merge request — {exc.code} {exc.reason}")
         return 1
 
-    print(f"backport_from_github: opened merge request {web_url or '(no web_url in response)'}")
+    web_url = str(merge_request.get("web_url", "")) or "(no web_url in response)"
+    print(f"backport_from_github: opened merge request {web_url}")
+
+    mr_iid = merge_request.get("iid")
+    if not isinstance(mr_iid, int):
+        print(
+            "backport_from_github: FAILED to ensure an MR pipeline — the merge "
+            "request response carries no iid.",
+        )
+        return 1
+    try:
+        pipeline = ensure_mr_pipeline(host, project, token, mr_iid)
+    except urllib.error.HTTPError as exc:
+        print(
+            f"backport_from_github: FAILED to ensure a pipeline for !{mr_iid} — "
+            f"{exc.code} {exc.reason}",
+        )
+        return 1
+    if not pipeline.get("id"):
+        print(
+            f"backport_from_github: FAILED — no pipeline for !{mr_iid} and none could be started.",
+        )
+        return 1
+    print(
+        f"backport_from_github: MR pipeline {pipeline.get('id')} "
+        f"({pipeline.get('status', 'unknown')}) {pipeline.get('web_url', '')}".rstrip(),
+    )
     return 0
 
 

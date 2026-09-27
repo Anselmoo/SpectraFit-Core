@@ -66,6 +66,12 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Every backport MR gets a pipeline, and the job says which.** After opening
+  the MR, `backport_from_github.py --open-mr` reads the MR's `head_pipeline`
+  for up to 60 s and logs its id and URL; only if GitLab attached none does it
+  start exactly one (`POST /merge_requests/:iid/pipelines`), and a failure to
+  do so exits non-zero. The branch push itself never gets a pipeline: the
+  `workflow:rules` skip branch pipelines once an MR is open, by design.
 - **Web toolchain on React 19 and TypeScript 7.** The dashboard (`web/`) and the
   root tooling package move to React 19, the TypeScript 7 native compiler for
   `npm run typecheck`, Vitest 5, `@vitejs/plugin-react` 6, KaTeX 0.18 (which
