@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   // A baseline-passing lint gate for web/: rules with pre-existing
   // violations are downgraded to "warn" (see the per-rule comments below
   // for current counts) so the gate can enforce everything else without

@@ -75,7 +75,7 @@ build:ci-image:
         --destination "$IMAGE" \
         --build-arg "LLVM_COV_VERSION=v0.8.7" \
         --build-arg "RUST_VERSION=1.96.0" \
-        --build-arg "PLAYWRIGHT_VERSION=1.60.0" \
+        --build-arg "PLAYWRIGHT_VERSION=1.63.0" \
         --cache=true \
         --cache-repo "$CACHE_REPO" \
         --cache-ttl 168h \

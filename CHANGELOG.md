@@ -66,6 +66,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Web toolchain on React 19 and TypeScript 7.** The dashboard (`web/`) and the
+  root tooling package move to React 19, the TypeScript 7 native compiler for
+  `npm run typecheck`, Vitest 5, `@vitejs/plugin-react` 6, KaTeX 0.18 (which
+  ships its own types, so `@types/katex` is gone) and current Vite, Biome,
+  Playwright and Testing Library releases. `openapi-typescript` still needs the
+  TypeScript JavaScript API, so the plain `typescript` package stays on 5.9 for
+  contract codegen. `npm audit` reports no vulnerabilities in either lockfile.
 - **Cancelled CI runs actually stop.** Workflow steps and the
   `coverage-atlas-fused` job used `if: always()`, which also runs on cancel, so
   a run superseded by a newer push kept going and held the
