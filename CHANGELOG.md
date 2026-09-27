@@ -66,6 +66,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Docs name the project SpectraFit-Core in prose.** The architecture page
+  used the package spelling `spectrafit-core` as the project name.
+- **Shorter README benchmark section.** The benchmark overview and the
+  contract paragraph are a short list now; content and links unchanged.
+
 - **GitHub contributor PRs are squash-merged.** The mirror allows squash
   merges only (repository setting and the `main` ruleset), so each PR is one
   commit on `main`, authored by the PR author with other committers as
@@ -75,7 +80,8 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 - **The GitHub mirror sync is anonymous one way and keeps history the other.**
   GitLab -> GitHub: each sync lands as one commit authored *and* committed by
-  `spectrafit-core CI`, with the fixed subject `sync: gitlab main`, a fixed
+  `spectrafit-core-sync[bot]`, the bot account of a dedicated GitHub App (so
+  GitHub shows a bot, never a person), with the fixed subject `sync: gitlab main`, a fixed
   body and the `GitLab-Commit:` trailer as the only GitLab-derived content. It
   no longer lands by GitHub squash auto-merge (which re-authors the commit to
   the token's owner and sets the committer to GitHub): `scripts/publish_sync.py`

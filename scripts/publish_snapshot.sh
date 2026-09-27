@@ -33,8 +33,8 @@ if [ "$HTTP_CODE" != "200" ]; then
 fi
 echo "Smoke test OK (HTTP 200)."
 
-git config user.email "ci@spectrafit-core.invalid"
-git config user.name "spectrafit-core CI"
+git config user.email "334580965+spectrafit-core-sync[bot]@users.noreply.github.com"
+git config user.name "spectrafit-core-sync[bot]"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python3 "$SCRIPT_DIR/publish_remove_excluded.py"

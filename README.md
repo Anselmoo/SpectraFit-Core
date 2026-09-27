@@ -83,27 +83,22 @@ Run `uv run pytest` for the full test suite.
 
 ## Benchmark
 
-The benchmark engine (`python/oracles/`) compares **spectrafit** (the Rust
-kernel, the subject) against a **six-backend oracle roster**
-(`python/oracles/backends/__init__.py::get_backends`) — **lmfit**,
-**jax/optimistix**, and three `scipy.optimize.least_squares` configurations
-(`scipy-ls-lm`, `scipy-ls-trf`, `scipy-ls-dogbox`) — across a deterministic
-case catalog whose counts and
-categories are defined by the registry in `python/oracles/cases.py`
-(`CATEGORY_REGISTRY` — easy / complex / scaling / lineshapes / reality / edge /
-optfn / fixed / tied). **Every case** is deep-divable in the selector (optfn
-included — its panels render the global-vs-local landscape story, with jax
-legitimately absent). The benchmark also fits a genuine **N-D (3-D)** problem with spectrafit's native
-`gaussian_nd` kernel (a real subject, not the scipy oracle) and
-runs a shared-model multi-spectrum fit as a real `GlobalFitGraph` joint fit (shared
-peak centers/widths, per-slice amplitude kinetics); both showcases are rendered in a
-dedicated "Native showcases" section of the Evidence destination's `overview` sub-view. It emits the frozen
-`BenchReport` contract, served at runtime by a FastAPI app; the `web/` React app
-fetches and renders it. One data flow: **benchmark run → results.json → FastAPI
-→ React** (at runtime; the optional `poe report_html` bundle below inlines the
-same report for offline use). The UI has two destinations: **Standing** (facts
-masthead — what was measured, no verdict) and **Evidence** (all backends, all
-cases, side by side).
+The benchmark (`python/oracles/`) fits the same problems with **spectrafit**
+(the Rust kernel under test) and five reference backends: **lmfit**,
+**jax/optimistix** and three `scipy.optimize.least_squares` methods (`lm`,
+`trf`, `dogbox`).
+
+- **Cases:** a deterministic catalogue defined in `python/oracles/cases.py`
+  (`CATEGORY_REGISTRY`: easy, complex, scaling, lineshapes, reality, edge,
+  optfn, fixed, tied). Every case can be opened on its own in the report.
+- **Showcases:** a 3-D fit with the native `gaussian_nd` kernel and a joint
+  multi-spectrum fit with `GlobalFitGraph` (shared centres and widths,
+  per-spectrum amplitudes).
+- **Data flow:** benchmark run → `results.json` (the `BenchReport` contract)
+  → FastAPI → the React app in `web/`. `poe report_html` bundles the same
+  report into one offline file.
+- **Report:** *Standing* shows what was measured, without a verdict;
+  *Evidence* shows every backend on every case, side by side.
 
 ```bash
 uv run poe benchmark         # full run → results.json + manifest.json
@@ -162,12 +157,9 @@ uv run poe report_html   # → .spectrafit_reports/benchmark/<run>/report.html (
                           # size scales with the backend roster and case catalog)
 ```
 
-The Python contract (`oracles.bench_contract` — not `oracles.contract`, which is a
-small shared-leaf module holding only `SolverMeta`) is the single source of truth; the
-FastAPI app publishes its OpenAPI schema and the TypeScript types are generated from
-that live schema (`npm run contract` → `openapi-typescript`), so the engine and UI can
-never drift. The view-facing `web/src/contract/index.ts` re-exports the named types from
-the generated `openapi.gen.ts`, so the views never change when the contract is regenerated.
+The Python contract (`oracles.bench_contract`) is the single source of truth.
+The FastAPI app publishes it as OpenAPI, and `npm run contract` generates the
+TypeScript types from that schema, so engine and UI cannot drift apart.
 
 ## Adding a model or case
 
