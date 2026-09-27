@@ -1,13 +1,13 @@
 ---
 icon: lucide/boxes
-description: spectrafit-core's high-level design goals and structure — a Rust computation kernel exposed via pyo3/maturin, with a Python DAG composition layer and dashboard.
+description: SpectraFit-Core's high-level design goals and structure — a Rust computation kernel exposed via pyo3/maturin, with a Python DAG composition layer and dashboard.
 ---
 
-# ARCHITECTURE — spectrafit-core
+# ARCHITECTURE — SpectraFit-Core
 
 ## Overview
 
-spectrafit-core is a high-performance numerical fitting framework. The computation
+SpectraFit-Core is a high-performance numerical fitting framework. The computation
 kernel is written in Rust and exposed to Python via pyo3/maturin. The Python
 layer provides Pydantic schemas, a DAG composition interface, and an HTML
 dashboard for result visualisation.

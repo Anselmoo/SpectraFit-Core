@@ -93,9 +93,12 @@ _API_ROOT = "https://api.github.com"
 # Same bot identity scripts/publish_snapshot.sh sets via `git config` before
 # calling `rrt git publish-snapshot` (which itself runs `git commit -m ...`
 # internally) — kept identical so both sync directions attribute to the same
-# recognizable, non-personal identity.
-_BOT_NAME = "spectrafit-core CI"
-_BOT_EMAIL = "ci@spectrafit-core.invalid"
+# recognizable, non-personal identity. It is the bot account of the
+# `spectrafit-core-sync` GitHub App (app id 5097744, bot user id 334580965):
+# GitHub attributes commits carrying this noreply address to that bot, never to
+# a person, and the App needs no permissions or installation for that.
+_BOT_NAME = "spectrafit-core-sync[bot]"
+_BOT_EMAIL = "334580965+spectrafit-core-sync[bot]@users.noreply.github.com"
 
 _SYNC_SUBJECT = "sync: gitlab main"
 _SYNC_TEXT = (

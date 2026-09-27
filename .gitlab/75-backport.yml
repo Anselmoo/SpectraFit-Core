@@ -73,9 +73,9 @@ backport:github:
       when: manual
   script:
     - |
-      git config user.email "ci@spectrafit-core.invalid"
+      git config user.email "334580965+spectrafit-core-sync[bot]@users.noreply.github.com"
     - |
-      git config user.name "spectrafit-core CI"
+      git config user.name "spectrafit-core-sync[bot]"
     - |
       git remote add gitlab "${CI_PROJECT_URL}.git" 2>/dev/null || true
     - |

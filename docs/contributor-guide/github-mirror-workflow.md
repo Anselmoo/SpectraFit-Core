@@ -20,8 +20,12 @@ now grows forward and tags/forks/PRs against it keep working across a publish.
 The two directions follow opposite rules, deliberately:
 
 - **GitLab -> GitHub is anonymous.** One bot commit per sync -- author *and*
-  committer `spectrafit-core CI <ci@spectrafit-core.invalid>`, a fixed
-  message, no GitLab commit messages, authors or history. The single piece of
+  committer `spectrafit-core-sync[bot]`
+  (`334580965+spectrafit-core-sync[bot]@users.noreply.github.com`), the bot
+  account of the `spectrafit-core-sync` GitHub App, so GitHub attributes every
+  sync commit to that bot and never to a person. The App needs no permissions
+  and no installation for this. A fixed message, no GitLab commit messages,
+  authors or history. The single piece of
   GitLab state that crosses over is the `GitLab-Commit: <sha>` trailer that
   marks the sync boundary.
 - **GitHub -> GitLab keeps history.** Every GitHub commit lands on GitLab as

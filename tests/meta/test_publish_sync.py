@@ -94,7 +94,7 @@ def _make_repo_with_remote(tmp_path: Path) -> tuple[Path, Path]:
 # Pure logic
 # --------------------------------------------------------------------------
 
-_BOT = ("spectrafit-core CI", "ci@spectrafit-core.invalid")
+_BOT = ("spectrafit-core-sync[bot]", "334580965+spectrafit-core-sync[bot]@users.noreply.github.com")
 
 
 def test_parse_sync_trailer_finds_the_value() -> None:
@@ -618,3 +618,23 @@ def test_main_aborts_when_main_moved_while_checks_ran(tmp_path: Path, monkeypatc
     assert rc == 1
     # The contribution that landed meanwhile is untouched — never force-pushed over.
     assert _git(remote, "rev-parse", "refs/heads/main").stdout.strip() == racing[0]
+
+
+def test_bot_identity_is_one_github_app_bot_everywhere() -> None:
+    """Sync, snapshot and backport commit as the same GitHub App bot account.
+
+    A ``<id>+<slug>[bot]@users.noreply.github.com`` address makes GitHub
+    attribute the commit to the App's bot user instead of showing an
+    unverified, unlinked e-mail (which the main ruleset treats as an
+    unattributed change). All three writers must agree on it.
+    """
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    name, email = _BOT
+    assert re.fullmatch(r"\d+\+[a-z0-9-]+\[bot\]@users\.noreply\.github\.com", email), email
+    assert email.split("+", 1)[1].startswith(name.removesuffix("[bot]")), (name, email)
+    for rel in ("scripts/publish_snapshot.sh", ".gitlab/75-backport.yml"):
+        text = (root / rel).read_text()
+        assert f'git config user.email "{email}"' in text, rel
+        assert f'git config user.name "{name}"' in text, rel
