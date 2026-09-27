@@ -34,8 +34,8 @@ categories = ["science", "mathematics"]
 
 [workspace.dependencies]
 # Python bindings
-pyo3 = { version = "0.22", features = ["extension-module"] }
-numpy = { version = "0.22" }
+pyo3 = { version = "0.29", features = ["extension-module"] }
+numpy = { version = "0.29" }
 
 # Linear algebra + LM solver
 nalgebra = "0.34"

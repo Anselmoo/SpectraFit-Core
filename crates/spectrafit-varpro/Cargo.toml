@@ -18,11 +18,18 @@ spectrafit-models = { workspace = true }
 spectrafit-graph = { workspace = true }
 nalgebra = { workspace = true }
 
+# LAPACK backend per platform. macOS links Apple Accelerate; Linux builds
+# netlib LAPACK from source. Windows gets NO lapack feature: `netlib-src` needs a
+# Fortran compiler the Windows wheel runners do not have, and varpro's pure-Rust
+# nalgebra backend compiles and passes this crate's tests without one.
 [target.'cfg(target_os = "macos")'.dependencies]
 varpro = { workspace = true, features = ["lapack-accelerate"] }
 
-[target.'cfg(not(target_os = "macos"))'.dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 varpro = { workspace = true, features = ["lapack-netlib"] }
+
+[target.'cfg(not(any(target_os = "macos", target_os = "linux")))'.dependencies]
+varpro = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }

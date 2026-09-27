@@ -171,6 +171,75 @@ jobs:
   # CITATION.cff must stay schema-valid — a malformed citation breaks GitHub's
   # "Cite this repository" widget and Zenodo ingestion. Uses the official CFF
   # action so the check has no Python-dependency footprint in this job.
+  test-matrix:
+    # Everything the classifiers promise beyond the Linux/3.13 coverage job
+    # (build-and-test): the full suite on Linux/3.14, and on macOS and Windows
+    # the extension build plus the binding-facing unit tests and the README
+    # quick start, on both supported Pythons. Not a required check -- it
+    # reports, the `lint` gate stays the merge gate.
+    name: test (${{ matrix.os }}, py${{ matrix.python-version }}, ${{ matrix.scope }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python-version: "3.14", scope: full}
+          - {os: macos-latest, python-version: "3.13", scope: fast}
+          - {os: macos-latest, python-version: "3.14", scope: fast}
+          - {os: windows-latest, python-version: "3.13", scope: fast}
+          - {os: windows-latest, python-version: "3.14", scope: fast}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a  # v4
+        with:
+          enable-cache: true
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Sync dependencies
+        # No `jax` extra: its parity test belongs to the coverage job, and
+        # this job must not fail on a jax wheel gap for a new CPython.
+        run: uv sync --extra benchmark
+
+      - name: Build extension
+        run: uv run maturin develop --release
+
+      - name: Run tests
+        run: |
+          if [ "${{ matrix.scope }}" = "full" ]; then
+            PYTHONPATH=python uv run --no-sync pytest -q
+          else
+            PYTHONPATH=python uv run --no-sync pytest -q tests/unit/spectrafit_core
+          fi
+
+      - name: README quick start
+        run: |
+          uv run --no-sync python - <<'EOF'
+          import numpy as np
+          from spectrafit_core import MeasurementData, compose, fit, gaussian
+
+          x = np.linspace(-5, 5, 200)
+          y = 3.0 * np.exp(-0.5 * ((x - 0.5) / 1.2) ** 2) + np.random.default_rng(0).normal(0, 0.05, x.size)
+          graph = compose([gaussian("peak1", amplitude=1.0, center=0.0, sigma=1.0)]).build()
+          result = fit(graph, MeasurementData(x=x.tolist(), y=y.tolist()))
+          assert result.r_squared > 0.99, result.r_squared
+          print("r_squared", result.r_squared)
+          EOF
+
   citation:
     runs-on: ubuntu-latest
     steps:

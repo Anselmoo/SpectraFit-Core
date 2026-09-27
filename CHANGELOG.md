@@ -66,6 +66,22 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Wheels and CI cover every promised platform.** Linux wheels build in
+  manylinux_2_28 (manylinux2014's cmake 2.8 / gfortran 4.8 could not build
+  netlib LAPACK), every platform builds CPython 3.13 and 3.14 wheels, and
+  `verify-testpypi` installs them on Linux, macOS and Windows for both. A new
+  `test-matrix` CI job runs the full suite on Linux/3.14 and the binding tests
+  plus the README quick start on macOS and Windows for 3.13 and 3.14. The
+  Claude review workflow may now post its review (`claude_args
+  --allowedTools`); before, it ran, was billed and posted nothing.
+- **PyO3 0.29 and rust-numpy 0.29; Python 3.14 support.** The extension
+  moves from PyO3/numpy 0.22 to 0.29, which builds and imports on CPython
+  3.14 as well as 3.13 (PyO3 0.22 refused 3.14 as newer than its maximum
+  supported version). The Python API and the JSON boundary are unchanged;
+  `pyproject.toml` now lists the 3.14 classifier.
+- **Windows builds without LAPACK.** `spectrafit-varpro` keeps Accelerate on
+  macOS and netlib LAPACK on Linux, but uses varpro's pure-Rust nalgebra
+  backend on Windows, where `netlib-src` would need a Fortran compiler.
 - **Docs name the project SpectraFit-Core in prose.** The architecture page
   used the package spelling `spectrafit-core` as the project name.
 - **Shorter README benchmark section.** The benchmark overview and the
