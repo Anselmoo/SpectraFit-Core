@@ -66,6 +66,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **The code-review plugin finishes its run.** Its reviewer subagents ran in
+  the background and were still running when the headless session ended
+  (4 turns, nothing posted); `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps
+  them in the foreground. `Skill` is allowed (it was denied), and the plugin
+  job no longer runs (and bills) on the GitLab sync PR.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status

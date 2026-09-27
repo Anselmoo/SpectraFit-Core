@@ -50,6 +50,7 @@ def test_claude_review_may_post_its_review() -> None:
     claude_args = with_.get("claude_args", "")
     for tool in (
         "Task",
+        "Skill",
         "Bash(gh pr comment:*)",
         "Bash(gh pr view:*)",
         "Bash(gh pr diff:*)",
@@ -122,3 +123,13 @@ def test_review_gate_is_always_reported_and_overridable() -> None:
     assert "author_association" in override["if"]
     # PyYAML (YAML 1.1) reads the unquoted `on:` key as True.
     assert "issue_comment" in workflow[True]
+
+
+def test_review_subagents_run_in_the_foreground() -> None:
+    """Headless runs end when Claude ends its turn; background subagents are lost."""
+    jobs = _load("claude-code-review.yml")["jobs"]
+    for name in ("claude-review", "claude-report-run"):
+        assert (jobs[name].get("env") or {}).get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS") == "1", (
+            name
+        )
+    assert "sync/gitlab" in jobs["claude-review"]["if"]
