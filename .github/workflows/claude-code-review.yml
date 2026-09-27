@@ -262,10 +262,17 @@ jobs:
           if not raw:
               if not execution and os.environ.get("CLAUDE_STEP_OUTCOME") == "success":
                   # The action finished without running Claude: it refuses to
-                  # run on PRs that change this workflow. Nothing was billed.
-                  note = "Claude did not run (e.g. this PR changes the review workflow); nothing was billed."
-                  gate("success", "not run: " + note)
-                  summary_file.write(f"## Claude review report\n\n{note}\n")
+                  # run on PRs that change this workflow. Nothing was billed,
+                  # but nothing was reviewed either -- such a PR could also
+                  # weaken the gate itself, so it stays red until a maintainer
+                  # has read it and overrides with `/claude-override <reason>`.
+                  note = (
+                      "Claude could not run (this PR changes the review workflow); nothing was "
+                      "billed and nothing reviewed. A maintainer must review it by hand and "
+                      "override with `/claude-override <reason>`."
+                  )
+                  gate("failure", "🔴 review workflow changed: manual review + /claude-override needed")
+                  summary_file.write(f"## 🔴 Claude review report\n\n{note}\n")
                   print(f"::warning::{note}")
                   sys.exit(0)
               gate("error", "Claude review failed or returned no report")

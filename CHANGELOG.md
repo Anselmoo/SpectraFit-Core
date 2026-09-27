@@ -71,6 +71,9 @@ This project follows repository release policy enforced by `repo-release-tools`.
   (4 turns, nothing posted); `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps
   them in the foreground. `Skill` is allowed (it was denied), and the plugin
   job no longer runs (and bills) on the GitLab sync PR.
+- **PRs that change the review workflow get a red light.** Claude cannot run
+  on them (the action only runs the default branch's workflow), so they were
+  passing unreviewed; they now need a maintainer's `/claude-override`.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status

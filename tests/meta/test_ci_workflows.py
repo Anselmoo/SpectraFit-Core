@@ -133,3 +133,18 @@ def test_review_subagents_run_in_the_foreground() -> None:
             name
         )
     assert "sync/gitlab" in jobs["claude-review"]["if"]
+
+
+def test_workflow_changing_prs_get_a_red_gate() -> None:
+    """Claude cannot run on a PR that edits the review workflow: red, not green."""
+    jobs = _load("claude-code-review.yml")["jobs"]
+    (post,) = [
+        s
+        for s in jobs["claude-report-run"]["steps"]
+        if s.get("name") == "Post review report and set the gate"
+    ]
+    script = post["run"]
+    not_run = script[script.index('CLAUDE_STEP_OUTCOME") == "success"') :]
+    not_run = not_run[: not_run.index("sys.exit(0)")]
+    assert 'gate("failure"' in not_run
+    assert "/claude-override" in not_run
