@@ -1,7 +1,7 @@
 ---
 icon: lucide/compass
 template: section-index.html
-description: How spectrafit-core's model composition DAG, parameter model, and solver front-end actually work under the hood.
+description: How SpectraFit-Core's model composition DAG, parameter model, and solver front-end actually work under the hood.
 tags:
   - NIST StRD
   - Models
@@ -27,7 +27,7 @@ cards:
 # Explanation { .sf-section-hero__title }
 
 <p class="sf-section-hero__tagline">
-The conceptual model behind spectrafit-core: how model composition works as
+The conceptual model behind SpectraFit-Core: how model composition works as
 a directed acyclic graph (DAG), the parameter model, and how the solver
 front-end forms its residual and Jacobian and derives its post-fit
 statistics. Background, not step-by-step instructions. For how
