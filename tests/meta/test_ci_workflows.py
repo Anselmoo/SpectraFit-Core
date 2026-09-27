@@ -92,3 +92,33 @@ def test_no_workflow_step_or_job_runs_on_cancel() -> None:
         if "always()" in line and not line.lstrip().startswith("#")
     ]
     assert not offenders, f"use !cancelled() instead of always(): {offenders}"
+
+
+def test_reviews_run_on_sonnet_never_opus() -> None:
+    """Policy: Claude reviews use Sonnet (or Haiku), never Opus."""
+    jobs = _load("claude-code-review.yml")["jobs"]
+    for name in ("claude-review", "claude-report-run"):
+        (step,) = [s for s in jobs[name]["steps"] if "claude-code-action" in s.get("uses", "")]
+        args = step["with"]["claude_args"]
+        assert "--model claude-sonnet-5" in args, name
+        assert "opus" not in args.lower(), name
+    # the code-review plugin launches its bug agents as "opus": remapped.
+    env = jobs["claude-review"].get("env") or {}
+    assert env.get("ANTHROPIC_DEFAULT_OPUS_MODEL") == "claude-sonnet-5"
+
+
+def test_review_gate_is_always_reported_and_overridable() -> None:
+    """`claude-review-gate` is a required status: every PR path must set it."""
+    workflow = _load("claude-code-review.yml")
+    jobs = workflow["jobs"]
+    text = (_WORKFLOWS / "claude-code-review.yml").read_text()
+    assert text.count("claude-review-gate") >= 4
+    assert "statuses" in jobs["claude-report-run"]["permissions"]
+    skip_if = jobs["claude-review-gate-skip"]["if"]
+    assert "sync/gitlab" in skip_if
+    assert "dependabot[bot]" in skip_if
+    override = jobs["claude-override"]
+    assert "/claude-override" in override["if"]
+    assert "author_association" in override["if"]
+    # PyYAML (YAML 1.1) reads the unquoted `on:` key as True.
+    assert "issue_comment" in workflow[True]

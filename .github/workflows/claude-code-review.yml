@@ -3,6 +3,9 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  # `/claude-override <reason>` from a maintainer turns the review gate green.
+  issue_comment:
+    types: [created]
     # Optional: Only run on specific file changes
     # paths:
     #   - "src/**/*.ts"
@@ -19,8 +22,9 @@ jobs:
     # owner/member/collaborator; a first-time external contributor's PR is
     # skipped until a maintainer signals trust.
     if: >-
+      github.event_name == 'pull_request' && (
       github.actor == 'dependabot[bot]' ||
-      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
 
     runs-on: ubuntu-latest
     permissions:
@@ -28,6 +32,11 @@ jobs:
       pull-requests: write
       issues: read
       id-token: write
+    env:
+      # No Opus in reviews: the plugin launches its bug agents as "opus";
+      # remap that alias (and the subagent default) to Sonnet.
+      ANTHROPIC_DEFAULT_OPUS_MODEL: claude-sonnet-5
+      CLAUDE_CODE_SUBAGENT_MODEL: claude-sonnet-5
 
     steps:
       - name: Checkout repository
@@ -51,6 +60,7 @@ jobs:
           # Anything missing is denied silently and the run still ends green --
           # the next step turns that into a red job.
           claude_args: |
+            --model claude-sonnet-5
             --allowedTools "Task,Agent,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
 
       - name: Report review outcome
@@ -118,3 +128,260 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
+
+  claude-report-run:
+    # Copilot-style review with a traffic light, run on Sonnet only:
+    #   red    = at least one "must" finding  -> gate `claude-review-gate` fails
+    #   yellow = only "should" findings        -> gate passes
+    #   green  = nothing to change             -> gate passes
+    # One sticky PR comment (updated on every push), inline comments for
+    # "must" findings, and the commit status `claude-review-gate` (the required
+    # check). A maintainer can override red with `/claude-override <reason>`.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref != 'sync/gitlab' &&
+      github.actor != 'dependabot[bot]' &&
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      statuses: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          fetch-depth: 1
+
+      - name: Mark the review gate as pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}"
+          -f state=pending -f context=claude-review-gate -f description="Claude review running"
+
+      - name: Run Claude review report
+        id: claude-report
+        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790  # v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} of ${{ github.repository }}.
+
+            Read the diff with `gh pr diff ${{ github.event.pull_request.number }}` and the PR
+            title/description with `gh pr view ${{ github.event.pull_request.number }}`. Read the
+            root CLAUDE.md and any CLAUDE.md in directories the PR touches; its rules are binding.
+            Open changed files for context where the diff alone is not enough.
+
+            Classify every finding:
+            - must: will break the build, tests, a published contract, security, or data;
+              or a clear, quotable CLAUDE.md violation. Only what you can verify.
+            - should: a real improvement worth doing in this PR.
+            - dont: things that look wrong but are intentional or would be harmful to
+              "fix", and changes you advise against.
+            No style nits, nothing a linter catches, nothing pre-existing outside the diff.
+            `line` must be a line number in the new version of a file changed by this PR.
+            Give `suggestion` only when replacing that single line fixes the issue completely.
+            `checked` lists what you actually verified (e.g. tests, CLAUDE.md rules, PyO3
+            boundary, changelog). Do not post anything yourself; answer only with the
+            structured output.
+          claude_args: |
+            --model claude-sonnet-5
+            --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
+            --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
+
+      - name: Post review report and set the gate
+        if: ${{ !cancelled() }}
+        env:
+          REPORT: ${{ steps.claude-report.outputs.structured_output }}
+          EXECUTION_FILE: ${{ steps.claude-report.outputs.execution_file }}
+          CLAUDE_STEP_OUTCOME: ${{ steps.claude-report.outcome }}
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: python
+        run: |
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+
+          MARKER = "<!-- claude-report -->"
+          api = f"https://api.github.com/repos/{os.environ['REPO']}"
+          pr, sha = os.environ["PR_NUMBER"], os.environ["HEAD_SHA"]
+          summary_file = open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8")
+
+
+          def call(method, url, payload=None):
+              data = json.dumps(payload).encode() if payload is not None else None
+              req = urllib.request.Request(url, data=data, method=method)
+              req.add_header("Authorization", f"Bearer {os.environ['GITHUB_TOKEN']}")
+              req.add_header("Accept", "application/vnd.github+json")
+              if data is not None:
+                  req.add_header("Content-Type", "application/json")
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  body = resp.read()
+                  return json.loads(body) if body else None
+
+
+          def gate(state, description):
+              call("POST", f"{api}/statuses/{sha}", {
+                  "state": state, "context": "claude-review-gate",
+                  "description": description[:140], "target_url": os.environ["RUN_URL"],
+              })
+
+
+          models = []
+          execution = os.environ.get("EXECUTION_FILE", "")
+          if execution and os.path.exists(execution):
+              with open(execution, encoding="utf-8") as fh:
+                  messages = json.load(fh)
+              result = next((m for m in reversed(messages) if m.get("type") == "result"), {})
+              models = sorted((result.get("modelUsage") or {}).keys())
+              if any("opus" in m for m in models):
+                  print(f"::warning::an Opus model was used despite the Sonnet-only policy: {models}")
+
+          raw = os.environ.get("REPORT", "").strip()
+          if not raw:
+              if not execution and os.environ.get("CLAUDE_STEP_OUTCOME") == "success":
+                  # The action finished without running Claude: it refuses to
+                  # run on PRs that change this workflow. Nothing was billed.
+                  note = "Claude did not run (e.g. this PR changes the review workflow); nothing was billed."
+                  gate("success", "not run: " + note)
+                  summary_file.write(f"## Claude review report\n\n{note}\n")
+                  print(f"::warning::{note}")
+                  sys.exit(0)
+              gate("error", "Claude review failed or returned no report")
+              sys.exit("::error::the Claude review step failed or returned no structured report")
+
+          report = json.loads(raw)
+          must, should, dont = report["must"], report["should"], report["dont"]
+          light, word = ("🔴", "red") if must else (("🟡", "yellow") if should else ("🟢", "green"))
+
+
+          def item(f):
+              return f"- [ ] `{f['path']}:{f['line']}` — {f['issue']}  \n  → **Do:** {f['action']}"
+
+
+          lines = [
+              MARKER,
+              f"## {light} Claude review — {len(must)} must · {len(should)} should",
+              "",
+              report["summary"],
+          ]
+          if must:
+              lines += ["", "### 🔴 Must fix (blocking)", *[item(f) for f in must]]
+          if should:
+              lines += ["", "### 🟡 Should", *[item(f) for f in should]]
+          if dont:
+              lines += ["", "### Don't / keep as is", *[f"- {d['what']} — {d['why']}" for d in dont]]
+          if report["checked"]:
+              lines += ["", "### Checked", " · ".join(report["checked"])]
+          lines += [
+              "",
+              f"<sub>{sha[:8]} · models: {', '.join(models) or 'n/a'} · "
+              f"[run and transcript]({os.environ['RUN_URL']})"
+              + (" · override a red light with `/claude-override <reason>`" if must else "")
+              + "</sub>",
+          ]
+          body = "\n".join(lines)
+
+          comments = call("GET", f"{api}/issues/{pr}/comments?per_page=100") or []
+          mine = [c for c in comments if MARKER in (c.get("body") or "")]
+          if mine:
+              call("PATCH", f"{api}/issues/comments/{mine[0]['id']}", {"body": body})
+          else:
+              call("POST", f"{api}/issues/{pr}/comments", {"body": body})
+
+          if must:
+              inline = []
+              for f in must:
+                  text = f"🔴 **Must fix:** {f['issue']}\n\n**Do:** {f['action']}"
+                  if f.get("suggestion"):
+                      text += f"\n\n```suggestion\n{f['suggestion']}\n```"
+                  inline.append({"path": f["path"], "line": f["line"], "side": "RIGHT", "body": text})
+              try:
+                  call("POST", f"{api}/pulls/{pr}/reviews", {"commit_id": sha, "event": "COMMENT", "comments": inline})
+              except urllib.error.HTTPError as exc:
+                  print(f"::warning::inline comments rejected ({exc.code}); findings are in the sticky comment")
+
+          gate("failure" if must else "success", f"{light} {word}: {len(must)} must, {len(should)} should")
+          summary_file.write(body.replace(MARKER, "") + "\n")
+
+      - name: Upload report transcript
+        if: ${{ !cancelled() && steps.claude-report.outputs.execution_file != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: claude-report-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
+          path: ${{ steps.claude-report.outputs.execution_file }}
+          retention-days: 14
+          if-no-files-found: warn
+
+  claude-review-gate-skip:
+    # PRs the review does not run on still need the gate status, or the
+    # required check waits forever: green for the GitLab sync PR (reviewed on
+    # GitLab) and Dependabot; red for authors without write association until
+    # a maintainer overrides (prompt-injection hardening: no Claude run on
+    # untrusted input without a maintainer's say-so).
+    if: >-
+      github.event_name == 'pull_request' && (
+      github.head_ref == 'sync/gitlab' ||
+      github.actor == 'dependabot[bot]' ||
+      !contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Set the review gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.head_ref }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ "$HEAD_REF" = "sync/gitlab" ] || [ "$ACTOR" = "dependabot[bot]" ]; then
+            state=success; description="🟢 skipped: sync or Dependabot PR"
+          else
+            state=failure; description="🔴 external author: a maintainer must /claude-override"
+          fi
+          gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f state="$state" -f context=claude-review-gate -f description="$description"
+
+  claude-override:
+    # `/claude-override <reason>` on a PR by an owner/member/collaborator sets
+    # the gate green for the PR's current head commit (a new push re-runs the
+    # review and needs a new override) and records who and why.
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/claude-override') &&
+      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Override the review gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+        run: |
+          reason=$(printf '%s' "$COMMENT_BODY" | head -1 | sed 's#^/claude-override[[:space:]]*##')
+          if [ -z "$reason" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "⚠️ \`/claude-override\` needs a reason, e.g. \`/claude-override false positive: the line is generated\`."
+            exit 1
+          fi
+          sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq .headRefOid)
+          gh api -X POST "repos/$REPO/statuses/$sha" -f state=success -f context=claude-review-gate \
+            -f description="$(printf '🟢 overridden by @%s: %s' "$COMMENTER" "$reason" | cut -c1-140)"
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "🟢 Claude review gate overridden for \`${sha:0:8}\` by @$COMMENTER: $reason"

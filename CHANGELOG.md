@@ -66,6 +66,15 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Claude review report with a traffic light, required and overridable.** A
+  second review job (Sonnet only) writes one sticky PR comment -- summary,
+  must / should / don't, what was checked -- and sets the commit status
+  `claude-review-gate`: red with any "must" finding (blocks the merge once the
+  status is a required check), yellow with only "should", green otherwise.
+  "Must" findings also become inline comments. A maintainer overrides a red
+  gate with `/claude-override <reason>`; sync and Dependabot PRs get a green
+  "skipped" gate, external authors a red one until overridden. The
+  code-review plugin runs on Sonnet too (its "opus" agents are remapped).
 - **The Claude review actually reviews and posts, and says so.** The workflow
   now passes `--comment` (without it the `code-review` plugin stops before
   posting) and allows the plugin's full tool list plus the subagent tool it
