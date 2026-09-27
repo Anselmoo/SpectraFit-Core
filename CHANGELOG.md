@@ -66,6 +66,23 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Claude review report with a traffic light, required and overridable.** A
+  second review job (Sonnet only) writes one sticky PR comment -- summary,
+  must / should / don't, what was checked -- and sets the commit status
+  `claude-review-gate`: red with any "must" finding (blocks the merge once the
+  status is a required check), orange with "should" findings, yellow with
+  only minor "could" findings, green otherwise.
+  "Must" findings also become inline comments. A maintainer overrides a red
+  gate with `/claude-override <reason>`; sync and Dependabot PRs get a green
+  "skipped" gate, external authors a red one until overridden. The
+  code-review plugin runs on Sonnet too (its "opus" agents are remapped).
+- **The Claude review actually reviews and posts, and says so.** The workflow
+  now passes `--comment` (without it the `code-review` plugin stops before
+  posting) and allows the plugin's full tool list plus the subagent tool it
+  launches its reviewers with; before, the first subagent launch was denied
+  and the run ended green after 3 turns with nothing posted. A new
+  `Report review outcome` step writes turns, cost, denied tools and the
+  result to the job summary and fails the job on any permission denial.
 - **Every backport MR gets a pipeline, and the job says which.** After opening
   the MR, `backport_from_github.py --open-mr` reads the MR's `head_pipeline`
   for up to 60 s and logs its id and URL; only if GitLab attached none does it
