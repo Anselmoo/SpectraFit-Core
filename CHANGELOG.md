@@ -82,6 +82,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
 - **Windows builds without LAPACK.** `spectrafit-varpro` keeps Accelerate on
   macOS and netlib LAPACK on Linux, but uses varpro's pure-Rust nalgebra
   backend on Windows, where `netlib-src` would need a Fortran compiler.
+- **Python dev and docs tooling bumped.** ty 0.0.84, ruff 0.16.9, zensical
+  0.0.65, mkdocstrings-python 2.0.9 and repo-release-tools 1.18.0, with the
+  pre-commit hook revs moved in step; minor bumps of hypothesis, maturin,
+  pydantic, numpy, matplotlib, typer, uvicorn and jax. The two cross-pipeline
+  CI artifact fetches are now declared for `rrt doctor`'s new check.
 - **Docs name the project SpectraFit-Core in prose.** The architecture page
   used the package spelling `spectrafit-core` as the project name.
 - **Shorter README benchmark section.** The benchmark overview and the
