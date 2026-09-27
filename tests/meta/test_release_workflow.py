@@ -220,8 +220,11 @@ def test_github_release_tolerates_skipped_publish_pypi_for_prereleases() -> None
     """rc/a/b tags skip publish-pypi (by design); github-release must still run."""
     job = _job("github-release")
     condition = job.get("if") or ""
-    assert "always()" in condition, (
-        "github-release's `if` must use always() so a *skipped* (not failed) "
+    # Any status function replaces the implicit success(); !cancelled() (not
+    # always(), which also runs on cancel and holds the concurrency group) lets
+    # a *skipped* publish-pypi through without running a cancelled release.
+    assert "!cancelled()" in condition, (
+        "github-release's `if` must use !cancelled() so a *skipped* (not failed) "
         f"publish-pypi doesn't block the release, got: {condition!r}"
     )
     assert "needs.publish-pypi.result == 'success'" in condition

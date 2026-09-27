@@ -39,3 +39,21 @@ def test_claude_review_may_post_its_review() -> None:
     claude_args = (review.get("with") or {}).get("claude_args", "")
     for tool in ("Bash(gh pr comment:*)", "mcp__github_inline_comment__create_inline_comment"):
         assert tool in claude_args, f"review cannot post without {tool}"
+
+
+def test_no_workflow_step_or_job_runs_on_cancel() -> None:
+    """``always()`` keeps a cancelled run alive, which blocks the concurrency group.
+
+    Every ``ci-${{ github.ref }}`` run cancelled by a newer push kept executing
+    its ``if: always()`` summary steps (and the ``coverage-atlas-fused`` job),
+    so the new run sat at "Expected — waiting for status" on the required
+    ``lint`` check. ``!cancelled()`` still runs after a failure, not after a
+    cancel.
+    """
+    offenders = [
+        f"{path.name}:{lineno}"
+        for path in sorted(_WORKFLOWS.glob("*.yml"))
+        for lineno, line in enumerate(path.read_text().splitlines(), start=1)
+        if "always()" in line and not line.lstrip().startswith("#")
+    ]
+    assert not offenders, f"use !cancelled() instead of always(): {offenders}"

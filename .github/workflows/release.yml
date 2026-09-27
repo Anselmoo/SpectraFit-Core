@@ -379,7 +379,7 @@ jobs:
     # 'success' or 'skipped' for it, but require version-guard, sbom and
     # verify-testpypi to have actually succeeded.
     if: |
-      always() &&
+      !cancelled() &&
       startsWith(github.ref, 'refs/tags/v') &&
       needs.version-guard.result == 'success' &&
       needs.sbom.result == 'success' &&

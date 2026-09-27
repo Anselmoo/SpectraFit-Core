@@ -66,6 +66,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Cancelled CI runs actually stop.** Workflow steps and the
+  `coverage-atlas-fused` job used `if: always()`, which also runs on cancel, so
+  a run superseded by a newer push kept going and held the
+  `ci-${{ github.ref }}` concurrency group: the new run's required `lint`
+  check sat at "waiting for status". They now use `!cancelled()`.
 - **Wheels and CI cover every promised platform.** Linux wheels build in
   manylinux_2_28 (manylinux2014's cmake 2.8 / gfortran 4.8 could not build
   netlib LAPACK), every platform builds CPython 3.13 and 3.14 wheels, and
