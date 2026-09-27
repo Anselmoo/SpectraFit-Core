@@ -128,8 +128,7 @@ pre-release spellings do not match, so while this file said `0.1.0b1` every
 `Invalid semver: '0.1.0b1'`, and the repo could not bump itself at all.
 
 Re-verified against **rrt 1.15.0** (installed, and the latest on PyPI at the time
-of writing) and again against **rrt 1.18.0** (2026-09-27, same three results), so
-this is upstream behaviour rather than local configuration:
+of writing), so this is upstream behaviour rather than local configuration:
 
 ```python
 from repo_release_tools.version.semver import Version
@@ -205,25 +204,6 @@ The `solver-crate` template is the canonical per-method layout —
 `{Cargo.toml, src/{lib,driver,step,problem,tests}.rs}` — so adding a solver
 family is a stamp rather than a bespoke decision.
 
-### Cross-pipeline artifacts
-
-Two CI jobs fall back to an artifact from the **last successful default-branch
-run of another pipeline** via GitLab's `jobs/artifacts/<ref>/raw/<path>?job=`
-API: `pages` (`.gitlab/60-pages.yml`) fetches `build:report_html:bundle`'s
-`artifacts/report.html` when the current pipeline built none, and `build:docs`
-(`.gitlab/65-docs.yml`) fetches `build:report_html`'s `artifacts/manifest.json`
-for the "Current performance" page. Both degrade to a placeholder when the
-artifact is gone, which is exactly why the dependency needs recording: an
-artifact-retention cleanup on the producing job would otherwise break the
-published site without failing anything.
-
-From rrt 1.16 on, `rrt doctor` scans CI config for these fetches and fails on
-any that is not declared in `[[tool.rrt.artifact_protection.consumed]]`, so
-both are declared there. `ref` is the literal `$CI_DEFAULT_BRANCH` the scanner
-reads from the YAML, not its resolved value: matching is exact string equality
-on `(job, ref)`. Adding a new cross-pipeline fetch means adding an entry, or
-`rrt doctor` fails with a ready-to-paste block naming the file and line.
-
 ---
 
 ## Testing
@@ -277,9 +257,7 @@ core import still errors. The lighter optional dependencies are installed via
 
 Every rule below was verified live against **ty 0.0.65** with
 `ty check -c 'rules.<name>="warn"'` before landing, and each is advisory rather
-than an error because ty is still pre-1.0. All of them are still recognized by
-**ty 0.0.84**: an unknown name in `[tool.ty.rules]` raises an `unknown-rule`
-warning, and a plain `uv run ty check` raises none.
+than an error because ty is still pre-1.0.
 
 From Astral's own "coming from mypy/pyright" guide, both pure future-guards:
 

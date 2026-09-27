@@ -122,9 +122,6 @@ extra_javascript = [
   # already-loaded vendored stylesheet instead of dropping it, since
   # Zensical's loader waits on the link's `load` event before wiring up
   # the lightbox — see that file's header comment for the full trace.
-  # Zensical 0.0.65 now guards the CSS loader with the same
-  # `typeof GLightbox` check, so predefining the global closes both halves
-  # on that build; glightbox-init.js stays as a safety net (see its header).
   "javascripts/glightbox.min.js",
   "javascripts/glightbox-init.js",
   # docs/includes/abbreviations.txt's `*[TERM]: definition` lines render as bare

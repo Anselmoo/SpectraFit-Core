@@ -54,7 +54,7 @@ def render_case(
             if outcome and outcome.success:
                 residuals = [float(y - f) for y, f in zip(case.y, outcome.best_fit, strict=True)]
                 fits_by_backend[backend.name] = (
-                    [float(f) for f in outcome.best_fit],
+                    list(outcome.best_fit),
                     residuals,
                 )
         except Exception as exc:  # noqa: BLE001 - skip a backend whose fit raised

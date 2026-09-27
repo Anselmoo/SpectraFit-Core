@@ -20,12 +20,6 @@
 // `.reload()` (which is what actually wires up newly-added `.glightbox`
 // anchors) — swallowing the appendChild instead would silently break the
 // lightbox rather than just avoiding the CDN hit.
-//
-// Zensical 0.0.65 update (read from its installed bundle.*.min.js): the CSS
-// loader is now guarded by the same `typeof GLightbox=="undefined"` check as
-// the JS loader, so the vendored glightbox.min.js alone pre-empts both unpkg
-// requests on that build. This script is kept as a no-op safety net in case a
-// later build drops the guard again; it only acts when such a <link> appears.
 (function () {
   var vendored = document.querySelector(
     'link[rel="stylesheet"][href$="stylesheets/glightbox.min.css"]',

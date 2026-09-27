@@ -199,8 +199,7 @@ class FitResult(BaseModel):
         default=None,
         description=(
             "Ordered names of the free parameters that index covariance rows/cols. "
-            "`covariance[i][j]` is cov(`covariance_param_order[i]`, "
-            "`covariance_param_order[j]`). "
+            "covariance[i][j] is cov(covariance_param_order[i], covariance_param_order[j]). "
             "None for payloads produced before the schema added this field "
             "(backwards-compatible)."
         ),
