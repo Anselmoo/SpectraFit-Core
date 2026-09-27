@@ -27,7 +27,7 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.0
+    rev: v0.16.9
     hooks:
       - id: ruff-check
         # pre-commit: attempt to auto-fix what ruff can
@@ -53,20 +53,19 @@ repos:
     # old CLI-arg-scoped invocation used, verified equivalent (0 diagnostics
     # either way) before switching.
     #
-    # Version note: pins ty 0.0.69 independent of this project's own `ty`
-    # dev dependency (currently resolves to 0.0.65) -- a real, currently-
-    # unclosed version skew between what this hook checks locally and what
-    # `uv run poe lint_ci` / CI check. Bumping the project's own `ty` pin to
-    # match is a separate decision (a version bump can itself surface new
-    # diagnostics), not folded into this hook swap.
-    rev: v0.0.69
+    # Version note: this rev pins ty independently of the project's own `ty`
+    # dev dependency, so the two must be bumped together or the hook and
+    # `uv run poe lint_ci` / CI check with different rule sets. Both are
+    # 0.0.84 (bumped together from 0.0.69).
+    rev: v0.0.84
     hooks:
       - id: ty
 
   - repo: https://github.com/Anselmoo/repo-release-tools
-    # Kept in step with the uv-managed CLI (currently 1.15.0) so the hook and
+    # Kept in step with the uv-managed CLI (currently 1.18.0) so the hook and
     # `uv run rrt` cannot disagree about a rule. Bumped 1.8.1 -> 1.14.1
-    # (2026-08-10) to unlock rrt-doctor/rrt-release-check, then -> 1.15.0.
+    # (2026-08-10) to unlock rrt-doctor/rrt-release-check, then -> 1.15.0,
+    # then -> 1.18.0.
     #
     # NOT wired here (tested, both have real problems for this repo):
     # rrt-tree-check — `rrt-hooks tree-check` (the pre-commit entry) takes
@@ -83,7 +82,7 @@ repos:
     # working tree does today (confirmed failing locally against 2 files
     # unrelated to any in-flight commit). Revisit once the tree is
     # consistently clean, or scope it to pre-push --hook-stage manual only.
-    rev: v1.15.0
+    rev: v1.18.0
     hooks:
       - id: rrt-branch-name
       - id: rrt-changelog
