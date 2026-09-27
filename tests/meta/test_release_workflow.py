@@ -220,8 +220,11 @@ def test_github_release_tolerates_skipped_publish_pypi_for_prereleases() -> None
     """rc/a/b tags skip publish-pypi (by design); github-release must still run."""
     job = _job("github-release")
     condition = job.get("if") or ""
-    assert "always()" in condition, (
-        "github-release's `if` must use always() so a *skipped* (not failed) "
+    # Any status function replaces the implicit success(); !cancelled() (not
+    # always(), which also runs on cancel and holds the concurrency group) lets
+    # a *skipped* publish-pypi through without running a cancelled release.
+    assert "!cancelled()" in condition, (
+        "github-release's `if` must use !cancelled() so a *skipped* (not failed) "
         f"publish-pypi doesn't block the release, got: {condition!r}"
     )
     assert "needs.publish-pypi.result == 'success'" in condition
@@ -372,3 +375,39 @@ def test_version_guard_rejects_one_divergent_artifact(tmp_path: Path) -> None:
     code, log, _ = _run_guard(tmp_path, "v0.1.0rc1")
     assert code != 0
     assert "0.1.0rc2" in log
+
+
+# ---------------------------------------------------------------------------
+# Wheel build: every supported CPython on every platform.
+# ---------------------------------------------------------------------------
+
+
+def _build_wheels_step() -> dict:
+    steps = _job("build-wheels").get("steps") or []
+    (step,) = [s for s in steps if "maturin-action" in s.get("uses", "")]
+    return step
+
+
+def test_linux_wheels_build_in_manylinux_2_28() -> None:
+    """manylinux2014 (CentOS 7: cmake 2.8, gfortran 4.8) cannot build netlib LAPACK."""
+    with_ = _build_wheels_step().get("with") or {}
+    assert str(with_.get("manylinux")) == "2_28", with_.get("manylinux")
+    assert "dnf install" in (with_.get("before-script-linux") or "")
+
+
+def test_every_wheel_leg_builds_for_all_supported_pythons() -> None:
+    include = _job("build-wheels")["strategy"]["matrix"]["include"]
+    assert {leg["os"] for leg in include} == {"ubuntu-latest", "macos-latest", "windows-latest"}
+    for leg in include:
+        interpreters = leg.get("interpreters", "")
+        assert interpreters == "--find-interpreter" or (
+            "python3.13" in interpreters and "python3.14" in interpreters
+        ), leg
+    args = (_build_wheels_step().get("with") or {}).get("args", "")
+    assert "${{ matrix.interpreters }}" in args, args
+
+
+def test_verify_testpypi_covers_every_os_and_python() -> None:
+    matrix = _job("verify-testpypi")["strategy"]["matrix"]
+    assert set(matrix["os"]) == {"ubuntu-latest", "macos-latest", "windows-latest"}
+    assert set(matrix["python-version"]) == {"3.13", "3.14"}

@@ -20,9 +20,6 @@
 //! `CoreError` maps to `PyValueError` so Python callers receive a descriptive
 //! `ValueError`.
 
-// PyO3 0.22: `#[pyfunction]` generates `From<PyErr> for PyErr` conversions that
-// clippy flags as useless. This is a known false-positive in the pyo3+clippy interaction.
-#![allow(clippy::useless_conversion)]
 #![warn(missing_docs)]
 use std::collections::HashMap;
 
@@ -511,7 +508,7 @@ fn fit_arrays_numpy<'py>(
         result.dataset_slices = None;
 
         let compact_json = serde_json::to_string(&result).map_err(json_err)?;
-        let best_fit_array = PyArray1::from_vec_bound(py, best_fit);
+        let best_fit_array = PyArray1::from_vec(py, best_fit);
         Ok((compact_json, best_fit_array))
     }))
 }
