@@ -66,6 +66,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **The Claude review actually reviews and posts, and says so.** The workflow
+  now passes `--comment` (without it the `code-review` plugin stops before
+  posting) and allows the plugin's full tool list plus the subagent tool it
+  launches its reviewers with; before, the first subagent launch was denied
+  and the run ended green after 3 turns with nothing posted. A new
+  `Report review outcome` step writes turns, cost, denied tools and the
+  result to the job summary and fails the job on any permission denial.
 - **Web toolchain on React 19 and TypeScript 7.** The dashboard (`web/`) and the
   root tooling package move to React 19, the TypeScript 7 native compiler for
   `npm run typecheck`, Vitest 5, `@vitejs/plugin-react` 6, KaTeX 0.18 (which
