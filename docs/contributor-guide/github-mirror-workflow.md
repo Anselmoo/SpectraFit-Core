@@ -81,6 +81,22 @@ real working tree or index (the filtering happens in a throwaway
 
 **The mechanics**, once `publish_sync.py` runs:
 
+0. **Refuse to lose work** (`sync_guard`). It finds the sync boundary on
+   `github/main` and the GitLab commit its `GitLab-Commit:` trailer names,
+   then stops before building anything if either would lose work:
+    - **stale pipeline** -- GitHub is already synced from a GitLab commit
+      *newer* than this pipeline's `HEAD` (an older pipeline finishing late).
+      A sync would roll GitHub back, so the job prints `skipped — stale` and
+      exits 0;
+    - **pending backport** -- GitHub `main` carries native commits after the
+      boundary whose patch is not on GitLab `HEAD` yet. The sync commit takes
+      GitLab's tree wholesale, so it would revert them on GitHub *and* move the
+      boundary past them, where Mechanism 2 never looks again. The job prints
+      `REFUSED` with the commit list and exits 1 until `backport:github` has
+      landed them.
+
+   Both checks need the GitLab commit named in the trailer, so the sync jobs
+   run with `GIT_DEPTH: "0"`; a missing commit is itself a refusal.
 1. Fetch `github/main` and compare its tree against the filtered GitLab tree.
    If they're identical, it prints `up to date` and exits 0 -- **no PR, no
    push, no-op.**
@@ -88,7 +104,9 @@ real working tree or index (the filtering happens in a throwaway
    GitHub through the deploy-key `github-push` remote (force is safe here:
    `sync/gitlab` is a disposable staging branch,
    rewritten on every run -- never build on it by hand), and creates or
-   updates a PR `sync/gitlab -> main`.
+   updates a **draft** PR `sync/gitlab -> main`. A draft has no merge button,
+   so nobody -- and no auto-merge -- can squash it and re-author the bot
+   commit.
 3. It reads the required status checks that the repository's rulesets apply
    to `main` and waits until every one of them has passed **on the sync
    commit** (the PR runs `.github/workflows/ci.yml`). No required check
@@ -259,24 +277,31 @@ Two layers enforce it:
    hand-push path entirely.
 2. **Server side -- the mirror repository's rules.** Set up when the GitHub
    repository is (re)created, before the first sync:
-    - a branch ruleset over all branches that restricts creation, update and
-      deletion, with **only the sync deploy key** (the public half of
-      `GITHUB_DEPLOY_KEY`) on the bypass list and `dependabot/**` excluded
-      from it -- no personal account can push any branch, so an unfiltered
-      tree has no way in (outside contributors work from forks);
-    - on `main`: pull request required, at least one required status check,
-      force pushes blocked, again with only the deploy key on the bypass list.
-      The required check is also what Mechanism 1 waits for before it lands;
+    - a branch ruleset (`restrict-all-branches`) over all branches **except
+      the default branch** that restricts creation, update and deletion, with
+      **only the sync deploy key** (the public half of `GITHUB_DEPLOY_KEY`)
+      on the bypass list and `dependabot/**` excluded from it -- no personal
+      account can push any branch, so an unfiltered tree has no way in
+      (outside contributors work from forks). `main` must be excluded here:
+      a PR merge is an update of `main`, and with `main` in this ruleset no
+      PR could ever be merged, not even by an admin;
+    - on `main` (`main-protection`): pull request required, required status
+      checks `lint` and `claude-review-gate` (see below), force pushes and
+      deletion blocked, again with only the deploy key on the bypass list.
+      The required checks are also what Mechanism 1 waits for before it
+      lands. **"Require approval for unattributed changes" stays off**:
+      branch pushes by the deploy key are unattributed, so with a single
+      maintainer every PR would wait for an approval nobody can give;
     - merge method for contributor PRs: **squash only** (repository setting
       and the `main` ruleset's allowed merge methods), with the PR title as
       the commit title and the commit messages as its body -- one commit per
       PR keeps `main`'s history short, and Mechanism 2 backports that single
       commit as it is (a non-merge commit stands for itself). The squash
       commit is authored by the PR author; anyone else who committed to the
-      PR appears as a `Co-authored-by:` trailer. No auto-merge needed. The
-      sync PR never goes through a merge button at all -- it lands by the
-      deploy-key fast-forward above, so nobody should press "Squash and
-      merge" on it;
+      PR appears as a `Co-authored-by:` trailer. **Repository auto-merge is
+      off**: enabled once on a sync PR, it squashed the bot commit under a
+      personal name. The sync PR never goes through a merge button at all --
+      it is a draft and lands by the deploy-key fast-forward above;
     - no other account with write access.
 
     Create the `main` ruleset **disabled** until `publish:github:reset` has
@@ -297,6 +322,33 @@ merged), is orphaned by the rewrite -- their base commit no longer
 exists on `main`. Use it only when the append-only sync history itself needs
 to be discarded and restarted from a single fresh commit, and be prepared to
 ask anyone with open work against GitHub `main` to rebase.
+
+## Review gate on GitHub pull requests
+
+Every PR gets the commit status `claude-review-gate` from
+`.github/workflows/claude-code-review.yml`, and `main-protection` requires it:
+
+| Light | Meaning | Merge |
+|---|---|---|
+| 🔴 | at least one *must* finding (breaks build, tests, a contract, security or data, or a quotable `CLAUDE.md` rule) | blocked |
+| 🟠 | *should* findings only | allowed |
+| 🟡 | minor *could* findings only | allowed |
+| 🟢 | nothing to change | allowed |
+
+The review runs on Sonnet only and writes one comment per PR (updated on
+every push) plus inline comments for *must* findings; the run's transcript is
+kept as a workflow artifact. A maintainer overrides a red light for the
+current commit with a PR comment `/claude-override <reason>`. The sync PR and
+Dependabot PRs get a green "skipped" status; a PR from an author without
+write access gets red until a maintainer overrides it, so Claude never runs
+on untrusted input unasked.
+
+**Where a change should start.** Anything whose correctness depends on more
+than Linux -- wheels, Windows or macOS behaviour, a new CPython -- is best
+opened as a GitHub PR: GitHub's runners give the full platform matrix that
+GitLab CI does not have, and Mechanism 2 brings the squash commit back to
+GitLab. GitLab-only work (release bumps, benchmark gates, the docs site)
+stays on GitLab.
 
 ## For outside contributors (no GitLab access)
 

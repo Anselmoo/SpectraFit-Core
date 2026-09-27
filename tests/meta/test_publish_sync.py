@@ -638,3 +638,84 @@ def test_bot_identity_is_one_github_app_bot_everywhere() -> None:
         text = (root / rel).read_text()
         assert f'git config user.email "{email}"' in text, rel
         assert f'git config user.name "{name}"' in text, rel
+
+
+# --------------------------------------------------------------------------
+# sync_guard: never roll GitHub back, never sync over un-backported work.
+# --------------------------------------------------------------------------
+
+
+def _push_to_remote(tmp_path: Path, remote: Path, files: dict[str, str], message: str) -> str:
+    """Commit on the mirror's main from a throwaway clone (GitHub-side work)."""
+    clone = tmp_path / f"clone-{len(list(tmp_path.glob('clone-*')))}"
+    _git(tmp_path, "clone", "-q", str(remote), str(clone))
+    _git(clone, "config", "user.email", "contrib@example.org")
+    _git(clone, "config", "user.name", "Contributor")
+    sha = _commit(clone, files, message)
+    _git(clone, "push", "-q", "origin", "HEAD:main")
+    return sha
+
+
+def _sync_boundary_on_remote(
+    tmp_path: Path,
+    remote: Path,
+    files: dict[str, str],
+    gitlab_sha: str,
+) -> str:
+    return _push_to_remote(
+        tmp_path,
+        remote,
+        files,
+        f"sync: gitlab main\n\nGitLab-Commit: {gitlab_sha}",
+    )
+
+
+def test_stale_pipeline_does_not_roll_github_back(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo, remote = _make_repo_with_remote(tmp_path)
+    older = _commit(repo, {"a.txt": "2\n"}, "g2")
+    newer = _commit(repo, {"a.txt": "3\n"}, "g3")
+    _sync_boundary_on_remote(tmp_path, remote, {"a.txt": "3\n"}, newer)
+    _git(repo, "checkout", "-q", "--detach", older)  # the late, older pipeline
+
+    assert _run_main(repo, monkeypatch, "--dry-run") == 0
+    out = capsys.readouterr().out
+    assert "stale" in out
+    assert "DRY RUN" not in out
+    assert "refs/heads/sync/gitlab" not in _git(remote, "for-each-ref").stdout
+
+
+def test_sync_refuses_while_github_work_is_not_backported(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo, remote = _make_repo_with_remote(tmp_path)
+    synced = _commit(repo, {"a.txt": "2\n"}, "g2")
+    _sync_boundary_on_remote(tmp_path, remote, {"a.txt": "2\n"}, synced)
+    contribution = _push_to_remote(
+        tmp_path,
+        remote,
+        {"docs.md": "contributed\n"},
+        "docs: contribution",
+    )
+    _commit(repo, {"b.txt": "gitlab-only\n"}, "g3")  # GitLab moved on without it
+
+    assert _run_main(repo, monkeypatch, "--dry-run") == 1
+    out = capsys.readouterr().out
+    assert "REFUSED" in out
+    assert "backport:github" in out
+    assert f"{contribution[:10]} docs: contribution" in out
+    assert "refs/heads/sync/gitlab" not in _git(remote, "for-each-ref").stdout
+
+    # Once backport:github has landed it on GitLab, the sync goes ahead.
+    _git(repo, "fetch", "-q", "origin", "main")
+    _git(repo, "cherry-pick", "-x", contribution)
+    assert _run_main(repo, monkeypatch, "--dry-run") == 0
+    assert "REFUSED" not in capsys.readouterr().out
+
+
+def test_sync_pr_is_opened_as_a_draft() -> None:
+    """A draft PR has no merge button: nobody can squash (re-author) the sync."""
+    with mock.patch.object(sync, "_api_request", return_value=(201, {"number": 9})) as api:
+        sync.create_sync_pr("o/r", "sync/gitlab", "main", "sync: gitlab main", "body", "t")
+    assert api.call_args.kwargs["payload"]["draft"] is True

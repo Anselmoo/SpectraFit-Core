@@ -411,7 +411,16 @@ def create_sync_pr(
         url,
         token,
         method="POST",
-        payload={"title": title, "head": sync_branch, "base": base_branch, "body": body},
+        # Draft: nobody (and no auto-merge) can merge it through the UI. The
+        # PR only carries CI; the commit lands by deploy-key fast-forward, and
+        # GitHub marks the PR merged once its head is on the base branch.
+        payload={
+            "title": title,
+            "head": sync_branch,
+            "base": base_branch,
+            "body": body,
+            "draft": True,
+        },
     )
     if status not in (200, 201) or not isinstance(payload, dict):
         raise SyncError(f"create PR failed (HTTP {status}): {payload!r}")
@@ -604,6 +613,94 @@ def _land(args: argparse.Namespace, repo_root: Path, commit_sha: str, token: str
     return 0
 
 
+def _is_ancestor(repo_root: Path, ancestor: str, descendant: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repo_root,
+            capture_output=True,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+def _has_commit(repo_root: Path, sha: str) -> bool:
+    return (
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+            cwd=repo_root,
+            capture_output=True,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+
+def sync_guard(repo_root: Path, remote_ref: str) -> tuple[int, str] | None:
+    """Refuse a sync that would lose work: ``(exit code, reason)`` or None to go ahead.
+
+    Both hazards come from the sync commit carrying GitLab ``HEAD``'s tree
+    wholesale on top of GitHub ``main``:
+
+    * **Stale pipeline** — GitHub was already synced from a GitLab commit newer
+      than ``HEAD`` (an older pipeline finishing late). Syncing would roll
+      GitHub back. Clean skip, exit 0.
+    * **Pending backport** — GitHub ``main`` has native commits after the sync
+      boundary whose patch is not on GitLab ``HEAD`` yet. Syncing would revert
+      them on GitHub *and* move the boundary past them, so ``backport:github``
+      would never find them again: silent loss. Refused, exit 1, until
+      ``backport:github`` has landed them on GitLab.
+
+    Needs full history (``GIT_DEPTH: 0`` in the publish jobs); a sync
+    boundary commit missing from the clone is itself a refusal.
+    """
+    # Lazy: backport_from_github imports this module for SYNC_TRAILER.
+    import backport_from_github as backport  # ty: ignore[unresolved-import]
+
+    boundary = backport.find_sync_boundary(remote_ref)
+    if boundary is None:
+        return None
+    synced = parse_sync_trailer(backport.commit_message(boundary))
+    if not synced:
+        return None
+    head = rev_parse(repo_root, "HEAD")
+    if synced != head:
+        if not _has_commit(repo_root, synced):
+            return (
+                1,
+                (
+                    f"GitHub was last synced from GitLab {synced[:10]}, which this clone "
+                    "does not contain — cannot tell whether HEAD is newer (publish jobs "
+                    "need GIT_DEPTH: 0). Not syncing."
+                ),
+            )
+        if _is_ancestor(repo_root, head, synced):
+            return (
+                0,
+                (
+                    f"stale: GitHub is already synced from GitLab {synced[:10]}, which is "
+                    f"newer than this pipeline's {head[:10]}. Nothing to do."
+                ),
+            )
+    pending = backport.filter_already_applied(
+        backport.candidates_after_boundary(remote_ref, boundary),
+        "HEAD",
+        synced,
+    )
+    if pending:
+        listing = "\n".join(f"  - {sha[:10]} {subject}" for sha, subject in pending)
+        return (
+            1,
+            (
+                f"{len(pending)} GitHub commit(s) after the sync boundary are not on "
+                f"GitLab yet — syncing now would revert them on GitHub and lose them "
+                f"for good. Run backport:github and merge its MR first:\n{listing}"
+            ),
+        )
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse CLI args and run the GitLab -> GitHub sync."""
     args = _parse_args(argv)
@@ -628,6 +725,12 @@ def main(argv: list[str] | None = None) -> int:
     except subprocess.CalledProcessError as exc:
         print(f"publish_sync: FAILED to build the filtered tree — {exc.stderr or exc}")
         return 1
+
+    refusal = sync_guard(repo_root, remote_ref)
+    if refusal is not None:
+        code, reason = refusal
+        print(f"publish_sync: {'REFUSED' if code else 'skipped'} — {reason}")
+        return code
 
     if not sync_needed(filtered_tree, remote_tree):
         print("publish_sync: up to date")
