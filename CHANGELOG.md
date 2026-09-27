@@ -70,7 +70,8 @@ This project follows repository release policy enforced by `repo-release-tools`.
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status
   `claude-review-gate`: red with any "must" finding (blocks the merge once the
-  status is a required check), yellow with only "should", green otherwise.
+  status is a required check), orange with "should" findings, yellow with
+  only minor "could" findings, green otherwise.
   "Must" findings also become inline comments. A maintainer overrides a red
   gate with `/claude-override <reason>`; sync and Dependabot PRs get a green
   "skipped" gate, external authors a red one until overridden. The

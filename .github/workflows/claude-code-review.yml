@@ -131,9 +131,10 @@ jobs:
 
   claude-report-run:
     # Copilot-style review with a traffic light, run on Sonnet only:
-    #   red    = at least one "must" finding  -> gate `claude-review-gate` fails
-    #   yellow = only "should" findings        -> gate passes
-    #   green  = nothing to change             -> gate passes
+    #   red    = at least one "must" finding   -> gate `claude-review-gate` fails
+    #   orange = "should" findings, no "must"  -> gate passes
+    #   yellow = only minor "could" findings   -> gate passes
+    #   green  = nothing to change              -> gate passes
     # One sticky PR comment (updated on every push), inline comments for
     # "must" findings, and the commit status `claude-review-gate` (the required
     # check). A maintainer can override red with `/claude-override <reason>`.
@@ -181,6 +182,7 @@ jobs:
             - must: will break the build, tests, a published contract, security, or data;
               or a clear, quotable CLAUDE.md violation. Only what you can verify.
             - should: a real improvement worth doing in this PR.
+            - could: a minor, optional improvement.
             - dont: things that look wrong but are intentional or would be harmful to
               "fix", and changes you advise against.
             No style nits, nothing a linter catches, nothing pre-existing outside the diff.
@@ -192,7 +194,7 @@ jobs:
           claude_args: |
             --model claude-sonnet-5
             --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
-            --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
+            --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","could","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"could":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
 
       - name: Post review report and set the gate
         if: ${{ !cancelled() }}
@@ -263,7 +265,15 @@ jobs:
 
           report = json.loads(raw)
           must, should, dont = report["must"], report["should"], report["dont"]
-          light, word = ("🔴", "red") if must else (("🟡", "yellow") if should else ("🟢", "green"))
+          could = report.get("could", [])
+          if must:
+              light, word = "🔴", "red"
+          elif should:
+              light, word = "🟠", "orange"
+          elif could:
+              light, word = "🟡", "yellow"
+          else:
+              light, word = "🟢", "green"
 
 
           def item(f):
@@ -272,14 +282,16 @@ jobs:
 
           lines = [
               MARKER,
-              f"## {light} Claude review — {len(must)} must · {len(should)} should",
+              f"## {light} Claude review — {len(must)} must · {len(should)} should · {len(could)} could",
               "",
               report["summary"],
           ]
           if must:
               lines += ["", "### 🔴 Must fix (blocking)", *[item(f) for f in must]]
           if should:
-              lines += ["", "### 🟡 Should", *[item(f) for f in should]]
+              lines += ["", "### 🟠 Should", *[item(f) for f in should]]
+          if could:
+              lines += ["", "### 🟡 Could", *[item(f) for f in could]]
           if dont:
               lines += ["", "### Don't / keep as is", *[f"- {d['what']} — {d['why']}" for d in dont]]
           if report["checked"]:
@@ -312,7 +324,7 @@ jobs:
               except urllib.error.HTTPError as exc:
                   print(f"::warning::inline comments rejected ({exc.code}); findings are in the sticky comment")
 
-          gate("failure" if must else "success", f"{light} {word}: {len(must)} must, {len(should)} should")
+          gate("failure" if must else "success", f"{light} {word}: {len(must)} must, {len(should)} should, {len(could)} could")
           summary_file.write(body.replace(MARKER, "") + "\n")
 
       - name: Upload report transcript
