@@ -71,6 +71,9 @@ def test_claude_review_outcome_is_reported_and_denials_fail_the_job() -> None:
     assert "GITHUB_STEP_SUMMARY" in script
     assert "permission_denials" in script
     assert "sys.exit(" in script
+    (upload,) = [s for s in steps if s.get("name") == "Upload review transcript"]
+    assert "upload-artifact" in upload["uses"]
+    assert "steps.claude-review.outputs.execution_file" in str(upload.get("with", {}).get("path"))
 
 
 def test_no_workflow_step_or_job_runs_on_cancel() -> None:
