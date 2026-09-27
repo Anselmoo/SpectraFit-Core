@@ -66,6 +66,27 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Cancelled CI runs actually stop.** Workflow steps and the
+  `coverage-atlas-fused` job used `if: always()`, which also runs on cancel, so
+  a run superseded by a newer push kept going and held the
+  `ci-${{ github.ref }}` concurrency group: the new run's required `lint`
+  check sat at "waiting for status". They now use `!cancelled()`.
+- **Wheels and CI cover every promised platform.** Linux wheels build in
+  manylinux_2_28 (manylinux2014's cmake 2.8 / gfortran 4.8 could not build
+  netlib LAPACK), every platform builds CPython 3.13 and 3.14 wheels, and
+  `verify-testpypi` installs them on Linux, macOS and Windows for both. A new
+  `test-matrix` CI job runs the full suite on Linux/3.14 and the binding tests
+  plus the README quick start on macOS and Windows for 3.13 and 3.14. The
+  Claude review workflow may now post its review (`claude_args
+  --allowedTools`); before, it ran, was billed and posted nothing.
+- **PyO3 0.29 and rust-numpy 0.29; Python 3.14 support.** The extension
+  moves from PyO3/numpy 0.22 to 0.29, which builds and imports on CPython
+  3.14 as well as 3.13 (PyO3 0.22 refused 3.14 as newer than its maximum
+  supported version). The Python API and the JSON boundary are unchanged;
+  `pyproject.toml` now lists the 3.14 classifier.
+- **Windows builds without LAPACK.** `spectrafit-varpro` keeps Accelerate on
+  macOS and netlib LAPACK on Linux, but uses varpro's pure-Rust nalgebra
+  backend on Windows, where `netlib-src` would need a Fortran compiler.
 - **Python dev and docs tooling bumped.** ty 0.0.84, ruff 0.16.9, zensical
   0.0.65, mkdocstrings-python 2.0.9 and repo-release-tools 1.18.0, with the
   pre-commit hook revs moved in step; minor bumps of hypothesis, maturin,
@@ -75,6 +96,16 @@ This project follows repository release policy enforced by `repo-release-tools`.
   used the package spelling `spectrafit-core` as the project name.
 - **Shorter README benchmark section.** The benchmark overview and the
   contract paragraph are a short list now; content and links unchanged.
+- **GitHub Actions bumped to their current majors, still SHA-pinned.**
+  `checkout` v4→v7, `setup-python` v5→v7, `setup-uv` v4→v10, `cache` v4→v6,
+  `upload-/download-artifact` v4→v7/v8, `setup-node` v4→v7, `github-script`
+  v7→v9, `configure-pages` v5→v6, `upload-pages-artifact` v3→v5 (now pinned
+  with `include-hidden-files: true` to keep its pre-v4 "include everything"
+  behaviour), `deploy-pages` v4→v5, `softprops/action-gh-release` v2→v3, and
+  `anchore/sbom-action`/`pypa/gh-action-pypi-publish`/`anthropics/claude-code-action`
+  to their latest same-major commit. `dtolnay/rust-toolchain@stable` and
+  `taiki-e/install-action` (pinned in lockstep with `Dockerfile.ci`'s
+  `LLVM_COV_VERSION`, per its own comment) are unchanged by design.
 
 - **GitHub contributor PRs are squash-merged.** The mirror allows squash
   merges only (repository setting and the `main` ruleset), so each PR is one
