@@ -109,7 +109,8 @@ This project follows repository release policy enforced by `repo-release-tools`.
   GitLab yet (the sync would revert them and move the boundary past them, so
   `backport:github` would never find them). The sync PR is opened as a draft,
   so it cannot be squash-merged by hand or auto-merge. The sync jobs run with
-  `GIT_DEPTH: "0"`. The mirror guide documents the working rulesets, the
+  `GIT_DEPTH: "0"`; the guard runs only when a sync would
+  actually happen, so an up-to-date pipeline never reports REFUSED. The mirror guide documents the working rulesets, the
   review gate and where cross-platform changes should start.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,

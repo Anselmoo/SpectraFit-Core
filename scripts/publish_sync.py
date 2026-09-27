@@ -655,7 +655,10 @@ def sync_guard(repo_root: Path, remote_ref: str) -> tuple[int, str] | None:
     Needs full history (``GIT_DEPTH: 0`` in the publish jobs); a sync
     boundary commit missing from the clone is itself a refusal.
     """
-    # Lazy: backport_from_github imports this module for SYNC_TRAILER.
+    # Lazy: backport_from_github imports this module for SYNC_TRAILER. Run as
+    # a script, this module is `__main__`; register it under its own name
+    # first so that import reuses it instead of executing the file again.
+    sys.modules.setdefault("publish_sync", sys.modules[__name__])
     import backport_from_github as backport  # ty: ignore[unresolved-import]
 
     boundary = backport.find_sync_boundary(remote_ref)
@@ -726,15 +729,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"publish_sync: FAILED to build the filtered tree — {exc.stderr or exc}")
         return 1
 
+    if not sync_needed(filtered_tree, remote_tree):
+        print("publish_sync: up to date")
+        return 0
+
+    # Only a sync that would actually happen can lose work: guard after the
+    # up-to-date check, so a no-op pipeline stays a quiet "up to date".
     refusal = sync_guard(repo_root, remote_ref)
     if refusal is not None:
         code, reason = refusal
         print(f"publish_sync: {'REFUSED' if code else 'skipped'} — {reason}")
         return code
-
-    if not sync_needed(filtered_tree, remote_tree):
-        print("publish_sync: up to date")
-        return 0
 
     subject, body = build_sync_message(head_sha)
     message = f"{subject}\n\n{body}"

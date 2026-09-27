@@ -719,3 +719,34 @@ def test_sync_pr_is_opened_as_a_draft() -> None:
     with mock.patch.object(sync, "_api_request", return_value=(201, {"number": 9})) as api:
         sync.create_sync_pr("o/r", "sync/gitlab", "main", "sync: gitlab main", "body", "t")
     assert api.call_args.kwargs["payload"]["draft"] is True
+
+
+def test_up_to_date_pipeline_is_not_refused_while_a_backport_is_pending(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    """A GitLab commit outside the publish scope changes nothing on GitHub: stay quiet."""
+    repo, remote = _make_repo_with_remote(tmp_path)
+    synced = _commit(repo, {"docs/a.md": "2\n"}, "g2")
+    _sync_boundary_on_remote(tmp_path, remote, {"docs/a.md": "2\n"}, synced)
+    contribution = _push_to_remote(
+        tmp_path,
+        remote,
+        {"docs/contrib.md": "contributed\n"},
+        "docs: contribution",
+    )
+    # GitLab took the content in its own commit together with a private-only
+    # file: the published trees are equal, but the patch differs, so the
+    # patch-id match does not recognise it as backported.
+    _commit(
+        repo,
+        {"docs/contrib.md": "contributed\n", "analysis/notes.md": "private\n"},
+        "GitLab: contribution folded in with private notes",
+    )
+    assert contribution  # the GitHub-side commit stays "un-backported" by patch id
+
+    assert _run_main(repo, monkeypatch, "--dry-run") == 0
+    out = capsys.readouterr().out
+    assert "up to date" in out
+    assert "REFUSED" not in out
