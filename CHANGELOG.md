@@ -74,6 +74,10 @@ This project follows repository release policy enforced by `repo-release-tools`.
 - **PRs that change the review workflow get a red light.** Claude cannot run
   on them (the action only runs the default branch's workflow), so they were
   passing unreviewed; they now need a maintainer's `/claude-override`.
+- **The review gate status is actually set.** GitHub rejects 4-byte Unicode
+  in commit-status descriptions (HTTP 422), so every red/orange/yellow/green
+  status with an emoji failed and the gate stayed "pending". Status texts now
+  read RED/ORANGE/YELLOW/GREEN; the PR comment keeps the emoji.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status

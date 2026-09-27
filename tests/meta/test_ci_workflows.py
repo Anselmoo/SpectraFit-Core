@@ -148,3 +148,13 @@ def test_workflow_changing_prs_get_a_red_gate() -> None:
     not_run = not_run[: not_run.index("sys.exit(0)")]
     assert 'gate("failure"' in not_run
     assert "/claude-override" in not_run
+
+
+def test_status_descriptions_carry_no_emoji() -> None:
+    """GitHub rejects 4-byte Unicode in commit-status descriptions (HTTP 422)."""
+    import re
+
+    text = (_WORKFLOWS / "claude-code-review.yml").read_text()
+    for line in text.splitlines():
+        if "description=" in line or 'gate("' in line:
+            assert not re.search(r"[\U00010000-\U0010FFFF]", line), line.strip()

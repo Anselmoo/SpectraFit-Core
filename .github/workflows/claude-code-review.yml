@@ -242,6 +242,10 @@ jobs:
 
 
           def gate(state, description):
+              # Commit-status descriptions reject 4-byte Unicode (HTTP 422
+              # "Description doesn't accept 4-byte Unicode"): no emoji here,
+              # the light is spelled out; the PR comment keeps the emoji.
+              description = "".join(ch for ch in description if ord(ch) <= 0xFFFF).strip()
               call("POST", f"{api}/statuses/{sha}", {
                   "state": state, "context": "claude-review-gate",
                   "description": description[:140], "target_url": os.environ["RUN_URL"],
@@ -271,7 +275,7 @@ jobs:
                       "billed and nothing reviewed. A maintainer must review it by hand and "
                       "override with `/claude-override <reason>`."
                   )
-                  gate("failure", "🔴 review workflow changed: manual review + /claude-override needed")
+                  gate("failure", "RED review workflow changed: manual review + /claude-override needed")
                   summary_file.write(f"## 🔴 Claude review report\n\n{note}\n")
                   print(f"::warning::{note}")
                   sys.exit(0)
@@ -339,7 +343,7 @@ jobs:
               except urllib.error.HTTPError as exc:
                   print(f"::warning::inline comments rejected ({exc.code}); findings are in the sticky comment")
 
-          gate("failure" if must else "success", f"{light} {word}: {len(must)} must, {len(should)} should, {len(could)} could")
+          gate("failure" if must else "success", f"{word.upper()}: {len(must)} must, {len(should)} should, {len(could)} could")
           summary_file.write(body.replace(MARKER, "") + "\n")
 
       - name: Upload report transcript
@@ -373,9 +377,9 @@ jobs:
           ACTOR: ${{ github.actor }}
         run: |
           if [ "$HEAD_REF" = "sync/gitlab" ] || [ "$ACTOR" = "dependabot[bot]" ]; then
-            state=success; description="🟢 skipped: sync or Dependabot PR"
+            state=success; description="GREEN skipped: sync or Dependabot PR"
           else
-            state=failure; description="🔴 external author: a maintainer must /claude-override"
+            state=failure; description="RED external author: a maintainer must /claude-override"
           fi
           gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
             -f state="$state" -f context=claude-review-gate -f description="$description"
@@ -410,5 +414,5 @@ jobs:
           fi
           sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq .headRefOid)
           gh api -X POST "repos/$REPO/statuses/$sha" -f state=success -f context=claude-review-gate \
-            -f description="$(printf '🟢 overridden by @%s: %s' "$COMMENTER" "$reason" | cut -c1-140)"
+            -f description="$(printf 'GREEN overridden by @%s: %s' "$COMMENTER" "$reason" | tr -cd '\11\12\15\40-\176' | cut -c1-140)"
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "🟢 Claude review gate overridden for \`${sha:0:8}\` by @$COMMENTER: $reason"
