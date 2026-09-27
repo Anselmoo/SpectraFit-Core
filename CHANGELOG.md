@@ -86,6 +86,16 @@ This project follows repository release policy enforced by `repo-release-tools`.
   used the package spelling `spectrafit-core` as the project name.
 - **Shorter README benchmark section.** The benchmark overview and the
   contract paragraph are a short list now; content and links unchanged.
+- **GitHub Actions bumped to their current majors, still SHA-pinned.**
+  `checkout` v4→v7, `setup-python` v5→v7, `setup-uv` v4→v10, `cache` v4→v6,
+  `upload-/download-artifact` v4→v7/v8, `setup-node` v4→v7, `github-script`
+  v7→v9, `configure-pages` v5→v6, `upload-pages-artifact` v3→v5 (now pinned
+  with `include-hidden-files: true` to keep its pre-v4 "include everything"
+  behaviour), `deploy-pages` v4→v5, `softprops/action-gh-release` v2→v3, and
+  `anchore/sbom-action`/`pypa/gh-action-pypi-publish`/`anthropics/claude-code-action`
+  to their latest same-major commit. `dtolnay/rust-toolchain@stable` and
+  `taiki-e/install-action` (pinned in lockstep with `Dockerfile.ci`'s
+  `LLVM_COV_VERSION`, per its own comment) are unchanged by design.
 
 - **GitHub contributor PRs are squash-merged.** The mirror allows squash
   merges only (repository setting and the `main` ruleset), so each PR is one
