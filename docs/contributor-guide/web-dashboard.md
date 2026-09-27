@@ -41,6 +41,13 @@ npx vitest run           # or: npm run test
 gate; there is also a Playwright e2e suite driven from the repo root via
 `uv run poe web_e2e` (needs both the API and Vite dev server up).
 
+Two TypeScript packages are installed on purpose. The type-check runs the
+TypeScript 7 native compiler, installed under the alias `@typescript/native`
+and called by path from the `typecheck` script. The plain `typescript` package
+stays on 5.x because `openapi-typescript` builds `src/openapi.gen.ts` with the
+TypeScript JavaScript API, which TypeScript 7 no longer ships, and declares a
+`typescript@^5.x` peer.
+
 ## Regenerating the OpenAPI contract
 
 The TypeScript types in `src/openapi.gen.ts` are generated from the live

@@ -39,7 +39,7 @@ ARG LYCHEE_VERSION=v0.24.2
 # lychee-x86_64-unknown-linux-musl.tar.gz for this tag.
 ARG LYCHEE_SHA256=73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5
 ARG RUST_VERSION=1.96.0
-ARG PLAYWRIGHT_VERSION=1.60.0
+ARG PLAYWRIGHT_VERSION=1.63.0
 
 FROM nikolaik/python-nodejs:python3.13-nodejs22-bookworm
 
@@ -70,7 +70,7 @@ RUN apt-get update -qq && \
 #     install-deps` resolves the exact apt set for the installed Playwright
 #     version, so we never hand-maintain the libnspr4/libnss3/libatk list. We
 #     pin the Playwright major to match web/package.json (@playwright/test
-#     ^1.60.0) so this layer's content stays deterministic across rebuilds
+#     ^1.63.0) so this layer's content stays deterministic across rebuilds
 #     (same rationale as the pinned RUST_VERSION below). `--with-deps` here
 #     would also download the browser binary into root's cache; we only need
 #     the system libs at image-build time, so `install-deps` is the lean

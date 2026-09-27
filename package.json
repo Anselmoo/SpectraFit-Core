@@ -6,14 +6,14 @@
         "render:report": "tsx frontend/render_report.tsx"
     },
     "dependencies": {
-        "react": "^18.3.1",
-        "react-dom": "^18.3.1"
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0"
     },
     "devDependencies": {
-        "@types/react": "^18.3.20",
-        "@types/react-dom": "^18.3.7",
-        "@types/node": "^22.15.29",
-        "tsx": "^4.19.4",
-        "typescript": "^5.8.3"
+        "@types/node": "^26.6.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "tsx": "^4.23.15",
+        "typescript": "^7.0.2"
     }
 }

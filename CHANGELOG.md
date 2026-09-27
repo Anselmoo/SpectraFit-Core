@@ -66,6 +66,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Web toolchain on React 19 and TypeScript 7.** The dashboard (`web/`) and the
+  root tooling package move to React 19, the TypeScript 7 native compiler for
+  `npm run typecheck`, Vitest 5, `@vitejs/plugin-react` 6, KaTeX 0.18 (which
+  ships its own types, so `@types/katex` is gone) and current Vite, Biome,
+  Playwright and Testing Library releases. `openapi-typescript` still needs the
+  TypeScript JavaScript API, so the plain `typescript` package stays on 5.9 for
+  contract codegen. `npm audit` reports no vulnerabilities in either lockfile.
 - **Docs name the project SpectraFit-Core in prose.** The architecture page
   used the package spelling `spectrafit-core` as the project name.
 - **Shorter README benchmark section.** The benchmark overview and the
