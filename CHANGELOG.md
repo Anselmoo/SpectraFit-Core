@@ -78,6 +78,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
   in commit-status descriptions (HTTP 422), so every red/orange/yellow/green
   status with an emoji failed and the gate stayed "pending". Status texts now
   read RED/ORANGE/YELLOW/GREEN; the PR comment keeps the emoji.
+- **Readable review comments.** Findings are numbered sections with a link to
+  the exact file line at the reviewed commit, the problem and a separate
+  **Do:**; Claude is asked for Markdown code formatting; a count table heads
+  the comment; "what was checked" folds into a list; and a collapsible
+  "Prompt for Claude Code" carries every must/should item ready to paste.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status

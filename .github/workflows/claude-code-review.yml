@@ -197,8 +197,11 @@ jobs:
             `line` must be a line number in the new version of a file changed by this PR.
             Give `suggestion` only when replacing that single line fixes the issue completely.
             `checked` lists what you actually verified (e.g. tests, CLAUDE.md rules, PyO3
-            boundary, changelog). Do not post anything yourself; answer only with the
-            structured output.
+            boundary, changelog), one short item each.
+            Write every text field in GitHub Markdown: wrap identifiers, file names, config
+            keys and commands in backticks; put multi-line code in fenced code blocks; keep
+            `issue` to the problem and its consequence, and `action` to what to change.
+            Do not post anything yourself; answer only with the structured output.
           claude_args: |
             --model claude-sonnet-5
             --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
@@ -214,6 +217,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: python
         run: |
@@ -295,26 +299,64 @@ jobs:
               light, word = "🟢", "green"
 
 
-          def item(f):
-              return f"- [ ] `{f['path']}:{f['line']}` — {f['issue']}  \n  → **Do:** {f['action']}"
+          repo_url = f"https://github.com/{os.environ['REPO']}"
+
+
+          def ref(f):
+              return f"[`{f['path']}:{f['line']}`]({repo_url}/blob/{sha}/{f['path']}#L{f['line']})"
+
+
+          def section(title, icon, findings, start):
+              out = ["", f"### {icon} {title}"]
+              for n, f in enumerate(findings, start):
+                  out += ["", f"**{n}. {ref(f)}**", "", f["issue"], "", f"**Do:** {f['action']}"]
+              return out
 
 
           lines = [
               MARKER,
-              f"## {light} Claude review — {len(must)} must · {len(should)} should · {len(could)} could",
+              f"## {light} Claude review: {word}",
+              "",
+              "| 🔴 Must | 🟠 Should | 🟡 Could |",
+              "|:---:|:---:|:---:|",
+              f"| {len(must)} | {len(should)} | {len(could)} |",
               "",
               report["summary"],
           ]
-          if must:
-              lines += ["", "### 🔴 Must fix (blocking)", *[item(f) for f in must]]
-          if should:
-              lines += ["", "### 🟠 Should", *[item(f) for f in should]]
-          if could:
-              lines += ["", "### 🟡 Could", *[item(f) for f in could]]
+          n = 1
+          for title, icon, findings in (("Must fix (blocking)", "🔴", must), ("Should", "🟠", should), ("Could", "🟡", could)):
+              if findings:
+                  lines += section(title, icon, findings, n)
+                  n += len(findings)
           if dont:
-              lines += ["", "### Don't / keep as is", *[f"- {d['what']} — {d['why']}" for d in dont]]
+              lines += ["", "### Don't / keep as is", *[f"- **{d['what']}**: {d['why']}" for d in dont]]
           if report["checked"]:
-              lines += ["", "### Checked", " · ".join(report["checked"])]
+              lines += ["", "<details><summary>What was checked</summary>", "", *[f"- {c}" for c in report["checked"]], "", "</details>"]
+
+          actionable = must + should
+          if actionable:
+              prompt = [
+                  f"Fix the Claude review findings on PR #{pr} of {os.environ['REPO']} "
+                  f"(branch {os.environ.get('HEAD_REF', '')}, reviewed at {sha[:8]}).",
+                  "Change only what each item asks for, keep the repository rules in CLAUDE.md, "
+                  "run the affected tests, then commit and push to the PR branch.",
+                  "",
+              ]
+              for n, f in enumerate(actionable, 1):
+                  level = "MUST" if f in must else "SHOULD"
+                  prompt += [f"{n}. [{level}] {f['path']}:{f['line']}", f"   Problem: {f['issue']}", f"   Do: {f['action']}", ""]
+              fence = "````"
+              lines += [
+                  "",
+                  "<details><summary>🤖 Prompt for Claude Code</summary>",
+                  "",
+                  f"{fence}text",
+                  *[line.rstrip() for line in prompt],
+                  fence,
+                  "",
+                  "</details>",
+              ]
+
           lines += [
               "",
               f"<sub>{sha[:8]} · models: {', '.join(models) or 'n/a'} · "
@@ -323,6 +365,8 @@ jobs:
               + "</sub>",
           ]
           body = "\n".join(lines)
+          if len(body) > 60000:
+              body = body[:60000] + "\n\n…(truncated; full report in the run summary)"
 
           comments = call("GET", f"{api}/issues/{pr}/comments?per_page=100") or []
           mine = [c for c in comments if MARKER in (c.get("body") or "")]
