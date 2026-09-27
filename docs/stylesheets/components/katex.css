@@ -1,0 +1,30 @@
+/*
+ * KaTeX math typography.
+ *
+ * Design notes:
+ *   1. KaTeX's own math glyph font gives correct kerning/shapes for real
+ *      math, but table scanning in reference/models/ needs no visual
+ *      disruption. Keep KaTeX's math font for the glyphs themselves, but
+ *      size-match to the surrounding text via `font-size: inherit` rather
+ *      than KaTeX's own (larger) default.
+ *   2. KaTeX's shipped default styling hardcodes black ink, which reads
+ *      poorly on [data-md-color-scheme=slate]. `color: inherit` fixes this,
+ *      relying on KaTeX's own CSS using `currentColor` for strokes/borders
+ *      (radicals, fraction bars), so those follow along automatically.
+ *   3. Every formula in reference/models/ is an inline, same-weight table
+ *      citizen (all 34 rows, no display/block equations), but block math
+ *      (`$$...$$`) should stay available for other, future pages.
+ *      arithmatex's generic mode supports both at the config level;
+ *      reference/models/index.md itself only ever uses inline math.
+ */
+.katex {
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Table cells (every formula in reference/models/index.md) shouldn't grow
+   taller than the surrounding row just because KaTeX's own line-height
+   metrics differ slightly from the body font's. */
+.md-typeset table .katex {
+  line-height: 1.2;
+}

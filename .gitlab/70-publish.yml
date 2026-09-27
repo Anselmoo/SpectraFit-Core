@@ -1,0 +1,255 @@
+# GitLab -> GitHub sync. Builds ONE append-only, anonymous bot commit — GitLab
+# `main`'s tree reduced to the public publish scope
+# (scripts/publish_exclusions.py), parented on the already-published GitHub
+# `main` — pushes it to `sync/gitlab`, opens (or updates) a PR for it so the
+# mirror's CI runs, and once the ruleset's required checks pass on that commit
+# fast-forwards `main` to it, via scripts/publish_sync.py. Both pushes go
+# through the `github-push` SSH remote (deploy key = the rulesets' only bypass
+# actor); `GITHUB_TOKEN` only fetches and calls the REST API. Never a GitHub
+# squash merge: that would re-author the commit to the token's owner and set
+# the committer to GitHub (see publish_sync.py's module docstring). Three jobs:
+#
+# - publish:github — the full-pipeline lane. Keeps default stage-ordering (no
+#   `needs:` override), so it only STARTS after every earlier stage
+#   (setup/lint/test/coverage/build/pages) has succeeded. Runs automatically
+#   (`when: on_success`, GitLab's default — no explicit `when:` needed) on
+#   every pipeline on `main` (merges, direct pushes, schedules, and manual
+#   "Run pipeline" all count — not merges exclusively): a green full pipeline
+#   is exactly the trust bar this lane already required before a human had
+#   to click it, so automating removes toil, not safety. `allow_failure:
+#   true` because a failed sync (expired GITHUB_TOKEN, GitHub outage/
+#   rate-limit, no PR permissions) is a mirror-availability problem, not a
+#   main-branch code-health problem — `on_success` jobs default to
+#   `allow_failure: false`, which would otherwise redden main's pipeline for
+#   a purely GitHub-side failure. `resource_group` serializes the job across
+#   overlapping pipelines: `publish_sync.py --force`-pushes `sync/gitlab`
+#   unconditionally, so without serialization two pipelines racing on
+#   consecutive commits could complete out of order and leave that branch
+#   pointing at an older sync than what was already built.
+# - publish:github:fast — the fast lane.
+#   `needs: []` decouples it from stage-ordering entirely, so it's clickable
+#   as soon as the pipeline is created. Stays `when: manual` — it exists
+#   specifically to skip waiting for the full pipeline on `.github/**`-only
+#   changes, so it should never be the thing silently firing automatically;
+#   a human still chooses to take the fast path. Safe only because it
+#   re-verifies, via `scripts/fast_lane_gate.py`, that the diff since the
+#   last GitHub publish touches nothing but `.github/**` — a class of change
+#   GitLab CI never executes anyway, so the full pipeline buys zero extra
+#   safety for it. The gate's logic is unchanged by the PR-based sync: it
+#   still drops non-published paths from a plain `git diff`
+#   between the published GitHub `main` SHA and GitLab `HEAD`, which is exactly
+#   as meaningful whether the eventual GitHub commit is an orphan snapshot or
+#   (now) an append-only sync commit with a real parent — the gate never looks
+#   at parentage, only at which paths changed. Shares the same `resource_group`
+#   as `publish:github` so a manually-triggered fast-lane sync can't race a
+#   concurrently auto-firing full-lane sync either. Even on the fast lane, the
+#   PR this produces still waits on GitHub's own `pull_request`-triggered CI
+#   (`.github/workflows/ci.yml`) before it is landed — "fast" only
+#   means "don't wait for GitLab's full pipeline first", not "skip review".
+# - publish:github:reset — `when: manual`, kept only as an emergency
+#   re-baseline: the original history-discarding orphan-snapshot publish
+#   (`scripts/publish_snapshot.sh`, unchanged), for the rare case the
+#   append-only sync history itself needs to be thrown away and restarted
+#   from a single fresh commit. Never runs automatically. Still does its own
+#   stale-Actions-run purge (`scripts/purge_github_actions_runs.py`) — that
+#   purge only makes sense against a just-discarded history, which is exactly
+#   what this job (and only this job) does; the normal sync path leaves prior
+#   Actions-run history alone since it isn't discarding anything.
+#
+# dependencies: [] is required on all three jobs despite `publish:github`
+# having no `needs:` override — without it, GitLab implicitly tries to
+# download artifacts from every prior job (a real
+# missing_dependency_failure otherwise): the
+# never-triggered optional `build:ci-image` (.pre stage, `when: manual`) has
+# no artifacts to fetch, which the scheduler treats as an unsatisfiable
+# dependency. `dependencies: []` opts out of artifact fetching entirely
+# (these jobs only need the git checkout) while `publish:github` still
+# preserves stage-ordering — unlike `needs: []`, which would also skip
+# waiting for earlier stages. `publish:github:fast` and `publish:github:reset`
+# use BOTH `needs: []` (skip stage-ordering) AND `dependencies: []` (skip
+# artifacts) — manual jobs with nothing to gain from waiting.
+#
+# Consequence: none of the three jobs has the `.venv` artifact from `setup`
+# available, so none can use `uv run` to resolve Python dependencies.
+# scripts/publish_sync.py is stdlib-only by design (argparse, subprocess,
+# tempfile, urllib, ...) specifically so `publish:github`/`publish:github:fast`
+# can invoke it with bare `python3` — see its module docstring.
+# `publish:github:fast` additionally does a targeted
+# `python3 -m pip install --quiet pyyaml` for fast_lane_gate.py's YAML
+# parsing; `publish:github:reset` keeps `purge_github_actions_runs.py`'s
+# stdlib-only `urllib` REST calls (via scripts/publish_snapshot.sh).
+#
+# Requires two CI/CD variables:
+#   GITHUB_TOKEN (masked + protected + hidden) — a GitHub fine-grained PAT
+#     scoped to the mirror repository only: "Contents: Read" (fetch of a
+#     private mirror), "Pull requests: Read and write" (PR create/update),
+#     "Checks: Read" + "Commit statuses: Read" (waiting on the required
+#     checks). `publish:github:reset` alone additionally needs "Contents: Read
+#     and write" (its force-push of `main`) and "Actions: Read and write" (the
+#     stale-run purge). Note that the sync PR is shown as opened by the
+#     token's owner; the COMMIT that lands never is.
+#   GITHUB_DEPLOY_KEY (type File, protected) — the private half of a
+#     write-enabled deploy key on the mirror, the one and only bypass actor on
+#     its rulesets. It is the identity behind every sync write (the
+#     `sync/gitlab` push and the fast-forward of `main`); no personal account
+#     can push to the mirror.
+#
+# CWE-522 hardening: GITHUB_TOKEN is never embedded in a remote URL or written
+# to `.git/config`. `publish:github`/`publish:github:fast` add the `github`
+# remote with a plain, tokenless HTTPS URL and export the
+# GIT_CONFIG_COUNT/KEY_0/VALUE_0 `http.extraheader` (git >=2.31), scoped to
+# `https://github.com/`, job-wide — every fetch needs it once the mirror is
+# private, including publish:github:fast's own `git fetch github main` before
+# publish_sync.py even starts. GitLab's File variable stores GITHUB_DEPLOY_KEY
+# WITHOUT a trailing newline (glab strips it), which OpenSSH can reject as
+# "invalid format", so both jobs copy it into DEPLOY_KEY_FILE (a mktemp'd
+# file with a trailing newline appended) before chmod'ing and using that
+# normalised copy — never the raw File-variable path — as the identity file.
+# GIT_SSH_COMMAND points ssh at DEPLOY_KEY_FILE with `IdentitiesOnly` and a
+# pinned `known_hosts` holding GitHub's published ed25519 host key
+# (https://api.github.com/meta, SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU)
+# with `StrictHostKeyChecking=yes` — never trust-on-first-use.
+#
+# `git remote add gitlab ...` only appears in `publish:github:reset`: it
+# exists so rrt's `primary_remote = "gitlab"` safety guard
+# (pyproject.toml [tool.rrt]) actually resolves — a fresh CI checkout
+# otherwise has no remote literally named `gitlab`, which would make the
+# guard silently no-op instead of protecting anything. `publish:github` and
+# `publish:github:fast` never invoke rrt, so they don't need it.
+#
+# Publish scope (scripts/publish_exclusions.py, consulted by both
+# scripts/publish_sync.py and scripts/fast_lane_gate.py) is the single source
+# of truth for what reaches the public mirror: an include list, so anything
+# not named there stays private by default.
+#
+# One `- |` per command, NOT one block for all of them: GitLab aborts the job
+# on the first failing list ITEM, so merging several commands into a single
+# block scalar would let a mid-sequence failure run on to the next command
+# unless the block also carried `set -e`. Per-entry blocks keep that abort
+# semantics exactly; the `GIT_CONFIG_VALUE_0=...` line (now in all three jobs)
+# is the one this convention was introduced for. The auth + deploy-key setup
+# entries in `publish:github` and `publish:github:fast` are deliberately
+# duplicated inline rather than shared through a YAML anchor: an anchored list
+# would nest, and scripts/shellcheck_ci.py only checks string entries.
+# tests/meta/test_publish_jobs_wiring.py pins the two copies identical.
+
+publish:github:
+  stage: publish
+  allow_failure: true
+  resource_group: publish_github
+  dependencies: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - |
+      git remote add github "https://github.com/Anselmoo/SpectraFit-Core.git" 2>/dev/null || true
+    - |
+      export GIT_CONFIG_COUNT=1
+    - |
+      export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+    - |
+      GIT_CONFIG_VALUE_0="Authorization: Basic $(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+    - |
+      export GIT_CONFIG_VALUE_0
+    - |
+      : "${GITHUB_DEPLOY_KEY:?GITHUB_DEPLOY_KEY (File variable, write-enabled deploy key) is not set}"
+    - |
+      command -v ssh >/dev/null || { echo "ERROR: ssh is missing from the CI image; the fast-forward landing needs it"; exit 1; }
+    - |
+      DEPLOY_KEY_FILE="$(mktemp)"
+    - |
+      { cat "$GITHUB_DEPLOY_KEY"; echo; } > "$DEPLOY_KEY_FILE"
+    - |
+      chmod 600 "$DEPLOY_KEY_FILE"
+    - |
+      GITHUB_KNOWN_HOSTS="$(mktemp)"
+    - |
+      printf '%s\n' "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$GITHUB_KNOWN_HOSTS"
+    - |
+      export GIT_SSH_COMMAND="ssh -i '${DEPLOY_KEY_FILE}' -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile='${GITHUB_KNOWN_HOSTS}'"
+    - |
+      git remote add github-push "git@github.com:Anselmoo/SpectraFit-Core.git" 2>/dev/null || true
+    - |
+      python3 scripts/publish_sync.py --remote github --branch main --sync-branch sync/gitlab --repo Anselmoo/SpectraFit-Core
+
+publish:github:fast:
+  stage: publish
+  when: manual
+  resource_group: publish_github
+  needs: []
+  dependencies: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - |
+      git remote add github "https://github.com/Anselmoo/SpectraFit-Core.git" 2>/dev/null || true
+    - |
+      export GIT_CONFIG_COUNT=1
+    - |
+      export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+    - |
+      GIT_CONFIG_VALUE_0="Authorization: Basic $(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+    - |
+      export GIT_CONFIG_VALUE_0
+    - |
+      : "${GITHUB_DEPLOY_KEY:?GITHUB_DEPLOY_KEY (File variable, write-enabled deploy key) is not set}"
+    - |
+      command -v ssh >/dev/null || { echo "ERROR: ssh is missing from the CI image; the fast-forward landing needs it"; exit 1; }
+    - |
+      DEPLOY_KEY_FILE="$(mktemp)"
+    - |
+      { cat "$GITHUB_DEPLOY_KEY"; echo; } > "$DEPLOY_KEY_FILE"
+    - |
+      chmod 600 "$DEPLOY_KEY_FILE"
+    - |
+      GITHUB_KNOWN_HOSTS="$(mktemp)"
+    - |
+      printf '%s\n' "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > "$GITHUB_KNOWN_HOSTS"
+    - |
+      export GIT_SSH_COMMAND="ssh -i '${DEPLOY_KEY_FILE}' -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile='${GITHUB_KNOWN_HOSTS}'"
+    - |
+      git remote add github-push "git@github.com:Anselmoo/SpectraFit-Core.git" 2>/dev/null || true
+    - |
+      git fetch github main
+    - |
+      GITHUB_SHA=$(git rev-parse github/main)
+    - |
+      echo "Diff-gating fast-lane sync against published GitHub main ($GITHUB_SHA)..."
+    - |
+      python3 -m pip install --quiet pyyaml
+    - |
+      python3 scripts/fast_lane_gate.py "$GITHUB_SHA" HEAD
+    - |
+      python3 scripts/publish_sync.py --remote github --branch main --sync-branch sync/gitlab --repo Anselmoo/SpectraFit-Core
+
+publish:github:reset:
+  stage: publish
+  when: manual
+  resource_group: publish_github
+  needs: []
+  dependencies: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    # CWE-522 hardening: GITHUB_TOKEN is injected via http.extraheader (env-based
+    # git config, never written to .git/config) instead of being embedded in the
+    # remote URL — scripts/publish_snapshot.sh (invoked below) applies the same
+    # pattern for the rest of the sequence; these three lines set it up.
+    - |
+      export GIT_CONFIG_COUNT=1
+    - |
+      export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+    # This is the line the `|` rule exists for: the shell colon in
+    # "Authorization: Basic" previously forced a single-quoted YAML scalar with
+    # every inner quote doubled (''%s'', ''\n''). As a block scalar the shell
+    # text is literal — no YAML quoting, no escaping. Declare-then-export is
+    # split across two entries (still one command each) so shellcheck doesn't
+    # flag SC2155 for masking `$(...)`'s exit status on the same line as export.
+    - |
+      GIT_CONFIG_VALUE_0="Authorization: Basic $(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+    - |
+      export GIT_CONFIG_VALUE_0
+    - |
+      chmod +x scripts/publish_snapshot.sh
+    - |
+      scripts/publish_snapshot.sh

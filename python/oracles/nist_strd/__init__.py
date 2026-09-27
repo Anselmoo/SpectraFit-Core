@@ -1,0 +1,53 @@
+"""NIST StRD fixtures for external V&V tests."""
+
+from __future__ import annotations
+
+from oracles.nist_strd import (
+    bennett5,
+    boxbod,
+    chwirut1,
+    chwirut2,
+    danwood,
+    eckerle4,
+    gauss1,
+    gauss2,
+    gauss3,
+    hahn1,
+    kirby2,
+    lanczos1,
+    lanczos2,
+    lanczos3,
+    mgh09,
+    mgh17,
+    misra1a,
+    misra1b,
+    rat42,
+    rat43,
+    roszman1,
+    thurber,
+)
+
+__all__ = [
+    "bennett5",
+    "boxbod",
+    "chwirut1",
+    "chwirut2",
+    "danwood",
+    "eckerle4",
+    "gauss1",
+    "gauss2",
+    "gauss3",
+    "hahn1",
+    "kirby2",
+    "lanczos1",
+    "lanczos2",
+    "lanczos3",
+    "mgh09",
+    "mgh17",
+    "misra1a",
+    "misra1b",
+    "rat42",
+    "rat43",
+    "roszman1",
+    "thurber",
+]

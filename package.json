@@ -1,0 +1,19 @@
+{
+    "name": "spectrafit-core-frontend",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "render:report": "tsx frontend/render_report.tsx"
+    },
+    "dependencies": {
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.20",
+        "@types/react-dom": "^18.3.7",
+        "@types/node": "^22.15.29",
+        "tsx": "^4.19.4",
+        "typescript": "^5.8.3"
+    }
+}

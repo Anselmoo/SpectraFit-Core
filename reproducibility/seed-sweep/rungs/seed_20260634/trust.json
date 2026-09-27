@@ -1,0 +1,571 @@
+{
+  "schema_version": "1.0",
+  "run_id": "2026-08-16_run_072",
+  "block": {
+    "rung": 2,
+    "wires": [
+      {
+        "wire_id": "W1",
+        "name": "synth_invariants",
+        "status": "pass",
+        "evidence": "hypothesis-driven invariants on synth._g and noise moments",
+        "details": {}
+      },
+      {
+        "wire_id": "W2a",
+        "name": "metric_identity",
+        "status": "pass",
+        "evidence": "r²/rmse/reduced-χ² recomputed from full arrays; max |Δ|=0.00e+00 vs stored",
+        "details": {
+          "max_abs_delta": 0.0
+        }
+      },
+      {
+        "wire_id": "W2b",
+        "name": "coverage",
+        "status": "pass",
+        "evidence": "mean 1σ coverage over MC ensemble = 0.69 (target ≈0.68)",
+        "details": {
+          "mean_coverage": 0.6916666666666668
+        }
+      },
+      {
+        "wire_id": "W2c",
+        "name": "jacobian_kappa",
+        "status": "pass",
+        "evidence": "κ(J) finite for 1 spectrafit (subject) entries; 2/6 oracle-backend entries absent (lmfit/jax do not expose κ — disclosed per-backend limitation, not a gap)",
+        "details": {
+          "n_subject_finite": 1,
+          "n_absent_oracles": 2,
+          "n_absent": 2
+        }
+      },
+      {
+        "wire_id": "W2d",
+        "name": "solver_output_oracle",
+        "status": "pass",
+        "evidence": "fitted params + covariance σ agree with scipy.optimize.least_squares",
+        "details": {}
+      },
+      {
+        "wire_id": "W3",
+        "name": "results_roundtrip",
+        "status": "pass",
+        "evidence": "results.json parses + re-emits to canonical form bytewise",
+        "details": {}
+      },
+      {
+        "wire_id": "W4",
+        "name": "api_schema",
+        "status": "pass",
+        "evidence": "every /api response validates against BenchReport contract",
+        "details": {}
+      },
+      {
+        "wire_id": "W5",
+        "name": "render_fidelity",
+        "status": "skipped",
+        "evidence": "Playwright JSON-vs-render differential (runs in CI only)",
+        "details": {}
+      },
+      {
+        "wire_id": "W6",
+        "name": "gate_state_parity",
+        "status": "pass",
+        "evidence": "gate_state is a closed Literal + manifest carries it; vitest source-scan green",
+        "details": {}
+      },
+      {
+        "wire_id": "W7",
+        "name": "inference_validity",
+        "status": "pass",
+        "evidence": "seeded bootstrap CI reproduces bitwise (deterministic inference)",
+        "details": {}
+      },
+      {
+        "wire_id": "W8",
+        "name": "nist_certified_validation",
+        "status": "pass",
+        "evidence": "Gauss1/Gauss2/Gauss3/Lanczos1/BoxBOD/Misra1a/Misra1b/MGH17/Bennett5/MGH09 reproduce NIST certified values to ≥4 sig figs (min 6.5)",
+        "details": {
+          "n_datasets": 10,
+          "min_sig_figs": 6.498360675661228,
+          "threshold_sig_figs": 4.0
+        }
+      },
+      {
+        "wire_id": "W9",
+        "name": "nested_adequacy",
+        "status": "pass",
+        "evidence": "BIC selected order 3 == true order 3 (BIC recovered); AIC selected 4 (over-selected); LRT p=1.62e-164",
+        "details": {
+          "true_order": 3,
+          "selected_order_bic": 3,
+          "selected_order_aic": 4,
+          "recovered_true_order_bic": true,
+          "recovered_true_order_aic": false,
+          "lrt_p": 1.6228679301039968e-164
+        }
+      },
+      {
+        "wire_id": "W10",
+        "name": "sigma_calibration",
+        "status": "fail",
+        "evidence": "σ-calibration FAIL (equivalence): coverage=0.694 (nominal=0.6827); CI=[0.5580, 0.8100] outside ±0.03 band [0.6527, 0.7127]; strict binomial p=0.9 (> α); KS p=0.819 (secondary diagnostic)",
+        "details": {
+          "n": 72,
+          "coverage": 0.6944444444444444,
+          "nominal": 0.6827,
+          "equivalence_margin": 0.03,
+          "band_lo": 0.6527,
+          "band_hi": 0.7127,
+          "coverage_ci_lo": 0.5580344963724065,
+          "coverage_ci_hi": 0.8100350617915145,
+          "binomial_p": 0.8996601419533877,
+          "ks_p": 0.819132648524538,
+          "alpha": 0.025
+        }
+      },
+      {
+        "wire_id": "W11",
+        "name": "speed_inference",
+        "status": "skipped",
+        "evidence": "speed-inference record absent or skipped; geomean speedup CI not asserted (no pass-by-absence)",
+        "details": {}
+      },
+      {
+        "wire_id": "S1",
+        "name": "hook-reference-liveness",
+        "status": "pass",
+        "evidence": "all source-of-truth paths cited in 27 hooks exist on the tree",
+        "details": {
+          "scanned": 27
+        }
+      },
+      {
+        "wire_id": "S2",
+        "name": "anchor-trigger-liveness",
+        "status": "pass",
+        "evidence": "all 17 hook-anchors reachable from a real trigger",
+        "details": {
+          "anchors": 17
+        }
+      },
+      {
+        "wire_id": "S3",
+        "name": "doc-owner-truth",
+        "status": "skipped",
+        "evidence": "no 'BenchReport contract' claim found",
+        "details": {}
+      },
+      {
+        "wire_id": "S4",
+        "name": "ffi-stub-completeness",
+        "status": "pass",
+        "evidence": "_core.pyi declares exactly the 6 runtime PyO3 functions",
+        "details": {
+          "runtime": 6
+        }
+      },
+      {
+        "wire_id": "S5",
+        "name": "model-list-parity",
+        "status": "pass",
+        "evidence": "Rust (34) ≡ Python ModelType ≡ all 31 spectrafit_type registrations resolve",
+        "details": {
+          "rust": 34,
+          "python": 34,
+          "registered": 31
+        }
+      }
+    ],
+    "n_claims_audited": 21,
+    "n_claims_total": 21,
+    "nist_validation": {
+      "threshold_sig_figs": 4.0,
+      "datasets": [
+        {
+          "name": "Gauss1",
+          "model": "b1·exp(-b2·x) + b3·exp(-(x-b4)²/b5²) + b6·exp(-(x-b7)²/b8²)",
+          "n_params": 8,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 98.778210871,
+              "fitted": 98.77821087043324,
+              "sig_figs_agreed": 11.241264027085258
+            },
+            {
+              "name": "b2",
+              "certified": 0.010497276517,
+              "fitted": 0.010497276516836232,
+              "sig_figs_agreed": 10.806846784736251
+            },
+            {
+              "name": "b3",
+              "certified": 100.48990633,
+              "fitted": 100.48990632906707,
+              "sig_figs_agreed": 11.032274126873533
+            },
+            {
+              "name": "b4",
+              "certified": 67.481111276,
+              "fitted": 67.48111127632197,
+              "sig_figs_agreed": 11.321359621803662
+            },
+            {
+              "name": "b5",
+              "certified": 23.12977336,
+              "fitted": 23.12977335939149,
+              "sig_figs_agreed": 10.579901979312375
+            },
+            {
+              "name": "b6",
+              "certified": 71.994503004,
+              "fitted": 71.99450300321861,
+              "sig_figs_agreed": 10.96443490916517
+            },
+            {
+              "name": "b7",
+              "certified": 178.99805021,
+              "fitted": 178.99805020735693,
+              "sig_figs_agreed": 10.830738506441232
+            },
+            {
+              "name": "b8",
+              "certified": 18.389389025,
+              "fitted": 18.389389025168796,
+              "sig_figs_agreed": 11.037203779939777
+            }
+          ],
+          "min_sig_figs": 10.579901979312375,
+          "passed": true
+        },
+        {
+          "name": "Gauss2",
+          "model": "b1·exp(-b2·x) + b3·exp(-(x-b4)²/b5²) + b6·exp(-(x-b7)²/b8²)",
+          "n_params": 8,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 99.018328406,
+              "fitted": 99.01832840612823,
+              "sig_figs_agreed": 11.887696304348355
+            },
+            {
+              "name": "b2",
+              "certified": 0.010994945399,
+              "fitted": 0.01099494539910598,
+              "sig_figs_agreed": 11.01597136927977
+            },
+            {
+              "name": "b3",
+              "certified": 101.88022528,
+              "fitted": 101.88022527354487,
+              "sig_figs_agreed": 10.198184321976377
+            },
+            {
+              "name": "b4",
+              "certified": 107.03095519,
+              "fitted": 107.03095518727108,
+              "sig_figs_agreed": 10.593517858310008
+            },
+            {
+              "name": "b5",
+              "certified": 23.578584029,
+              "fitted": 23.578584031857186,
+              "sig_figs_agreed": 9.916579403214724
+            },
+            {
+              "name": "b6",
+              "certified": 72.045589471,
+              "fitted": 72.04558946996141,
+              "sig_figs_agreed": 10.841164890675937
+            },
+            {
+              "name": "b7",
+              "certified": 153.27010194,
+              "fitted": 153.2701019437375,
+              "sig_figs_agreed": 10.612874893115777
+            },
+            {
+              "name": "b8",
+              "certified": 19.525972636,
+              "fitted": 19.52597263432144,
+              "sig_figs_agreed": 10.0656763921061
+            }
+          ],
+          "min_sig_figs": 9.916579403214724,
+          "passed": true
+        },
+        {
+          "name": "Gauss3",
+          "model": "b1·exp(-b2·x) + b3·exp(-(x-b4)²/b5²) + b6·exp(-(x-b7)²/b8²)",
+          "n_params": 8,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 98.94036897,
+              "fitted": 98.94036896916528,
+              "sig_figs_agreed": 11.073834171227118
+            },
+            {
+              "name": "b2",
+              "certified": 0.010945879335,
+              "fitted": 0.010945879331793189,
+              "sig_figs_agreed": 9.5331772168075
+            },
+            {
+              "name": "b3",
+              "certified": 100.69553078,
+              "fitted": 100.6955307609992,
+              "sig_figs_agreed": 9.7242384499104
+            },
+            {
+              "name": "b4",
+              "certified": 111.63619459,
+              "fitted": 111.6361945678576,
+              "sig_figs_agreed": 9.702580298881852
+            },
+            {
+              "name": "b5",
+              "certified": 23.300500029,
+              "fitted": 23.300499997857816,
+              "sig_figs_agreed": 8.874016200308361
+            },
+            {
+              "name": "b6",
+              "certified": 73.705031418,
+              "fitted": 73.7050314963158,
+              "sig_figs_agreed": 8.973647786053883
+            },
+            {
+              "name": "b7",
+              "certified": 147.76164251,
+              "fitted": 147.76164248046413,
+              "sig_figs_agreed": 9.6992119589538
+            },
+            {
+              "name": "b8",
+              "certified": 19.66822123,
+              "fitted": 19.668221244364936,
+              "sig_figs_agreed": 9.136461392005664
+            }
+          ],
+          "min_sig_figs": 8.874016200308361,
+          "passed": true
+        },
+        {
+          "name": "Lanczos1",
+          "model": "b1·exp(-b2·x) + b3·exp(-b4·x) + b5·exp(-b6·x)",
+          "n_params": 6,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 0.095100000027,
+              "fitted": 0.09510000019716836,
+              "sig_figs_agreed": 8.747301725058655
+            },
+            {
+              "name": "b2",
+              "certified": 1.0000000001,
+              "fitted": 1.0000000009985581,
+              "sig_figs_agreed": 9.046453828459152
+            },
+            {
+              "name": "b3",
+              "certified": 0.86070000013,
+              "fitted": 0.860700000565924,
+              "sig_figs_agreed": 9.29544105933999
+            },
+            {
+              "name": "b4",
+              "certified": 3.0000000002,
+              "fitted": 3.000000001300188,
+              "sig_figs_agreed": 9.435654374446047
+            },
+            {
+              "name": "b5",
+              "certified": 1.5575999998,
+              "fitted": 1.5575999992370408,
+              "sig_figs_agreed": 9.441978990761442
+            },
+            {
+              "name": "b6",
+              "certified": 5.0000000001,
+              "fitted": 5.000000000463556,
+              "sig_figs_agreed": 10.138398334055166
+            }
+          ],
+          "min_sig_figs": 8.747301725058655,
+          "passed": true
+        },
+        {
+          "name": "BoxBOD",
+          "model": "b1·(1−exp(−b2·x))",
+          "n_params": 2,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 213.80940889,
+              "fitted": 213.80941222083683,
+              "sig_figs_agreed": 7.807473452467194
+            },
+            {
+              "name": "b2",
+              "certified": 0.54723748542,
+              "fitted": 0.5472374467993554,
+              "sig_figs_agreed": 7.151356320830165
+            }
+          ],
+          "min_sig_figs": 7.151356320830165,
+          "passed": true
+        },
+        {
+          "name": "Misra1a",
+          "model": "b1·(1−exp(−b2·x))",
+          "n_params": 2,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 238.94212918,
+              "fitted": 238.94212918523897,
+              "sig_figs_agreed": 10.659046511103313
+            },
+            {
+              "name": "b2",
+              "certified": 0.00055015643181,
+              "fitted": 0.0005501564317887804,
+              "sig_figs_agreed": 10.41374959027353
+            }
+          ],
+          "min_sig_figs": 10.41374959027353,
+          "passed": true
+        },
+        {
+          "name": "Misra1b",
+          "model": "b1·(1−(1+b2·x/2)^(−2))",
+          "n_params": 2,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 337.99746163,
+              "fitted": 337.9974643185938,
+              "sig_figs_agreed": 8.09938823975326
+            },
+            {
+              "name": "b2",
+              "certified": 0.00039039091287,
+              "fitted": 0.0003903909092531734,
+              "sig_figs_agreed": 8.033172016202009
+            }
+          ],
+          "min_sig_figs": 8.033172016202009,
+          "passed": true
+        },
+        {
+          "name": "MGH17",
+          "model": "b1 + b2·exp(−b4·x) + b3·exp(−b5·x)",
+          "n_params": 5,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 0.37541005211,
+              "fitted": 0.37541005207188444,
+              "sig_figs_agreed": 9.993403521069622
+            },
+            {
+              "name": "b2",
+              "certified": 1.9358469127,
+              "fitted": 1.9358469082446783,
+              "sig_figs_agreed": 8.637991945327594
+            },
+            {
+              "name": "b3",
+              "certified": -1.4646871366,
+              "fitted": -1.4646871321228472,
+              "sig_figs_agreed": 8.514742943993848
+            },
+            {
+              "name": "b4",
+              "certified": 0.01286753464,
+              "fitted": 0.012867534631174848,
+              "sig_figs_agreed": 9.163773131476393
+            },
+            {
+              "name": "b5",
+              "certified": 0.022122699662,
+              "fitted": 0.022122699680136082,
+              "sig_figs_agreed": 9.086294630791613
+            }
+          ],
+          "min_sig_figs": 8.514742943993848,
+          "passed": true
+        },
+        {
+          "name": "Bennett5",
+          "model": "b1·(b2+x)^(−1/b3)",
+          "n_params": 3,
+          "params": [
+            {
+              "name": "b1",
+              "certified": -2523.5058043,
+              "fitted": -2523.5057900801044,
+              "sig_figs_agreed": 8.249107901707966
+            },
+            {
+              "name": "b2",
+              "certified": 46.736564644,
+              "fitted": 46.73656458398646,
+              "sig_figs_agreed": 8.891407535624625
+            },
+            {
+              "name": "b3",
+              "certified": 0.93218483193,
+              "fitted": 0.9321848329033601,
+              "sig_figs_agreed": 8.981228510552485
+            }
+          ],
+          "min_sig_figs": 8.249107901707966,
+          "passed": true
+        },
+        {
+          "name": "MGH09",
+          "model": "b1·(x²+b2·x)/(x²+b3·x+b4)",
+          "n_params": 4,
+          "params": [
+            {
+              "name": "b1",
+              "certified": 0.19280693458,
+              "fitted": 0.1928069372696116,
+              "sig_figs_agreed": 7.855433082488254
+            },
+            {
+              "name": "b2",
+              "certified": 0.19128232873,
+              "fitted": 0.191282268012459,
+              "sig_figs_agreed": 6.498360675661228
+            },
+            {
+              "name": "b3",
+              "certified": 0.12305650693,
+              "fitted": 0.12305649621505164,
+              "sig_figs_agreed": 7.0601145007924435
+            },
+            {
+              "name": "b4",
+              "certified": 0.13606233068,
+              "fitted": 0.13606230217939894,
+              "sig_figs_agreed": 6.678883886622636
+            }
+          ],
+          "min_sig_figs": 6.498360675661228,
+          "passed": true
+        }
+      ],
+      "min_sig_figs": 6.498360675661228,
+      "passed": true,
+      "total_available": 27
+    }
+  }
+}

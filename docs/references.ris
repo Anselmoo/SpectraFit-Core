@@ -1,0 +1,352 @@
+TY  - JOUR
+ID  - ravel2005
+AU  - Ravel, B.
+AU  - Newville, M.
+TI  - ATHENA, ARTEMIS, HEPHAESTUS: data analysis for X-ray absorption spectroscopy using IFEFFIT
+JO  - Journal of Synchrotron Radiation
+PY  - 2005
+VL  - 12
+IS  - 4
+PB  - International Union of Crystallography (IUCr)
+UR  - https://doi.org/10.1107/s0909049505012719
+SP  - 537
+EP  - 541
+DO  - 10.1107/S0909049505012719
+ER  - 
+
+TY  - COMP
+ID  - lmfit
+AU  - Matthew Newville
+AU  - Renee Otten
+AU  - Andrew Nelson
+AU  - Till Stensitzki
+AU  - Antonino Ingargiola
+AU  - Daniel Allan
+AU  - Austin Fox
+AU  - Faustin Carter
+AU  - Michal Rawlik
+TI  - LMFIT: Non-Linear Least-Squares Minimization and Curve-Fitting for Python
+PY  - 2025
+PB  - Zenodo
+UR  - https://zenodo.org/doi/10.5281/zenodo.16175987
+DO  - 10.5281/zenodo.16175987
+ER  - 
+
+TY  - JOUR
+ID  - scipy
+AU  - Virtanen, Pauli
+AU  - Gommers, Ralf
+AU  - Oliphant, Travis E.
+AU  - Haberland, Matt
+AU  - Reddy, Tyler
+AU  - Cournapeau, David
+AU  - Burovski, Evgeni
+AU  - Peterson, Pearu
+AU  - Weckesser, Warren
+AU  - Bright, Jonathan
+AU  - van der Walt, Stéfan J.
+AU  - Brett, Matthew
+AU  - Wilson, Joshua
+AU  - Millman, K. Jarrod
+AU  - Mayorov, Nikolay
+AU  - Nelson, Andrew R. J.
+AU  - Jones, Eric
+AU  - Kern, Robert
+AU  - Larson, Eric
+AU  - Carey, C J
+AU  - Polat, İlhan
+AU  - Feng, Yu
+AU  - Moore, Eric W.
+AU  - VanderPlas, Jake
+AU  - Laxalde, Denis
+AU  - Perktold, Josef
+AU  - Cimrman, Robert
+AU  - Henriksen, Ian
+AU  - Quintero, E. A.
+AU  - Harris, Charles R.
+AU  - Archibald, Anne M.
+AU  - Ribeiro, Antônio H.
+AU  - Pedregosa, Fabian
+AU  - van Mulbregt, Paul
+AU  - 
+AU  - Vijaykumar, Aditya
+AU  - Bardelli, Alessandro Pietro
+AU  - Rothberg, Alex
+AU  - Hilboll, Andreas
+AU  - Kloeckner, Andreas
+AU  - Scopatz, Anthony
+AU  - Lee, Antony
+AU  - Rokem, Ariel
+AU  - Woods, C. Nathan
+AU  - Fulton, Chad
+AU  - Masson, Charles
+AU  - Häggström, Christian
+AU  - Fitzgerald, Clark
+AU  - Nicholson, David A.
+AU  - Hagen, David R.
+AU  - Pasechnik, Dmitrii V.
+AU  - Olivetti, Emanuele
+AU  - Martin, Eric
+AU  - Wieser, Eric
+AU  - Silva, Fabrice
+AU  - Lenders, Felix
+AU  - Wilhelm, Florian
+AU  - Young, G.
+AU  - Price, Gavin A.
+AU  - Ingold, Gert-Ludwig
+AU  - Allen, Gregory E.
+AU  - Lee, Gregory R.
+AU  - Audren, Hervé
+AU  - Probst, Irvin
+AU  - Dietrich, Jörg P.
+AU  - Silterra, Jacob
+AU  - Webber, James T
+AU  - Slavič, Janko
+AU  - Nothman, Joel
+AU  - Buchner, Johannes
+AU  - Kulick, Johannes
+AU  - Schönberger, Johannes L.
+AU  - de Miranda Cardoso, José Vinícius
+AU  - Reimer, Joscha
+AU  - Harrington, Joseph
+AU  - Rodríguez, Juan Luis Cano
+AU  - Nunez-Iglesias, Juan
+AU  - Kuczynski, Justin
+AU  - Tritz, Kevin
+AU  - Thoma, Martin
+AU  - Newville, Matthew
+AU  - Kümmerer, Matthias
+AU  - Bolingbroke, Maximilian
+AU  - Tartre, Michael
+AU  - Pak, Mikhail
+AU  - Smith, Nathaniel J.
+AU  - Nowaczyk, Nikolai
+AU  - Shebanov, Nikolay
+AU  - Pavlyk, Oleksandr
+AU  - Brodtkorb, Per A.
+AU  - Lee, Perry
+AU  - McGibbon, Robert T.
+AU  - Feldbauer, Roman
+AU  - Lewis, Sam
+AU  - Tygier, Sam
+AU  - Sievert, Scott
+AU  - Vigna, Sebastiano
+AU  - Peterson, Stefan
+AU  - More, Surhud
+AU  - Pudlik, Tadeusz
+AU  - Oshima, Takuya
+AU  - Pingel, Thomas J.
+AU  - Robitaille, Thomas P.
+AU  - Spura, Thomas
+AU  - Jones, Thouis R.
+AU  - Cera, Tim
+AU  - Leslie, Tim
+AU  - Zito, Tiziano
+AU  - Krauss, Tom
+AU  - Upadhyay, Utkarsh
+AU  - Halchenko, Yaroslav O.
+AU  - Vázquez-Baeza, Yoshiki
+TI  - SciPy 1.0: fundamental algorithms for scientific computing in Python
+JO  - Nature Methods
+PY  - 2020
+VL  - 17
+IS  - 3
+PB  - Springer Science and Business Media LLC
+UR  - https://doi.org/10.1038/s41592-019-0686-2
+SP  - 261
+EP  - 272
+DO  - 10.1038/s41592-019-0686-2
+ER  - 
+
+TY  - GEN
+ID  - nist-strd
+TI  - National Institute of Standards and Technology. Statistical Reference Datasets (StRD): nonlinear regression. Gaithersburg (MD): NIST. Available from: https://www.itl.nist.gov/div898/strd/nls/nls_main.shtml
+N1  - No DOI: fields not resolved from a registry; complete by hand.
+ER  - 
+
+TY  - JOUR
+ID  - degroot2005
+AU  - Groot, Frank de
+TI  - Multiplet effects in X-ray spectroscopy
+JO  - Coordination Chemistry Reviews
+PY  - 2005
+VL  - 249
+IS  - 1-2
+PB  - Elsevier BV
+UR  - https://doi.org/10.1016/j.ccr.2004.03.018
+SP  - 31
+EP  - 63
+DO  - 10.1016/j.ccr.2004.03.018
+ER  - 
+
+TY  - JOUR
+ID  - wasinger2003
+AU  - Wasinger, Erik C.
+AU  - de Groot, Frank M. F.
+AU  - Hedman, Britt
+AU  - Hodgson, Keith O.
+AU  - Solomon, Edward I.
+TI  - L-edge X-ray Absorption Spectroscopy of Non-Heme Iron Sites: Experimental Determination of Differential Orbital Covalency
+JO  - Journal of the American Chemical Society
+PY  - 2003
+VL  - 125
+IS  - 42
+PB  - American Chemical Society (ACS)
+UR  - https://doi.org/10.1021/ja034634s
+SP  - 12894
+EP  - 12906
+DO  - 10.1021/ja034634s
+ER  - 
+
+TY  - JOUR
+ID  - hahn2024
+AU  - Hahn, Anselm W.
+AU  - Zsombor-Pindera, Joseph
+AU  - Kennepohl, Pierre
+AU  - DeBeer, Serena
+TI  - Introducing SpectraFit: An Open-Source Tool for Interactive Spectral Analysis
+JO  - ACS Omega
+PY  - 2024
+VL  - 9
+IS  - 22
+PB  - American Chemical Society (ACS)
+UR  - https://doi.org/10.1021/acsomega.3c09262
+SP  - 23252
+EP  - 23265
+DO  - 10.1021/acsomega.3c09262
+ER  - 
+
+TY  - JOUR
+ID  - fitbenchmarking
+AU  - Markvardsen, Anders
+AU  - Rees, Tyrone
+AU  - Wathen, Michael
+AU  - Lister, Andrew
+AU  - Odagiu, Patrick
+AU  - Anuchitanukul, Atijit
+AU  - Farmer, Tom
+AU  - Lim, Anthony
+AU  - Montesino, Federico
+AU  - Snow, Tim
+AU  - McCluskey, Andrew
+TI  - FitBenchmarking: an open source Python package comparing data fitting software
+JO  - Journal of Open Source Software
+PY  - 2021
+VL  - 6
+IS  - 62
+PB  - The Open Journal
+UR  - https://doi.org/10.21105/joss.03127
+SP  - 3127
+DO  - 10.21105/joss.03127
+ER  - 
+
+TY  - JOUR
+ID  - dolan2002
+AU  - Dolan, Elizabeth D.
+AU  - Moré, Jorge J.
+TI  - Benchmarking optimization software with performance profiles
+JO  - Mathematical Programming
+PY  - 2002
+VL  - 91
+IS  - 2
+PB  - Springer Science and Business Media LLC
+UR  - https://doi.org/10.1007/s101070100263
+SP  - 201
+EP  - 213
+DO  - 10.1007/s101070100263
+ER  - 
+
+TY  - JOUR
+ID  - kowalska2017
+AU  - Kowalska, Joanna K.
+AU  - Nayyar, Brahamjot
+AU  - Rees, Julian A.
+AU  - Schiewer, Christine E.
+AU  - Lee, Sonny C.
+AU  - Kovacs, Julie A.
+AU  - Meyer, Franc
+AU  - Weyhermüller, Thomas
+AU  - Otero, Edwige
+AU  - DeBeer, Serena
+TI  - Iron L2,3-Edge X-ray Absorption and X-ray Magnetic Circular Dichroism Studies of Molecular Iron Complexes with Relevance to the FeMoco and FeVco Active Sites of Nitrogenase
+JO  - Inorganic Chemistry
+PY  - 2017
+VL  - 56
+IS  - 14
+PB  - American Chemical Society (ACS)
+UR  - https://doi.org/10.1021/acs.inorgchem.7b00852
+SP  - 8147
+EP  - 8158
+DO  - 10.1021/acs.inorgchem.7b00852
+ER  - 
+
+TY  - GEN
+ID  - perez2011
+TI  - Perez F, Granger BE, Hunter JD. Python: an ecosystem for scientific computing. Comput Sci Eng. 2011;13(2):13-21. doi:10.1109/mcse.2010.119
+N1  - No DOI: fields not resolved from a registry; complete by hand.
+ER  - 
+
+TY  - GEN
+ID  - harris2020
+TI  - Harris CR, Millman KJ, van der Walt SJ, Gommers R, Virtanen P, Cournapeau D, et al. Array programming with NumPy. Nature. 2020;585(7825):357-62. doi:10.1038/s41586-020-2649-2
+N1  - No DOI: fields not resolved from a registry; complete by hand.
+ER  - 
+
+TY  - COMP
+ID  - pydantic
+AU  - Pydantic Contributors
+TI  - Pydantic: data validation using Python type hints
+PY  - 2026
+UR  - https://docs.pydantic.dev/
+ER  - 
+
+TY  - COMP
+ID  - jax
+AU  - James Bradbury
+AU  - Roy Frostig
+AU  - Peter Hawkins
+AU  - Matthew James Johnson
+AU  - Yash Katariya
+AU  - Chris Leary
+AU  - Dougal Maclaurin
+AU  - George Necula
+AU  - Adam Paszke
+AU  - Jake VanderPlas
+AU  - Skye Wanderman-Milne
+AU  - Qiao Zhang
+TI  - JAX: composable transformations of Python+NumPy programs
+PY  - 2018
+UR  - http://github.com/jax-ml/jax
+ER  - 
+
+TY  - JOUR
+ID  - optimistix
+AU  - Jason Rader
+AU  - Terry Lyons
+AU  - Patrick Kidger
+TI  - Optimistix: modular optimisation in JAX and Equinox
+JO  - arXiv
+PY  - 2024
+PB  - arXiv
+UR  - https://doi.org/10.48550/arXiv.2402.09983
+DO  - 10.48550/arXiv.2402.09983
+ER  - 
+
+TY  - JOUR
+ID  - ewels2016
+AU  - Ewels, P.
+AU  - Sikora, T.
+AU  - Serin, V.
+AU  - Ewels, C. P.
+AU  - Lajaunie, L.
+TI  - A Complete Overhaul of the Electron Energy-Loss Spectroscopy and X-Ray Absorption Spectroscopy Database: eelsdb.eu
+JO  - Microscopy and Microanalysis
+PY  - 2016
+VL  - 22
+IS  - 3
+PB  - Oxford University Press (OUP)
+UR  - https://doi.org/10.1017/S1431927616000179
+SP  - 717
+EP  - 724
+DO  - 10.1017/S1431927616000179
+ER  - 
