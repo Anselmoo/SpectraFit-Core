@@ -102,6 +102,14 @@ This project follows repository release policy enforced by `repo-release-tools`.
   **Do:**; Claude is asked for Markdown code formatting; a count table heads
   the comment; "what was checked" folds into a list; and a collapsible
   "Prompt for Claude Code" carries every must/should item ready to paste.
+- **Built wheels are installed and tested before any tag.** The wheel build
+  moved into the reusable `build-wheels.yml`, called by `release.yml` and by
+  the new `wheel-smoke.yml`, which runs on PRs and `main` pushes touching the
+  wheel. It installs each manylinux wheel in a bare `python:3.13-slim` /
+  `python:3.14-slim` container and each macOS/Windows wheel in a fresh
+  environment outside the checkout, checks that the universal2 wheel carries
+  both architectures, and runs the README quick start -- the first install of
+  a built wheel no longer happens on TestPyPI after a tag.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status

@@ -60,6 +60,18 @@ graph](#job-graph) below) without moving any version target or publishing
 anywhere, and is safe to re-run as often as needed while iterating on the
 workflow itself.
 
+Most of this is already covered before you get here: the build lives in
+`.github/workflows/build-wheels.yml`, which `release.yml` calls, and
+`wheel-smoke.yml` runs the same build on every PR and `main` push that
+touches the wheel (`crates/`, `python/spectrafit_core/`, `Cargo.*`,
+`pyproject.toml`). It installs each wheel where the repository cannot help
+it -- the manylinux wheels in bare `python:3.13-slim`/`python:3.14-slim`
+containers, the macOS and Windows wheels in a fresh virtual environment
+outside the checkout (plus a `lipo -archs` check that the universal2 wheel
+carries both architectures) -- and runs the README quick start. A green
+`wheel-smoke` on the commit you tag means the wheels themselves were
+installed and exercised, not just a `maturin develop` build.
+
 ## Step 2 -- release-candidate rehearsal
 
 Rehearse the full tag-to-publish path on a release candidate before cutting
