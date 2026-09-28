@@ -73,15 +73,18 @@ build:ci-image:
         --context "$CI_PROJECT_DIR" \
         --dockerfile ".gitlab/docker/Dockerfile.ci" \
         --destination "$IMAGE" \
-        --build-arg "LLVM_COV_VERSION=v0.8.7" \
-        --build-arg "RUST_VERSION=1.96.0" \
-        --build-arg "PLAYWRIGHT_VERSION=1.63.0" \
         --cache=true \
         --cache-repo "$CACHE_REPO" \
         --cache-ttl 168h \
         --snapshot-mode time \
         --use-new-run
   rules:
+    # Weekly rebuild (pipeline schedule with CI_IMAGE_REBUILD=true): picks up
+    # base-image security patches and anything installed "latest" even when
+    # Dockerfile.ci did not change. Tool versions come from the Dockerfile's
+    # ARG defaults alone (Renovate keeps them current) -- no --build-arg
+    # copies here to drift from them.
+    - if: '$CI_IMAGE_REBUILD == "true"'
     # Auto-trigger when the Dockerfile changes (covers dep bumps, new tools).
     - changes:
         - .gitlab/docker/Dockerfile.ci

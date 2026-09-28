@@ -145,6 +145,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
   start exactly one (`POST /merge_requests/:iid/pipelines`), and a failure to
   do so exits non-zero. The branch push itself never gets a pipeline: the
   `workflow:rules` skip branch pipelines once an MR is open, by design.
+- **The GitLab CI image is rebuilt every week.** A pipeline schedule with
+  `CI_IMAGE_REBUILD=true` runs `build:ci-image` alone -- the shared rule
+  anchors and every job with its own `main`/schedule rules skip that
+  pipeline -- so base-image security patches reach the runners even when
+  `Dockerfile.ci` is unchanged. The image job no longer repeats the tool
+  versions as `--build-arg` copies; `Dockerfile.ci`'s ARG defaults are the
+  single source.
 - **Web toolchain on React 19 and TypeScript 7.** The dashboard (`web/`) and the
   root tooling package move to React 19, the TypeScript 7 native compiler for
   `npm run typecheck`, Vitest 5, `@vitejs/plugin-react` 6, KaTeX 0.18 (which

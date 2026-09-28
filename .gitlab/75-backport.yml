@@ -68,6 +68,10 @@ backport:github:
   needs: []
   dependencies: []
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $BACKPORT_GITHUB == "true"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual

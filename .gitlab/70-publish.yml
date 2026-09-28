@@ -145,6 +145,10 @@ publish:github:
     GIT_DEPTH: "0"
   dependencies: []
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - |
@@ -191,6 +195,10 @@ publish:github:fast:
   needs: []
   dependencies: []
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - |
@@ -241,6 +249,10 @@ publish:github:reset:
   needs: []
   dependencies: []
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     # CWE-522 hardening: GITHUB_TOKEN is injected via http.extraheader (env-based

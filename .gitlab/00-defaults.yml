@@ -64,6 +64,10 @@ variables:
 # ---------------------------------------------------------------------------
 .rules_default:
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
     - if: '$CI_COMMIT_TAG'
@@ -88,6 +92,10 @@ variables:
 # ---------------------------------------------------------------------------
 .rules_full_only:
   rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
