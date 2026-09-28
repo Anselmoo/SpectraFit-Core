@@ -1,0 +1,40 @@
+/*
+ * Gallery index thumbnails — light/dark swap for
+ * docs/tutorials/gallery/index.md's `grid cards` blocks.
+ *
+ * [docs-review 5.2] Every gallery PNG used to be a single light-background
+ * matplotlib figure, so the index page (16 of them on screen at once) read
+ * as sixteen white rectangles in dark mode. Ruled out: a CSS
+ * filter/invert on one PNG — this is a scientific plotting library, and
+ * inverting a figure changes what the data appears to say (a red residual
+ * becomes cyan). Instead docs/tutorials/gallery/_render.py now renders a
+ * genuine dark-themed thumbnail per script (dark figure/axes background,
+ * recolored ticks/labels/grid — see _plotting.py's SPECTRAFIT_GALLERY_THEME)
+ * and this file swaps between the two, mirroring pages/hero.css's
+ * `.sf-hero__media-img--light/--dark` mechanism exactly — same
+ * [data-md-color-scheme] selectors, same "default to dark, override for
+ * light" precedence — rather than inventing a second swap mechanism.
+ *
+ * [docs-review 5.3] Both images are the *thumbnail* variant
+ * (docs/tutorials/gallery/_plotting.py's THUMB_WIDTH_PX, 2x the 300px this
+ * file displays them at, for retina) rather than the full-size PNG a
+ * tutorial detail page embeds — the index no longer pulls up-to-2229px-wide
+ * originals into a 300px slot. The light thumbnail's `data-src` (set in
+ * index.md via attr_list) points GLightbox at the full-size PNG instead,
+ * so "click to enlarge" still opens the real full-resolution figure; the
+ * dark thumbnail carries `.off-glb` (docs/tutorials/gallery/index.md) since
+ * there is no full-size dark asset to enlarge into and it must not appear
+ * as a second, duplicate slide in the lightbox.
+ */
+
+.sf-gallery-thumb--light {
+  display: none;
+}
+
+[data-md-color-scheme="default"] .sf-gallery-thumb--dark {
+  display: none;
+}
+
+[data-md-color-scheme="default"] .sf-gallery-thumb--light {
+  display: block;
+}

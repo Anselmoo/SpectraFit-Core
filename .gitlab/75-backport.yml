@@ -1,0 +1,100 @@
+# GitHub -> GitLab auto-backport. Finds commits made directly on the GitHub
+# mirror since the last GitLab->GitHub sync snapshot (Dependabot merges,
+# outside PRs — "GitHub-native work"; see scripts/backport_from_github.py's
+# module docstring for the boundary/candidate logic) and lands them on GitLab
+# as a real merge request, via `scripts/backport_from_github.py --open-mr`.
+#
+# Required CI/CD variables (set in GitLab MPCDF project settings):
+#   BACKPORT_TOKEN — a GitLab project access token (this project) scoped to
+#     `api` + `write_repository`, masked + protected. $CI_JOB_TOKEN cannot
+#     push to this project's own repository from a job, which is why a
+#     separate token is required here (see scripts/backport_from_github.py's
+#     `run_open_mr`, which refuses outright without it).
+#   GITHUB_TOKEN — the fine-grained GitHub PAT shared with the publish:github*
+#     jobs (.gitlab/70-publish.yml), masked + protected. Needed here only to
+#     FETCH the mirror, which fails anonymously once the repository is private.
+#   BACKPORT_GITHUB — a CI/CD variable (not protected; only gates the
+#     scheduled run) set to the literal string "true" on the schedule that
+#     triggers this job. Absent (or any other value) on ordinary pipelines,
+#     so a normal push to `main` never auto-fires an unattended cherry-pick +
+#     MR-open sequence — only a deliberately configured GitLab schedule
+#     (Settings > CI/CD > Schedules) with this variable set does. The
+#     `when: manual` clause below is the alternative: a human can still run it
+#     on demand from any pipeline on `main` without touching the schedule.
+#
+# needs: [] / dependencies: [] — this job only needs a git checkout (like
+# publish:github / publish:github:fast in .gitlab/70-publish.yml); it never
+# uses `uv run` (no `.venv` artifact needed) because
+# scripts/backport_from_github.py is stdlib-only (argparse, subprocess, json,
+# urllib) by the same CI-image-lackability constraint as every other
+# scripts/*.py invoked directly with bare `python3`.
+#
+# allow_failure: true — a failed backport (a real cherry-pick conflict, the
+# GitLab API being unreachable, a stale BACKPORT_TOKEN) is a mirror-sync
+# problem to investigate, not a `main`-branch code-health problem; it must not
+# redden main's pipeline the way a real test failure should. Same reasoning
+# as `publish:github`'s `allow_failure: true` in .gitlab/70-publish.yml.
+#
+# git identity is set explicitly for the same reason as publish_snapshot.sh:
+# neither the base image nor GitLab Runner provisions one by default, and
+# `git cherry-pick -x` creates real commits.
+#
+# `github` (fetch-only) is added and fetched by the script itself via its own
+# --remote-name/--remote-url defaults. The mirror may be PRIVATE (the test
+# phase before the public restart runs against a private repo), so that fetch
+# is authenticated too: a second extraheader, scoped to `https://github.com/`
+# only, carries `GITHUB_TOKEN` (the same fine-grained PAT the publish:github*
+# jobs use; read access to Contents is all this job needs). Two headers, two
+# hosts, one GIT_CONFIG_COUNT=2 — index 0 is GitLab, index 1 is GitHub, and
+# neither token is ever visible to the other host.
+#
+# `gitlab` (push target) is added here, deliberately with a CLEAN URL (no
+# embedded credentials) built from `$CI_PROJECT_URL`, NOT by reusing the
+# runner-provided `origin` remote — that one carries an embedded
+# `gitlab-ci-token:$CI_JOB_TOKEN` which cannot push (see above). Auth for
+# `gitlab` is instead injected via `http.<host>.extraheader`, scoped to
+# `$CI_SERVER_URL`'s host only — the exact same GIT_CONFIG_COUNT/KEY/VALUE
+# env-based mechanism `publish:github:fast` uses for `GITHUB_TOKEN`
+# (.gitlab/70-publish.yml), never written to the URL or `.git/config`
+# (CWE-522 hardening). GitLab's HTTP Basic auth for a project/personal access
+# token accepts any non-blank username in the `user:token` pair — the
+# password (the token) is what's actually checked — so the literal username
+# below carries no meaning beyond documenting what the credential is.
+
+backport:github:
+  stage: publish
+  allow_failure: true
+  resource_group: backport_github
+  needs: []
+  dependencies: []
+  rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $BACKPORT_GITHUB == "true"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+  script:
+    - |
+      git config user.email "334580965+spectrafit-core-sync[bot]@users.noreply.github.com"
+    - |
+      git config user.name "spectrafit-core-sync[bot]"
+    - |
+      git remote add gitlab "${CI_PROJECT_URL}.git" 2>/dev/null || true
+    - |
+      export GIT_CONFIG_COUNT=2
+    - |
+      export GIT_CONFIG_KEY_0="http.${CI_SERVER_URL}/.extraheader"
+    - |
+      GIT_CONFIG_VALUE_0="Authorization: Basic $(printf '%s' "backport-token:${BACKPORT_TOKEN}" | base64 | tr -d '\n')"
+    - |
+      export GIT_CONFIG_VALUE_0
+    - |
+      export GIT_CONFIG_KEY_1="http.https://github.com/.extraheader"
+    - |
+      GIT_CONFIG_VALUE_1="Authorization: Basic $(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 | tr -d '\n')"
+    - |
+      export GIT_CONFIG_VALUE_1
+    - |
+      python3 scripts/backport_from_github.py --github-branch main --open-mr --gitlab-remote-name gitlab

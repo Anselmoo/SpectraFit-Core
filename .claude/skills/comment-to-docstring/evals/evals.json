@@ -1,0 +1,25 @@
+{
+    "skill_name": "comment-to-docstring",
+    "evals": [
+        {
+            "id": 1,
+            "prompt": "In this Python file, turn comments that document a module, function, or class into real docstrings. Do not convert inline comments into unused string expressions. Show a dry-run diff and list anything skipped.",
+            "expected_output": "A syntax-valid unified diff, with only semantically valid docstrings added, plus a skipped-block report.",
+            "files": [
+                "python/oracles/audit/runner.py"
+            ]
+        },
+        {
+            "id": 2,
+            "prompt": "Convert the leading comments in this small Python module and its function into docstrings. Preserve indentation and existing docstrings unless replacement is explicitly requested.",
+            "expected_output": "Module and function docstrings are created; an existing docstring is preserved; the output parses.",
+            "files": []
+        },
+        {
+            "id": 3,
+            "prompt": "I have JavaScript comments and want Python triple-quoted docstrings inserted everywhere. Explain what is unsafe and propose the correct JSDoc transformation instead of corrupting the file.",
+            "expected_output": "The response distinguishes Python docstrings from JS/TS JSDoc and does not insert Python syntax into JavaScript.",
+            "files": []
+        }
+    ]
+}

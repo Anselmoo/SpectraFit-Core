@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "Shared golden for the per-backend median reduction, which is implemented TWICE:",
+    "  web/src/series/backendFacts.ts   (browser, reads the served BenchReport)",
+    "  python/oracles/reports.py        (_backend_facts, writes manifest.json)",
+    "Both sides assert against THIS file, so a change to either implementation",
+    "fails without the other having to run. See tests/parity/test_backend_facts_parity.py",
+    "and web/src/series/__tests__/backendFacts.golden.test.ts.",
+    "Cases are chosen to exercise the branches that differ most easily between the",
+    "two languages: a backend absent from some cases, a non-finite metric, and an",
+    "even-length sample (where median must be the mean of the two middle values)."
+  ],
+  "suite": [
+    {"id": "c1", "m": {"alpha": {"med_ms": 1.0, "r2": 0.90, "speedup": 1.0, "success": true},
+                        "beta":  {"med_ms": 4.0, "r2": 0.80, "speedup": 4.0, "success": true}}},
+    {"id": "c2", "m": {"alpha": {"med_ms": 2.0, "r2": 0.92, "speedup": 2.0, "success": true},
+                        "beta":  {"med_ms": 8.0, "r2": 0.84, "speedup": 8.0, "success": false}}},
+    {"id": "c3", "m": {"alpha": {"med_ms": 3.0, "r2": 0.94, "speedup": 3.0, "success": true}}},
+    {"id": "c4", "m": {"alpha": {"med_ms": 4.0, "r2": 0.96, "speedup": 4.0, "success": true},
+                        "beta":  {"med_ms": 16.0, "r2": 0.88, "speedup": 16.0, "success": true}}}
+  ],
+  "expected": {
+    "alpha": {"med_ms": 2.5, "med_r2": 0.93, "med_speedup": 2.5, "cases_run": 4, "success_rate": 1.0},
+    "beta":  {"med_ms": 8.0, "med_r2": 0.84, "med_speedup": 8.0, "cases_run": 3, "success_rate": 0.6666666666666666}
+  }
+}

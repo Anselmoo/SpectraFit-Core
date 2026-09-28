@@ -1,0 +1,52 @@
+# Vendored third-party SCIENTIFIC DATA — the single source of truth for measured
+# data checked into this repository from outside the project.
+#
+# Sibling of `scripts/vendored_assets.toml`, deliberately in the same `[[asset]]`
+# shape and enforced the same way, but a different domain: that file pins the
+# JavaScript and CSS the docs site vendors, this one pins measurement data that
+# scientific claims rest on. They are kept apart because the questions you ask of
+# each differ — a JS bundle needs a version and a CVE story, a spectrum needs a
+# licence, a citation and a named contributor.
+#
+# `sha256` is the authoritative field. `uv run poe fair asset verify` enforces it
+# offline on every run, and it catches a truncated download, a hand edit, or a
+# silent upstream replacement. Everything else is provenance: metadata a reader
+# needs to decide whether they are allowed to reuse the file and whom to credit.
+#
+# WHY THE LICENCE FIELDS ARE NOT OPTIONAL. This repository is MIT-licensed, and
+# that licence covers its code. Measured data arrives under its own terms, which
+# are frequently NOT MIT and sometimes not a licence at all. An asset here
+# without `license`, `license_url` and `citation` is one nobody can safely reuse,
+# which defeats the point of publishing it. `fair asset verify` treats a missing
+# provenance field as an error, not a warning.
+#
+# Adding an asset:
+#   1. download it from the pinned `url` into its own directory under
+#      `reproducibility/spectra/`, keeping the UPSTREAM FILENAME
+#   2. write a README.md there carrying the licence notice and attribution
+#   3. `uv run poe fair asset add` (or `--update`) to record the digest
+#   4. review the diff — an unexpected hash change is the whole point of this file
+
+[[asset]]
+name = "eelsdb-fe2o3-l23"
+description = "Fe L2,3 core-loss spectrum of Fe2O3 (EELS), 695-746.15 eV at 0.05 eV/channel"
+path = "reproducibility/spectra/eelsdb-fe2o3-l23/DspecTi3wqG.msa"
+upstream_filename = "DspecTi3wqG.msa"
+sha256 = "28e88f85350c353f524c828740c533312dc897505410ac940cd544060df963d4"
+bytes = 30096
+url = "https://eelsdb.eu/wp-content/uploads/2015/09/DspecTi3wqG.msa"
+source_page = "https://eelsdb.eu/spectra/iron-oxide-2/"
+retrieved = "2026-09-22"
+contributor = "Qiang Xu"
+contributed = "2007-12-10"
+license = "ODbL-1.0"
+license_url = "https://opendatacommons.org/licenses/odbl/"
+license_notice = "reproducibility/spectra/eelsdb-fe2o3-l23/README.md"
+citation = "Ewels P, Sikora T, Serin V, Ewels CP, Lajaunie L. A Complete Overhaul of the Electron Energy-Loss Spectroscopy and X-Ray Absorption Spectroscopy Database: eelsdb.eu. Microscopy and Microanalysis. 2016;22(3):717-724. doi:10.1017/S1431927616000179"
+citation_doi = "10.1017/S1431927616000179"
+# The source record states "No reference found for this data", so the database
+# citation above IS the citation for this spectrum rather than a stand-in for a
+# missing primary paper. Recorded explicitly so nobody later "fixes" it by
+# hunting for an original publication that does not exist.
+original_publication = "none recorded upstream"
+used_by = "docs/tutorials/gallery/misspecified_model.py"

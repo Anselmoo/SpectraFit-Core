@@ -1,0 +1,887 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast-fail lint gate — the GitHub mirror of .gitlab/20-lint.yml. Runs
+  # independently of the heavy coverage build so a reviewer sees lint red in
+  # ~3 min instead of waiting for the full matrix. ty is BLOCKING here (the
+  # old build-and-test lint step swallowed ty with `|| true`); clippy is added
+  # because it previously existed ONLY on GitLab, so a green GitHub run could
+  # still red the GitLab pipeline (the local-green/CI-red gap).
+  #
+  # There is no separate "Docstring Check" workflow (ruff --select D only):
+  # pyproject.toml's [tool.ruff.lint] extend-select = ["D"] is project-wide, so
+  # `ruff check .` below already runs every docstring check such a workflow
+  # would — a standalone docstring-only workflow would be fully redundant.
+  # "Docstring Check" is not in BRANCH_PROTECTION.md's required-checks table.
+  lint:
+    runs-on: ubuntu-latest
+    # ci-job-timeout-declaration: ruff+ty+clippy, compiles the workspace for
+    # clippy. GitLab's lint:rust equivalent measures ~5 min warm (pipeline
+    # 363865); headroom for a cold cache miss.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Install Rust stable toolchain (with clippy)
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+        with:
+          components: clippy
+
+      - name: Cache Cargo registry
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Sync dependencies (ruff + ty)
+        run: uv sync --extra benchmark
+
+      # Mirrors .gitlab/20-lint.yml lint:python — ty is BLOCKING (no `|| true`).
+      # `ruff format --check` matches that job's own fix (added after a
+      # formatting drift went undetected there for a long time — see its
+      # comment); omitting it here was the same class of gap this job's own
+      # header comment claims not to have.
+      - name: Lint Python (ruff + ty)
+        run: |
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run ty check python/oracles python/spectrafit_core
+
+      # Mirrors .gitlab/20-lint.yml lint:rust EXACTLY, including `cargo fmt
+      # --check` (added there after ~40 files of rustfmt drift accumulated
+      # undetected — see that job's comment).
+      - name: Lint Rust (fmt + clippy, deny warnings)
+        run: |
+          rustup component add rustfmt
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      # Offline integrity check of the vendored web assets (mermaid, KaTeX,
+      # GLightbox) against scripts/vendored_assets.toml. Hash-only: no network.
+      # Mirrors .gitlab/20-lint.yml lint:python — was absent from every GitHub
+      # workflow, so a hand-edited or corrupted vendored JS/CSS asset was
+      # caught on GitLab but shipped silently through the GitHub mirror (the
+      # public site).
+      - name: Vendored web assets integrity (scripts/vendored_assets.toml)
+        run: uv run python scripts/check_vendored_assets.py
+
+      # Pure-Python, no build needed. Catches unbalanced $ delimiters, bare |
+      # inside table-cell math, and plain-text formula notation that drifted
+      # back out of sync with reference/models/index.md's real LaTeX (see
+      # the architecture.md "Built-in models" fix this script was written
+      # after — a hand-copied formula subset had drifted to plain text).
+      - name: LaTeX/KaTeX audit (docs/**/*.md)
+        run: uv run poe audit_latex
+
+      # Integrity gate over reproducibility/ (16 MB of published measurement
+      # artifacts that the docs and LIMITATIONS.md cite as evidence). Mirrors
+      # .gitlab/20-lint.yml lint:python. The FAIR-package round-trip that used
+      # to run beside this (build_fair_package.py) is now maintained outside
+      # this repository and out of scope here.
+      - name: FAIR gates (checksums, data provenance, RO-Crate)
+        run: |
+          uv run python scripts/fair.py checksums --check
+          uv run python scripts/fair.py asset
+          uv run python scripts/fair.py bundle --verify
+
+      # Regenerate-then-diff, same pattern as the openapi.gen.ts contract
+      # guard below: `.rrt/tree.lock.toml` is a same-run scratch artifact
+      # (gitignored, not committed) — the check is whether regenerating
+      # architecture.md's injected tree block changes the committed file.
+      - name: Directory-tree drift guard (contributor-guide/architecture.md)
+        run: |
+          uv run rrt tree --root . --max-depth 2 --snapshot
+          uv run python scripts/render_architecture_tree.py
+          git diff --exit-code docs/contributor-guide/architecture.md \
+            || (echo "::error::architecture.md's directory tree is stale — run 'rrt tree --root . --max-depth 2 --snapshot && uv run python scripts/render_architecture_tree.py'" && exit 1)
+
+  # macOS build coverage. crates/spectrafit-models/src/math_backend.rs has a
+  # #[cfg(target_os = "macos")] Accelerate (vvexp) backend that NO other CI job
+  # compiles — every other job here and in .gitlab/ runs Linux. Without a
+  # dedicated job, a change that breaks only the macOS-gated path can land on
+  # main while every other (Linux) job stays green. `cargo check` only — no
+  # tests, no wheel — because the point is to compile the cfg-gated path, and a
+  # macOS runner costs 10x a Linux one.
+  macos-check:
+    runs-on: macos-latest
+    # ci-job-timeout-declaration: cargo check --workspace only (no test run),
+    # but on a macOS runner, which compiles noticeably slower than the Linux
+    # runners the rest of this workflow measures against. Sized conservatively
+    # rather than from a measured warm time like the others below.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # Profile-namespaced cache keys: macOS artifacts
+          # must never share a key with the Linux jobs.
+          key: ${{ runner.os }}-cargo-macos-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-macos-
+
+      # `uv run cargo`, not bare `cargo`: bare cargo resolves the system Python,
+      # and PyO3 0.22.6 caps at 3.13 — a newer interpreter fails the build with
+      # an unrelated error. This mirrors .pre-commit-config.yaml's cargo-check hook.
+      - name: cargo check (macOS — compiles the Accelerate path)
+        run: uv run cargo check --workspace
+
+  # CITATION.cff must stay schema-valid — a malformed citation breaks GitHub's
+  # "Cite this repository" widget and Zenodo ingestion. Uses the official CFF
+  # action so the check has no Python-dependency footprint in this job.
+  test-matrix:
+    # Everything the classifiers promise beyond the Linux/3.13 coverage job
+    # (build-and-test): the full suite on Linux/3.14, and on macOS and Windows
+    # the extension build plus the binding-facing unit tests and the README
+    # quick start, on both supported Pythons. Not a required check -- it
+    # reports, the `lint` gate stays the merge gate.
+    name: test (${{ matrix.os }}, py${{ matrix.python-version }}, ${{ matrix.scope }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-latest, python-version: "3.14", scope: full}
+          - {os: macos-latest, python-version: "3.13", scope: fast}
+          - {os: macos-latest, python-version: "3.14", scope: fast}
+          - {os: windows-latest, python-version: "3.13", scope: fast}
+          - {os: windows-latest, python-version: "3.14", scope: fast}
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Sync dependencies
+        # No `jax` extra: its parity test belongs to the coverage job, and
+        # this job must not fail on a jax wheel gap for a new CPython.
+        run: uv sync --extra benchmark
+
+      - name: Build extension
+        run: uv run maturin develop --release
+
+      - name: Run tests
+        run: |
+          if [ "${{ matrix.scope }}" = "full" ]; then
+            PYTHONPATH=python uv run --no-sync pytest -q
+          else
+            PYTHONPATH=python uv run --no-sync pytest -q tests/unit/spectrafit_core
+          fi
+
+      - name: README quick start
+        run: |
+          uv run --no-sync python - <<'EOF'
+          import numpy as np
+          from spectrafit_core import MeasurementData, compose, fit, gaussian
+
+          x = np.linspace(-5, 5, 200)
+          y = 3.0 * np.exp(-0.5 * ((x - 0.5) / 1.2) ** 2) + np.random.default_rng(0).normal(0, 0.05, x.size)
+          graph = compose([gaussian("peak1", amplitude=1.0, center=0.0, sigma=1.0)]).build()
+          result = fit(graph, MeasurementData(x=x.tolist(), y=y.tolist()))
+          assert result.r_squared > 0.99, result.r_squared
+          print("r_squared", result.r_squared)
+          EOF
+
+  citation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - name: Validate CITATION.cff
+        uses: citation-file-format/cffconvert-github-action@4cf11baa70a673bfdf9dad0acc7ee33b3f4b6084  # 2.0.0
+        with:
+          args: "--validate"
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    # ci-job-timeout-declaration: llvm-cov instrumented build + cargo test +
+    # the full pytest sweep, all in ONE job (unlike GitLab, which splits this
+    # across test:python:rust-cov + test:python:pytest -- 12.3 + 21.8 = ~34 min
+    # combined, pipeline 363865). This job is the sum of both plus web-toolchain
+    # setup; sized above that combined figure for headroom.
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Cache Cargo dependencies (registry only — NOT target/)
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          # `-cargo-cov-`: this job builds under llvm-cov instrumentation
+          # (`source <(cargo llvm-cov show-env --sh)` at :157 sets RUSTC_WRAPPER
+          # and RUSTFLAGS before `maturin develop`). That `target/` tree cannot
+          # be reused by a `--release` build, so it must NOT share a key with
+          # regression-gate / regression-gate-solo / benchmark.yml — a bare
+          # `-cargo-` key previously made all four race for one entry.
+          # `target` is intentionally excluded from `path` (unlike the
+          # `--release` jobs' cache steps elsewhere in this file): this is the
+          # one job whose target/ is llvm-cov-instrumented, mirroring
+          # .gitlab/30-test.yml's identical rust-cov job, which also leaves
+          # target/ uncached. Run 35838964835/job 107109167692 logged "Failed
+          # to restore: Cache service responded with 400" and fell back to a
+          # cold rebuild; actions/cache@v4.3.0 already treats that as a
+          # non-fatal cache-miss fallback rather than a job failure, so the
+          # residual risk was a partially-extracted target/ tree seeding
+          # stale/mismatched objects into the instrumented build. The
+          # registry/git tarballs cached here are read-only and checksummed
+          # against Cargo.lock, so a bad extraction fails loudly at compile
+          # time instead of silently corrupting coverage data. Trade-off:
+          # this job now rebuilds target/ cold every run.
+          key: ${{ runner.os }}-cargo-cov-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-cov-
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+        with:
+          components: llvm-tools-preview
+
+      - name: Sync dependencies
+        # `dev` is a dependency-group (synced by default); `benchmark` and `jax`
+        # are extras. `jax` is required, not optional: without it
+        # tests/unit/test_jax_kernel_parity.py importorskips and
+        # python/oracles/jax_kernels.py — 144 statements — never executes,
+        # dropping total coverage to 92.7% against the 94% floor below. That
+        # is the symptom; the cause is that the parity test is the only check
+        # standing between a mistyped JAX kernel and a silently wrong
+        # benchmark, so skipping it ships 32 unverified kernels.
+        # Mirrors .gitlab/30-test.yml.
+        run: uv sync --extra benchmark --extra jax
+
+      # Cross-language coverage: pattern from cjermain/rust-python-coverage. A
+      # single instrumented build is shared by `cargo test` AND `pytest`, so the
+      # PyO3 boundary (`crates/spectrafit-core`) — previously dark to llvm-cov
+      # because pytest wasn't instrumented — now contributes profile data via
+      # the Python test suite. We `source <(cargo llvm-cov show-env --sh)` at
+      # the top of each step so `LLVM_PROFILE_FILE`, the `RUSTC_WRAPPER`
+      # instrumentation shim, and `CARGO_LLVM_COV_TARGET_DIR` apply to both
+      # maturin's rebuild and pytest. (Cannot use `$GITHUB_ENV` here: the
+      # `show-env --sh` output single-quotes values, which GitHub Actions would
+      # store literally including the quotes.)
+      # Prebuilt cargo-llvm-cov from taiki-e/install-action, not
+      # `cargo install --locked` (which compiled from source, ~2–3
+      # min/pipeline). Downloads a signed-attestation tarball matching the
+      # runner arch, cached via the GH Actions tool cache — same trick as
+      # .gitlab/00-defaults.yml's prebuilt tarball fetch (single source of
+      # truth: taiki-e releases).
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853  # v2
+        with:
+          # Pinned to match .gitlab/docker/Dockerfile.ci's LLVM_COV_VERSION
+          # (baked into the GitLab image with a sha256 check). An unpinned
+          # `tool:` resolves against install-action's own manifest, which
+          # updates on a delay independent of this action's pinned commit SHA
+          # — so two runs on the same SHA can install different
+          # cargo-llvm-cov binaries days apart, shifting LLVM_PROFILE_FILE
+          # templating / line-counting behavior between runs. Bump only in
+          # lockstep with Dockerfile.ci's LLVM_COV_VERSION/LLVM_COV_SHA256.
+          tool: cargo-llvm-cov@0.8.7
+
+      - name: Clean previous coverage profiles
+        run: cargo llvm-cov clean --workspace
+
+      - name: Build extension (instrumented)
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          export CARGO_TARGET_DIR="$CARGO_LLVM_COV_TARGET_DIR"
+          export CARGO_INCREMENTAL=0
+          uv run maturin develop
+
+      - name: Run Rust workspace tests (lib + integration, instrumented)
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          export CARGO_TARGET_DIR="$CARGO_LLVM_COV_TARGET_DIR"
+          export CARGO_INCREMENTAL=0
+          # --exclude spectrafit-core: this crate has zero #[test]/cfg(test)
+          # blocks (it's PyO3 glue, exercised only through the pytest step
+          # below). Without the exclude, `maturin develop` above instruments
+          # it once under the extension-module feature (covered by pytest)
+          # and `cargo test` instruments it again under a different feature
+          # set (never executed, since there's nothing to run) — two
+          # differently-hashed, never-merged copies of every lib.rs symbol.
+          # llvm-cov counts both, so the never-executed cargo-test copy drags
+          # the merged report down (measured: 570 lines / 78 functions double
+          # -counted, 41.7% reported vs ~68% from a single-build measurement).
+          # No tests are lost by excluding it here.
+          cargo test --workspace --exclude spectrafit-core --quiet
+
+      # Pytest under the instrumented Rust binary: every PyO3 call exercises
+      # `crates/spectrafit-core` and the profraw output lands in the same
+      # `CARGO_LLVM_COV_TARGET_DIR` as `cargo test`'s data. We also emit a
+      # Python `coverage.xml` for the per-language artifact upload below.
+      # `--cov-fail-under=94` matches `[tool.coverage.report] fail_under` in
+      # pyproject.toml and `.gitlab/30-test.yml`'s `--cov-fail-under`. Set to
+      # track measured coverage closely rather than leaving a wide gap that
+      # stops being a meaningful gate; a lower floor lets coverage drop
+      # unnoticed, a higher one is the next target once headroom allows it.
+      # Per-module floors below enforce critical-path coverage at higher
+      # thresholds than the workspace average.
+      - name: Run pytest with Python + Rust coverage
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          export CARGO_TARGET_DIR="$CARGO_LLVM_COV_TARGET_DIR"
+          # --no-sync: `maturin develop` above already installed the instrumented
+          # extension. A syncing `uv run` may rebuild the project through its
+          # PEP 517 backend while this instrumentation env is sourced, leaving
+          # an extra, never-executed instrumented copy of spectrafit-core that
+          # llvm-cov counts as uncovered (an lcov report can carry multiple
+          # crate disambiguators for lib.rs, only one of them executed).
+          PYTHONPATH=python uv run --no-sync pytest -q \
+            --cov=python/spectrafit_core --cov=python/oracles \
+            --cov-report=term --cov-report=xml \
+            --cov-fail-under=94
+
+      # Surfaces the actual coverage numbers in the PR step summary so
+      # reviewers see the LATEST per-module % without opening the
+      # coverage-atlas artifact. ONE `uv run coverage json` call produces a
+      # structured report covering ALL modules; per-module slices are jq
+      # reads (no `uv run` re-resolution overhead — saves ~30 s/pipeline vs a
+      # 4× shell-out).
+      - name: Coverage step summary
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          if [ ! -s coverage.xml ]; then
+            echo "no coverage.xml — pytest step failed before reporting"
+            exit 0
+          fi
+          # `coverage json` writes the full per-file rate table once;
+          # subsequent reads are pure jq. The percent_covered key on each
+          # file is the line-rate ×100 (matches what `--format=total` shows).
+          uv run coverage json -o coverage.json --fail-under=0 2>/dev/null || true
+          if [ ! -s coverage.json ]; then
+            echo "no coverage.json — coverage tool failed; skipping summary"
+            exit 0
+          fi
+          slice() {
+            local v
+            # Optional access (`?`): if the file key isn't in coverage.json
+            # (module pytest didn't touch this run), jq returns null cleanly
+            # without raising "Cannot index null" on `.summary`. The `// "–"`
+            # then converts null → em-dash for the table cell.
+            v=$(jq -r --arg f "$1" '(.files[$f]?.summary?.percent_covered) // "–"' \
+                  coverage.json 2>/dev/null || echo '–')
+            if [ "$v" = "–" ] || [ "$v" = "null" ]; then echo "–"
+            else printf '%.1f' "$v"
+            fi
+          }
+          PY_PCT=$(jq -r '.totals.percent_covered' coverage.json \
+                    | awk '{printf "%.1f", $1}')
+          ENG=$(slice 'python/oracles/engine.py')
+          FIT=$(slice 'python/spectrafit_core/fit.py')
+          EVA=$(slice 'python/spectrafit_core/evaluate.py')
+          GRA=$(slice 'python/spectrafit_core/graph.py')
+          {
+            echo "### Coverage (this run)"
+            echo ""
+            echo "| Surface | % | Floor |"
+            echo "|---|---|---|"
+            echo "| Python (aggregate) | ${PY_PCT}% | 85% |"
+            echo "| engine.py | ${ENG}% | 85% |"
+            echo "| fit.py | ${FIT}% | 90% |"
+            echo "| evaluate.py | ${EVA}% | 90% |"
+            echo "| graph.py | ${GRA}% | 80% |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Rust ↔ Python binding audit guard. Static-grep audit that
+      # fails if a new `#[pymodule]`-registered function or a new `Solver::`
+      # enum variant lands without a one-line entry in
+      # scripts/binding_audit_notes.toml. Checked directly against that TOML
+      # file — no docs/ dependency, so a docs-site reorg can't break this gate.
+      # Fix locally: uv run poe audit_bindings_regen
+      - name: Rust binding audit guard
+        shell: bash
+        run: python3 scripts/audit_bindings.py
+
+      # Per-module Python floors — protect the critical paths under the
+      # aggregate average. `coverage report --include=<glob>` filters the
+      # already-written `.coverage` db (the pytest step above produced it),
+      # so these are no-cost extra invocations. Floors set conservatively
+      # below measured coverage, so drift is caught before it erodes the
+      # critical paths:
+      #   engine.py: 85   (bench dispatch — every backend hits this)
+      #   fit.py:   90   (PyO3 entry — drift here breaks bindings)
+      #   evaluate.py: 90 (eval entry — same risk)
+      #   graph.py: 80   (fit_all_slices is the largest branch here)
+      - name: Python critical-path coverage gate
+        shell: bash
+        run: |
+          uv run coverage report --include='python/oracles/engine.py' --fail-under=85
+          uv run coverage report --include='python/spectrafit_core/fit.py' --fail-under=90
+          uv run coverage report --include='python/spectrafit_core/evaluate.py' --fail-under=90
+          uv run coverage report --include='python/spectrafit_core/graph.py' --fail-under=80
+
+      # Merge Rust profile data from BOTH cargo test and pytest into a single
+      # lcov report and enforce the 85 % gate. Unit 6 (the ADR) documents the
+      # merge + any gate adjustment as follow-up; do NOT bump this threshold
+      # here.
+      - name: Generate merged Rust lcov report
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          mkdir -p target/llvm-cov
+          cargo llvm-cov report --lcov \
+            --output-path target/llvm-cov/lcov.info
+
+      - name: Run Rust coverage gate (>=85 % lines)
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          cargo llvm-cov report --fail-under-lines 85
+
+      # Per-crate Rust floors — protect the PyO3 boundary + the solver dispatch
+      # under the workspace average. `--package` filters the existing profile
+      # data (no re-run); 75 % is conservative against the 85 % workspace floor.
+      - name: Rust critical-path coverage gate (spectrafit-core + spectrafit-solver)
+        shell: bash
+        run: |
+          source <(cargo llvm-cov show-env --sh)
+          cargo llvm-cov report --package spectrafit-core --fail-under-lines 75
+          cargo llvm-cov report --package spectrafit-solver --fail-under-lines 75
+
+      # Coverage Atlas — fuse python coverage.xml + rust lcov.info into a single
+      # navigable HTML map sized by LOC and colored by coverage %. The web slice
+      # is intentionally absent here (vitest --coverage is not wired into this
+      # job yet); the script tolerates a missing --web path by emitting only the
+      # python + rust continents. Always-on artifact so the reviewer can open
+      # `coverage-atlas.html` between iterations to see WHICH files are dark,
+      # not just an aggregate %.
+      - name: Build Coverage Atlas (python + rust)
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          uv run python scripts/coverage_atlas.py \
+            --python coverage.xml \
+            --rust target/llvm-cov/lcov.info \
+            --out coverage-atlas.html
+
+      - name: Upload Coverage Atlas
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: coverage-atlas-${{ github.sha }}
+          path: coverage-atlas.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Python coverage XML
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: python-coverage-${{ github.sha }}
+          path: coverage.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Rust coverage lcov
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: rust-coverage-${{ github.sha }}
+          path: target/llvm-cov/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          # No uv cache here: the web job only spins up the FastAPI server briefly
+          # (it does not compile Rust or run the full suite), so the cache saves almost
+          # nothing — and its post-run cache-SAVE step intermittently hard-fails the
+          # whole job on a transient "Cache service responded with 400". Disabling it
+          # removes that flake from the merge-critical path; the heavy build-and-test
+          # and regression-gate jobs keep their uv cache.
+          enable-cache: false
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install benchmark deps (FastAPI + engine)
+        run: uv sync --extra benchmark
+
+      # The web UI fetches the report from the FastAPI app (the single source of
+      # truth). The OpenAPI types are generated from a LIVE `/openapi.json`, so CI
+      # serves a fast SYNTHETIC report (no Rust build / real fits) just to publish the
+      # schema. The OpenAPI shape is data-independent, so synth is sufficient here.
+      # (The full SSR render smoke needs a real multi-case run and is a local check:
+      # `uv run poe serve` + `uv run poe web_smoke` against a `poe benchmark` run.)
+      - name: Write a synthetic benchmark run
+        run: |
+          PYTHONPATH=python uv run --extra benchmark python -c \
+            "from oracles.synth import build_report; from oracles.reports import write_run; print(write_run(build_report()))"
+
+      - name: Serve the report (FastAPI)
+        run: |
+          PYTHONPATH=python uv run --extra benchmark python -m uvicorn oracles.api:app --port 8000 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8000/api/report > /dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:8000/api/report > /dev/null \
+            || (echo "::error::FastAPI did not come up on :8000" && exit 1)
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Contract drift guard (OpenAPI → openapi.gen.ts types)
+        working-directory: web
+        run: |
+          npm run contract
+          git diff --exit-code src/openapi.gen.ts \
+            || (echo "::error::openapi.gen.ts is stale — run 'npm run contract' (with 'uv run poe serve' up) after a contract change" && exit 1)
+
+      - name: Typecheck (tsc)
+        working-directory: web
+        run: npm run typecheck
+
+      # Vitest with coverage — produces `web/coverage/lcov.info` so the web
+      # continent appears in the Coverage Atlas (currently the Atlas in the
+      # build-and-test job runs python+rust only because node is not installed
+      # there). The lcov upload below makes the data available to a future
+      # combined-atlas job without restructuring this workflow.
+      - name: Test (vitest + coverage)
+        working-directory: web
+        run: npx vitest run --coverage
+
+      - name: Upload web coverage (lcov)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: web-coverage-${{ github.sha }}
+          path: web/coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Build the web app
+        working-directory: web
+        run: npm run build
+
+      - name: Upload web bundle
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: web-report-${{ github.sha }}
+          path: web/dist
+          if-no-files-found: warn
+          retention-days: 30
+
+  regression-gate:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    # ci-job-timeout-declaration: compiles --release itself (GitHub was not in
+    # scope for the compile-once artifact-sharing change, which is GitLab-only)
+    # then runs the full benchmark. GitLab's equivalent, build:report_html,
+    # measures 57.3 min warm even WITH the shared artifact (pipeline 363865) --
+    # this job pays a release compile on top of that, so sized well above it.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Restore Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # `-cargo-release-`: shared deliberately with the other `maturin
+          # develop --release` jobs (the sibling gate job here and
+          # benchmark.yml) — same profile, so that reuse is correct and wanted.
+          # Kept apart from build-and-test's `-cargo-cov-` instrumented tree.
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Install LAPACK (for varpro on Linux)
+        run: sudo apt-get install -y liblapack-dev libopenblas-dev
+
+      - name: Sync dependencies
+        run: uv sync --extra benchmark
+
+      - name: Build extension (release profile for fair timing)
+        run: uv run maturin develop --release
+
+      - name: Run benchmark (lean) — engine only (report served via FastAPI, no HTML artifact)
+        run: PYTHONPATH=python uv run python -m oracles.cli run --reps 4 --mc 4
+
+      - name: Regression gate (spectrafit vs lmfit)
+        # Structured JSON drop into the PR step summary so a reviewer sees the
+        # four gate axes (speed / accuracy / regressions / self-perf) without
+        # opening the artifact zip. The second `gate` call (no flag) is what
+        # decides job status; the first call's exit is ignored.
+        run: |
+          set +e
+          PYTHONPATH=python uv run python -m oracles.cli gate --json \
+            | tee gate.json
+          set -e
+          if [ -s gate.json ]; then
+            {
+              echo "### Benchmark gate (PR lean)"
+              echo ""
+              echo '```json'
+              cat gate.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          PYTHONPATH=python uv run python -m oracles.cli gate
+
+      - name: Upload run artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: regression-gate-${{ github.sha }}
+          path: .spectrafit_reports/benchmark/**
+          if-no-files-found: warn
+          retention-days: 30
+
+  # Fast, spectrafit-only companion to regression-gate: skips lmfit/jax/
+  # scipy-ls-* entirely (oracles.cli run --backends spectrafit) so a push gets
+  # an absolute correctness signal (did spectrafit itself fail to converge on
+  # any case) without waiting on the full multi-backend comparison. Parallel
+  # job, NOT a replacement — regression-gate (the full comparative gate)
+  # still runs on every push. Separate report category (spectrafit_solo) and
+  # a separately-named artifact so outputs never collide with
+  # regression-gate's regression-gate-${{ github.sha }} artifact.
+  regression-gate-solo:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    # ci-job-timeout-declaration: compiles --release itself, then the fast
+    # spectrafit-only benchmark. GitLab's equivalent, build:report_html:solo,
+    # is now 1.6 min post-compile-once, but that reuses a shared artifact this
+    # job does not have -- sized for a real compile, not the GitLab number.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: true
+
+      - name: Restore Cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # `-cargo-release-`: shared deliberately with the other `maturin
+          # develop --release` jobs (the sibling gate job here and
+          # benchmark.yml) — same profile, so that reuse is correct and wanted.
+          # Kept apart from build-and-test's `-cargo-cov-` instrumented tree.
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-release-
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable  # rolling ref by design: tracks latest stable Rust toolchain, do not SHA-pin
+
+      - name: Install LAPACK (for varpro on Linux)
+        run: sudo apt-get install -y liblapack-dev libopenblas-dev
+
+      - name: Sync dependencies
+        run: uv sync --extra benchmark
+
+      - name: Build extension (release profile for fair timing)
+        run: uv run maturin develop --release
+
+      - name: Run benchmark (spectrafit only)
+        run: PYTHONPATH=python uv run python -m oracles.cli run --backends spectrafit --reps 4 --mc 4 --category spectrafit_solo
+
+      - name: Absolute correctness gate (spectrafit only, no baseline comparison)
+        run: |
+          set +e
+          PYTHONPATH=python uv run python -m oracles.cli gate --category spectrafit_solo --json \
+            | tee gate-solo.json
+          set -e
+          if [ -s gate-solo.json ]; then
+            {
+              echo "### Benchmark gate (spectrafit solo — speed/accuracy axes are self-comparison tautologies by construction; the live signal is \`regressions\`)"
+              echo ""
+              echo '```json'
+              cat gate-solo.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          PYTHONPATH=python uv run python -m oracles.cli gate --category spectrafit_solo
+
+      - name: Upload run artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: regression-gate-solo-${{ github.sha }}
+          path: .spectrafit_reports/spectrafit_solo/**
+          if-no-files-found: warn
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Fused 3-continent Coverage Atlas. Pulls the per-language coverage
+  # artifacts produced by `build-and-test` (python + rust) and `web` (vitest
+  # --coverage), then re-runs `scripts/coverage_atlas.py` with all three inputs
+  # so the HTML map carries the web continent too — the version uploaded inside
+  # `build-and-test` is python+rust only because Node is not installed there.
+  # Always-on; the artifact is the deliverable.
+  # ---------------------------------------------------------------------------
+  coverage-atlas-fused:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, web]
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
+        with:
+          enable-cache: false
+
+      - name: Sync minimal deps (script imports only)
+        run: uv sync --extra benchmark
+
+      - name: Download python coverage XML
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: python-coverage-${{ github.sha }}
+          path: .
+
+      - name: Download rust lcov
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: rust-coverage-${{ github.sha }}
+          path: target/llvm-cov/
+
+      - name: Download web lcov
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: web-coverage-${{ github.sha }}
+          path: web/coverage/
+
+      - name: Build fused Coverage Atlas (python + rust + web)
+        shell: bash
+        run: |
+          uv run python scripts/coverage_atlas.py \
+            --python coverage.xml \
+            --rust target/llvm-cov/lcov.info \
+            --web web/coverage/lcov.info \
+            --out coverage-atlas-fused.html
+
+      - name: Upload fused Atlas
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: coverage-atlas-fused-${{ github.sha }}
+          path: coverage-atlas-fused.html
+          if-no-files-found: warn
+          retention-days: 30

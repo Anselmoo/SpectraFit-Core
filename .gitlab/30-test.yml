@@ -1,0 +1,295 @@
+# Test stage — Python + Rust + Web. Cross-language coverage via cargo-llvm-cov's
+# shell-env recipe (mirrors .github/workflows/ci.yml). Floors are set against the
+# measured global coverage baseline (~94 %).
+#
+# cmake/gfortran/mold/cargo-llvm-cov are baked into the CI image; per-job cache
+# declarations replace the old global cache (see docs/contributor-guide/ci-pipeline.md).
+#
+# test:python:rust-cov — rust + static buckets; instrumented maturin + cargo test
+#                        + llvm-cov report → lcov.info artifact (~25–30 min). Its
+#                        own instrumented build — cannot consume the normally-
+#                        compiled build:ext:dev/build:ext:release artifact.
+# test:python:pytest   — static bucket; pulls the pre-compiled extension from
+#                        build:ext:dev (50-build.yml) via `needs:` + pytest
+#                        --cov (Python-only coverage) + binding audit (~55–60 min).
+# test:rust            — rust bucket; fast uninstrumented sanity gate.
+# test:web             — static + web buckets only (pure Python/JS, no cargo).
+#
+# Why two jobs instead of one?
+# The combined instrumented build (~21 min) + pytest sweep (~42 min) exceeded the
+# GWDG shared-runner maximum_timeout of 3600 s — pipelines 807234/807266/807290
+# all died at exactly 60 m with job_execution_timeout. The runner cap is 3600 s
+# and is set by GWDG admins at runner registration time; a job-level `timeout:`
+# is clamped to min(job, runner_max, project_max). Until GWDG raises runner
+# maximum_timeout to ≥ 7200 s (contact GWDG support; reference runner IDs 80579
+# and 80750), the 2h timeout: below is aspirational but the split ensures each
+# job fits inside the current 1h runner cap.
+# Trade-off: Python-driven Rust coverage is lost (pytest no longer runs against
+# the llvm-cov-instrumented .so). Recover by folding back together once GWDG
+# raises the runner cap and the combined job fits in 2h.
+
+# Rust instrumented coverage — llvm-cov build + cargo test + lcov gates.
+# target/ stays uncached (ENOSPC, hotfix 8); .cargo/ warm from setup.
+test:python:rust-cov:
+  rules: !reference [.rules_full_only, rules]
+  stage: test
+  needs: [setup]
+  # 2h ceiling — cold instrumented workspace build (~21 min) + cargo test (~1 min)
+  # + binding pytest subset (~seconds) + llvm-cov report (~2 min) ≈ 25 min.
+  # Wide margin even on a slow runner.
+  # Honored only when GWDG raises runner maximum_timeout above 3600 s.
+  timeout: 2h
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      # New branches seed from main's warm .cargo registry (target/ excluded, ENOSPC).
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      cargo llvm-cov clean --workspace
+      source <(cargo llvm-cov show-env --sh)
+      export CARGO_TARGET_DIR="$CARGO_LLVM_COV_TARGET_DIR"
+      export CARGO_INCREMENTAL=0
+      UV_CACHE_DIR=.uv-cache uv run maturin develop
+      # Note: do NOT re-source show-env here — env vars persist in this shell block.
+      # A second source triggers a cargo metadata subprocess under the instrumentation
+      # shim, pushing RSS over the cgroup limit.
+      # Run lib unit tests + integration tests (no --tests filter = both).
+      # --tests-only was the prior flag; it silently skipped all #[cfg(test)] lib
+      # blocks (52 test blocks across the workspace) which left solver/model code
+      # paths uncovered on cargo-test-alone paths (no pytest on this job).
+      # --exclude spectrafit-core: this crate has zero #[test]/cfg(test) blocks
+      # (it's PyO3 glue, exercised only through the pytest subset below). Without
+      # the exclude, `maturin develop` above instruments it once under the
+      # extension-module feature (covered by the pytest run below) and
+      # `cargo test` instruments it again under a different feature set — never
+      # executed, since there's nothing to run — leaving two differently-hashed,
+      # never-merged copies of every lib.rs symbol. llvm-cov counts both, so the
+      # never-executed cargo-test copy drags the merged report down. No tests are
+      # lost by excluding it here.
+      cargo test --workspace --exclude spectrafit-core --quiet
+      # Binding pytest subset, run against the same instrumented extension
+      # (maturin develop above) so its profraw lands in the same
+      # CARGO_LLVM_COV_TARGET_DIR as cargo test's — this is what gives
+      # crates/spectrafit-core (PyO3 glue) real coverage in this job instead
+      # of the 0% cargo-test-alone measurement the dropped floor below used to
+      # note. `--no-sync`: a plain `uv run` here would let uv re-resolve/sync
+      # the project, which can rebuild spectrafit-core uninstrumented and
+      # undo the `maturin develop` above. `-n auto`: pytest-xdist is in the
+      # `dev` dependency-group synced by `setup` (10-setup.yml), so it's
+      # available in the cached .venv this job pulls. `-p no:cacheprovider`:
+      # matches test:python:pytest's style; skips writing .pytest_cache. This
+      # is only the binding-facing subset (tests/unit/spectrafit_core) — the
+      # full sweep still runs, uninstrumented, in test:python:pytest.
+      UV_CACHE_DIR=.uv-cache PYTHONPATH=python uv run --no-sync pytest tests/unit/spectrafit_core -q -n auto -p no:cacheprovider
+      mkdir -p target/llvm-cov
+      cargo llvm-cov report --lcov --output-path target/llvm-cov/lcov.info
+      cargo llvm-cov report --fail-under-lines 85
+      cargo llvm-cov report --package spectrafit-solver --fail-under-lines 75
+      # This per-package spectrafit-core floor requires this job to run the
+      # tests/unit/spectrafit_core binding subset itself against the
+      # instrumented extension, above (cargo-test alone gives 0% coverage of
+      # lib.rs's PyO3 glue, since it never exercises the Python-facing
+      # surface) — lib.rs is measured directly here instead of being only
+      # functionally validated by the full Python suite +
+      # scripts/audit_bindings.py in test:python:pytest. The
+      # cargo-test copy of spectrafit-core is excluded above (--exclude
+      # spectrafit-core) so it can't double-count against this
+      # binding-subset measurement.
+      cargo llvm-cov report --package spectrafit-core --fail-under-lines 75
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - target/llvm-cov/lcov.info
+
+# Python test suite + coverage — non-instrumented maturin + pytest-cov.
+# No llvm-cov env here: Python coverage via pytest-cov only. Rust coverage
+# lives entirely in test:python:rust-cov above.
+test:python:pytest:
+  rules: !reference [.rules_full_only, rules]
+  stage: test
+  needs:
+    - job: setup
+      artifacts: true
+    - job: build:ext:dev
+      artifacts: true
+  # `pytest -n auto` against the PyO3 extension compiled ONCE per pipeline by
+  # build:ext:dev (.gitlab/50-build.yml, dev profile) and pulled in via
+  # `needs:` above — this job no longer runs `maturin develop` itself,
+  # avoiding a redundant compile on every pipeline. The xdist
+  # sharding takes the ~42 min single-thread sweep down to a few minutes
+  # across the runner's cores, so the job fits well under the 3600 s runner
+  # cap WITHOUT wheel-reuse (a plain wheel lands in site-packages and is
+  # shadowed by PYTHONPATH=python → ModuleNotFoundError spectrafit_core._core;
+  # `maturin develop`'s compile-into-source path is what build:ext:dev
+  # reproduces via its published artifact).
+  #
+  # Thread-pool pinning: crates/spectrafit-core/src/lib.rs builds rayon's global
+  # pool with no num_threads() cap, so it defaults to one-thread-per-core (rayon
+  # docs: RAYON_NUM_THREADS env var if set, else available_parallelism()) — in
+  # EVERY xdist worker process. With `-n auto` sizing worker count to the same
+  # core count, that's N workers x N rayon threads on N cores: oversubscription
+  # that defeats the sharding above (observed to push pytest wall time well
+  # past the ~42min single-thread baseline this comment claims, rather than
+  # under it). Pinning every native thread pool to 1 per worker lets
+  # xdist's process-level parallelism do the work instead of each worker also
+  # parallelizing internally and fighting the others for cores.
+  timeout: 2h
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      export RAYON_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+             MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+      # Required-artifact guard (exemplar: .gitlab/40-coverage.yml:25-30). No
+      # silent `maturin develop` fallback — that would mask a broken
+      # build:ext:dev and reintroduce the compile this design removes.
+      test -f python/spectrafit_core/_core*.so || {
+        echo "ERROR python/spectrafit_core/_core*.so missing — build:ext:dev did not emit it."
+        exit 1
+      }
+      echo "python/spectrafit_core/_core*.so OK: $(du -h python/spectrafit_core/_core*.so | cut -f1)"
+      # -n auto: shard across all runner cores. Tests are xdist-safe — the
+      # .spectrafit_reports writers all monkeypatch.chdir(tmp_path) for isolation
+      # (verified: 429 mixed tests green under -n auto locally).
+      # The global Python floor is 94%, not the more permissive 85%: measured
+      # coverage sits well above 85%, so a lower floor would not catch a real
+      # regression until coverage dropped several points. 94% keeps a small
+      # flexible band below the measured baseline
+      # (room for normal fluctuation without flaking the gate) while tracking
+      # actual coverage much more closely; 95% is the next target to raise to
+      # once coverage sits comfortably above it.
+      # Install the optional jax extra. Without it tests/unit/test_jax_kernel_parity.py
+      # importorskips and `python/oracles/jax_kernels.py` — 144 statements of numerical
+      # kernel — never executes. That is not just a coverage-accounting problem: the
+      # parity test against the numpy kernels is the ONLY check standing between a
+      # mistyped JAX formula and a silently wrong benchmark, so skipping it ships 32
+      # unverified kernels. `--inexact` so build:ext:dev's _core*.so survives the sync.
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv sync --inexact --extra jax
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync pytest -q -n auto \
+        --cov=python/spectrafit_core --cov=python/oracles \
+        --cov-report=term --cov-report=xml \
+        --cov-fail-under=94
+      # Per-module Python critical-path floors, set against their measured baselines.
+      UV_CACHE_DIR=.uv-cache uv run coverage report --include='python/oracles/engine.py' --fail-under=85
+      UV_CACHE_DIR=.uv-cache uv run coverage report --include='python/spectrafit_core/fit.py' --fail-under=90
+      UV_CACHE_DIR=.uv-cache uv run coverage report --include='python/spectrafit_core/evaluate.py' --fail-under=90
+      UV_CACHE_DIR=.uv-cache uv run coverage report --include='python/spectrafit_core/graph.py' --fail-under=80
+      # Rust <-> Python binding audit: checks scripts/binding_audit_notes.toml
+      # against the grepped PyO3/Solver surface directly (no docs/ dependency, so a
+      # docs-site reorg can't break this gate). Fix locally: uv run poe audit_bindings_regen
+      python3 scripts/audit_bindings.py
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - coverage.xml
+      - .coverage
+
+# Fast sanity gate — no instrumentation. test:python now carries the
+# coverage burden so this job is just "does cargo test still pass?".
+# Keeps stage:test parallelism without re-instrumenting (the instrumented
+# build under test:python's --no-clean env is the slow one).
+#
+# No target/ cache here either — an uninstrumented `cargo test --workspace`
+# build (~500 MB - 1 GB) plus a pulled target/ (different RUSTFLAGS, so
+# semi-incompatible) wastes the extract cost without speedup; see
+# docs/contributor-guide/ci-pipeline.md#cache-buckets. cargo registry stays
+# cached.
+test:rust:
+  rules: !reference [.rules_default, rules]
+  stage: test
+  needs: [setup]
+  # ci-job-timeout-declaration: uninstrumented `cargo test --workspace` compiles
+  # the whole workspace (~5 min warm, pipeline 363865). Same 2h headroom as
+  # test:python:rust-cov / test:python:pytest, not tightened just because this
+  # job's uninstrumented compile is normally the faster of the two.
+  timeout: 2h
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .cargo/
+      policy: pull
+  script:
+    - |
+      cargo test --workspace --quiet
+
+# Web tests + vitest coverage. Boots FastAPI on :8000 so the OpenAPI → TS
+# contract drift guard works. All multi-line shell goes in `|` blocks so colons
+# (echo "ERROR: …") never leak into YAML's mapping parser.
+#
+# test:web declares ONLY static + web buckets — no Rust cache loaded at all.
+# The synth path is pure Python; no .so import happens; cargo is never invoked.
+# `--no-sync` on every `uv run` so uv doesn't try to install the local
+# spectrafit-core editable wheel (which would trigger maturin → cmake).
+test:web:
+  rules: !reference [.rules_default, rules]
+  stage: test
+  needs: [setup]
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+    - key: "web-$CI_COMMIT_REF_SLUG"
+      paths:
+        - web/node_modules/
+      policy: pull
+  script:
+    - |
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync python -c \
+        "from oracles.synth import build_report; from oracles.reports import write_run; print(write_run(build_report()))"
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync \
+        python -m uvicorn oracles.api:app --port 8000 &
+      for i in $(seq 1 60); do
+        curl -sf http://localhost:8000/api/report > /dev/null && break
+        sleep 1
+      done
+      curl -sf http://localhost:8000/api/report > /dev/null || {
+        echo "ERROR FastAPI did not come up on port 8000"
+        exit 1
+      }
+      cd web && npm run contract
+      git diff --exit-code src/openapi.gen.ts || {
+        echo "ERROR openapi.gen.ts is stale - run 'npm run contract' with FastAPI up after a contract change"
+        exit 1
+      }
+      npx vitest run --coverage
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - web/coverage/
+
+# Trust audit — verification wire set (W1-W8).
+audit:trust:
+  rules: !reference [.rules_full_only, rules]
+  stage: test
+  needs: [setup]
+  cache:
+    - key: "static-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .uv-cache/
+        - .venv/
+      policy: pull
+  script:
+    - |
+      PYTHONPATH=python UV_CACHE_DIR=.uv-cache uv run --no-sync poe trust_audit
+  # Blocking gate: the trust audit (wire matrix W1–W8 + runtime L3) fails the
+  # pipeline if any value wire comes back red.
+  allow_failure: false
+  artifacts:
+    paths:
+      - .spectrafit_reports/benchmark/*/trust.json
+    expire_in: 30 days

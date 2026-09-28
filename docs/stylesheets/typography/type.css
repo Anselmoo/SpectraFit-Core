@@ -1,0 +1,109 @@
+/*
+ * IBM Plex Sans + JetBrains Mono, self-hosted — same OFL-licensed webfonts
+ * already vendored for the benchmark dashboard (web/src/style/fonts.css),
+ * copied verbatim into docs/fonts/ (see OFL-*.txt there for license text)
+ * so the docs site and the dashboard read as one typographic identity.
+ *
+ * docs/fonts/ is copied to site/fonts/ by the same static-file-copy
+ * mechanism already proven for docs/images/ and docs/stylesheets/ (verified:
+ * `poe docs_build` then `ls site/fonts/*.woff2` — see the accompanying
+ * report for the exact command output). Paths below are relative to this
+ * file's own location (docs/stylesheets/typography/type.css), which Zensical
+ * mirrors 1:1 into site/stylesheets/typography/type.css, so the same
+ * ../../fonts/ relative path resolves correctly in both the source tree and
+ * the built site.
+ */
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../../fonts/ibm-plex-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../../fonts/ibm-plex-sans-400-italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../../fonts/ibm-plex-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../../fonts/ibm-plex-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("../../fonts/ibm-plex-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../fonts/jetbrains-mono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../fonts/jetbrains-mono-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../../fonts/jetbrains-mono-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The families themselves are NOT set here. They are set once, as
+   --md-text-font / --md-code-font in tokens/palette.css, which are the
+   variables the theme itself consumes.
+
+   This block previously listed `.md-typeset, .md-header, .md-nav, .sf-hero`
+   and `.md-typeset code|kbd|pre`. That enumerated only the surfaces someone
+   thought of: `body`, the footer nav, the skip link and both tooltip variants
+   fell through to Zensical's injected `--md-text-font: "Inter"` and rendered
+   in a third family — while Inter was still fetched from Google for them.
+   Setting the variable instead covers every consumer the theme has, including
+   ones added by future features (--md-mermaid-font-family, code annotations),
+   and it is why `font = false` in zensical.toml is safe.
+
+   Only the heading WEIGHT is a genuine override, so only it remains. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 600;
+}
