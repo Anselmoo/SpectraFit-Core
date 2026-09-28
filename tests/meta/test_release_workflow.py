@@ -25,6 +25,7 @@ import yaml
 
 _WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "release.yml"
 _BUILD_WORKFLOW = _WORKFLOW.with_name("build-wheels.yml")
+_SMOKE_WORKFLOW = _WORKFLOW.with_name("wheel-smoke.yml")
 
 
 def _load() -> dict:
@@ -93,7 +94,7 @@ def _collect_uses(workflow_path: Path) -> list[str]:
 
 
 def test_all_uses_pinned_to_commit_sha() -> None:
-    """Every ``uses:`` in release.yml must reference a full 40-hex commit SHA.
+    """Every ``uses:`` in release.yml, build-wheels.yml and wheel-smoke.yml is SHA-pinned.
 
     Mutable tags (``@v4``, ``@release/v1``) or branch refs can be moved after
     publication.  In a job that holds ``id-token: write`` (OIDC trusted
@@ -101,11 +102,13 @@ def test_all_uses_pinned_to_commit_sha() -> None:
     token.  Pin to the immutable commit SHA and record the human-readable
     version in a trailing comment.
     """
-    uses_values = _collect_uses(_WORKFLOW) + _collect_uses(_BUILD_WORKFLOW)
+    uses_values = (
+        _collect_uses(_WORKFLOW) + _collect_uses(_BUILD_WORKFLOW) + _collect_uses(_SMOKE_WORKFLOW)
+    )
     # A local reusable workflow (./.github/workflows/...) is pinned by the repo itself.
     unpinned = [u for u in uses_values if not u.startswith("./") and not _SHA40_RE.search(u)]
     assert not unpinned, (
-        "The following uses: lines in release.yml are NOT pinned to a 40-hex "
+        "The following uses: lines in the release/build/smoke workflows are NOT pinned to a 40-hex "
         "commit SHA — replace each @tag with @<sha>  # tag:\n"
         + "\n".join(f"  {u}" for u in unpinned)
     )
@@ -424,14 +427,14 @@ def test_verify_testpypi_covers_every_os_and_python() -> None:
 def test_release_builds_through_the_shared_build_workflow() -> None:
     """release.yml and wheel-smoke.yml publish/test the very same build."""
     assert _job("build").get("uses") == "./.github/workflows/build-wheels.yml"
-    smoke = yaml.safe_load(_WORKFLOW.with_name("wheel-smoke.yml").read_text())
+    smoke = yaml.safe_load(_SMOKE_WORKFLOW.read_text())
     assert smoke["jobs"]["build"]["uses"] == "./.github/workflows/build-wheels.yml"
     assert True in yaml.safe_load(_BUILD_WORKFLOW.read_text())  # `on:` parses as True
     assert "workflow_call" in yaml.safe_load(_BUILD_WORKFLOW.read_text())[True]
 
 
 def test_wheel_smoke_installs_every_wheel_outside_the_checkout() -> None:
-    jobs = yaml.safe_load(_WORKFLOW.with_name("wheel-smoke.yml").read_text())["jobs"]
+    jobs = yaml.safe_load(_SMOKE_WORKFLOW.read_text())["jobs"]
     linux = jobs["smoke-linux"]
     assert str(linux["container"]).startswith("python:")
     assert set(linux["strategy"]["matrix"]["python"]) == {"3.13", "3.14"}
