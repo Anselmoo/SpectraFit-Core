@@ -25,7 +25,7 @@ authors:
 repository-code: "https://github.com/Anselmoo/SpectraFit-Core"
 url: "https://github.com/Anselmoo/SpectraFit-Core"
 license: MIT
-version: 0.1.0
+version: 0.1.0-rc.1
 # date-released: intentionally absent until 0.1.0 is actually tagged and
 # deposited. It previously read 2026-06-13, asserting a release date for a
 # release that does not exist: `git tag -l` shows no version tag, the GitHub

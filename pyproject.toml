@@ -9,7 +9,7 @@
 
 [project]
 name = "spectrafit-core"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 description = "High-performance numerical fitting framework: Rust kernel + Pydantic schemas"
 readme = "README.md"
 license = "MIT"

@@ -1,7 +1,7 @@
 {
   "name": "spectrafit-benchmark-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "type": "module",
   "description": "SpectraFit benchmark report UI — Vite + React; fetches the report from the FastAPI app at runtime.",
   "scripts": {

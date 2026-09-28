@@ -4,18 +4,19 @@ All notable changes to `spectrafit-core` will be documented in this file.
 
 This project follows repository release policy enforced by `repo-release-tools`.
 
-> **Release status — nothing below has been tagged or published.**
-> No version tag exists in this repository (`git tag -l` lists only `pr/*` refs,
-> on the primary remote as well), and there is no `spectrafit-core` project on
-> PyPI. The `[0.1.0b1]` and `[0.1.0a1]` sections below record the dates on which
-> those version bumps were *prepared in-tree*; neither was ever cut as a release,
-> so neither date is a release date. `CITATION.cff` omits its `date-released`
-> field for exactly this reason.
+> **Release status — release candidate `0.1.0rc1`; nothing has reached PyPI.**
+> `v0.1.0rc1` is the first version tag: a release candidate that `release.yml`
+> builds and publishes to TestPyPI only, as a GitHub pre-release. There is no
+> `spectrafit-core` project on PyPI. The `[0.1.0b1]` and `[0.1.0a1]` sections
+> below record the dates on which those version bumps were *prepared in-tree*;
+> neither was ever cut as a release, so neither date is a release date.
+> `CITATION.cff` omits its `date-released` field for exactly this reason.
 >
-> The package currently ships as **`0.1.0`** (`pyproject.toml`, `Cargo.toml`).
-> Everything since the `0.1.0b1` bump — including that version's own promotion to
-> `0.1.0` — is collected under `[Unreleased]` below, and will be folded into the
-> first `[0.1.0]` section when a release is actually tagged and deposited.
+> The package currently ships as **`0.1.0rc1`** (`0.1.0-rc.1` in `Cargo.toml`
+> and the other SemVer targets). Everything since the `0.1.0b1` bump is
+> collected under `[Unreleased]` below; the release candidate carries exactly
+> that content, which will be folded into the first `[0.1.0]` section when the
+> final release is tagged and deposited.
 >
 > **Scope note.** `[Unreleased]` below summarises the development log by theme
 > rather than reproducing it entry by entry. Nothing here has been rewritten:
