@@ -50,6 +50,7 @@ def test_claude_review_may_post_its_review() -> None:
     claude_args = with_.get("claude_args", "")
     for tool in (
         "Task",
+        "Skill",
         "Bash(gh pr comment:*)",
         "Bash(gh pr view:*)",
         "Bash(gh pr diff:*)",
@@ -122,3 +123,38 @@ def test_review_gate_is_always_reported_and_overridable() -> None:
     assert "author_association" in override["if"]
     # PyYAML (YAML 1.1) reads the unquoted `on:` key as True.
     assert "issue_comment" in workflow[True]
+
+
+def test_review_subagents_run_in_the_foreground() -> None:
+    """Headless runs end when Claude ends its turn; background subagents are lost."""
+    jobs = _load("claude-code-review.yml")["jobs"]
+    for name in ("claude-review", "claude-report-run"):
+        assert (jobs[name].get("env") or {}).get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS") == "1", (
+            name
+        )
+    assert "sync/gitlab" in jobs["claude-review"]["if"]
+
+
+def test_workflow_changing_prs_get_a_red_gate() -> None:
+    """Claude cannot run on a PR that edits the review workflow: red, not green."""
+    jobs = _load("claude-code-review.yml")["jobs"]
+    (post,) = [
+        s
+        for s in jobs["claude-report-run"]["steps"]
+        if s.get("name") == "Post review report and set the gate"
+    ]
+    script = post["run"]
+    not_run = script[script.index('CLAUDE_STEP_OUTCOME") == "success"') :]
+    not_run = not_run[: not_run.index("sys.exit(0)")]
+    assert 'gate("failure"' in not_run
+    assert "/claude-override" in not_run
+
+
+def test_status_descriptions_carry_no_emoji() -> None:
+    """GitHub rejects 4-byte Unicode in commit-status descriptions (HTTP 422)."""
+    import re
+
+    text = (_WORKFLOWS / "claude-code-review.yml").read_text()
+    for line in text.splitlines():
+        if "description=" in line or 'gate("' in line:
+            assert not re.search(r"[\U00010000-\U0010FFFF]", line), line.strip()

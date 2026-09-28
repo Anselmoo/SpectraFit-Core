@@ -22,7 +22,8 @@ jobs:
     # owner/member/collaborator; a first-time external contributor's PR is
     # skipped until a maintainer signals trust.
     if: >-
-      github.event_name == 'pull_request' && (
+      github.event_name == 'pull_request' &&
+      github.head_ref != 'sync/gitlab' && (
       github.actor == 'dependabot[bot]' ||
       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
 
@@ -37,6 +38,11 @@ jobs:
       # remap that alias (and the subagent default) to Sonnet.
       ANTHROPIC_DEFAULT_OPUS_MODEL: claude-sonnet-5
       CLAUDE_CODE_SUBAGENT_MODEL: claude-sonnet-5
+      # The plugin launches its reviewers as subagents; in a headless run a
+      # background subagent is still running when Claude ends its turn, so the
+      # run stopped after 4 turns ("both checks are running in the background").
+      # This forces every subagent into the foreground.
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
 
     steps:
       - name: Checkout repository
@@ -61,7 +67,7 @@ jobs:
           # the next step turns that into a red job.
           claude_args: |
             --model claude-sonnet-5
-            --allowedTools "Task,Agent,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
+            --allowedTools "Task,Agent,Skill,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
 
       - name: Report review outcome
         # Always report (except on cancel): turns, cost, denied tools and the
@@ -151,6 +157,8 @@ jobs:
       issues: write
       statuses: write
       id-token: write
+    env:
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
 
     steps:
       - name: Checkout repository
@@ -189,8 +197,11 @@ jobs:
             `line` must be a line number in the new version of a file changed by this PR.
             Give `suggestion` only when replacing that single line fixes the issue completely.
             `checked` lists what you actually verified (e.g. tests, CLAUDE.md rules, PyO3
-            boundary, changelog). Do not post anything yourself; answer only with the
-            structured output.
+            boundary, changelog), one short item each.
+            Write every text field in GitHub Markdown: wrap identifiers, file names, config
+            keys and commands in backticks; put multi-line code in fenced code blocks; keep
+            `issue` to the problem and its consequence, and `action` to what to change.
+            Do not post anything yourself; answer only with the structured output.
           claude_args: |
             --model claude-sonnet-5
             --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
@@ -206,6 +217,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: python
         run: |
@@ -234,6 +246,10 @@ jobs:
 
 
           def gate(state, description):
+              # Commit-status descriptions reject 4-byte Unicode (HTTP 422
+              # "Description doesn't accept 4-byte Unicode"): no emoji here,
+              # the light is spelled out; the PR comment keeps the emoji.
+              description = "".join(ch for ch in description if ord(ch) <= 0xFFFF).strip()
               call("POST", f"{api}/statuses/{sha}", {
                   "state": state, "context": "claude-review-gate",
                   "description": description[:140], "target_url": os.environ["RUN_URL"],
@@ -254,10 +270,17 @@ jobs:
           if not raw:
               if not execution and os.environ.get("CLAUDE_STEP_OUTCOME") == "success":
                   # The action finished without running Claude: it refuses to
-                  # run on PRs that change this workflow. Nothing was billed.
-                  note = "Claude did not run (e.g. this PR changes the review workflow); nothing was billed."
-                  gate("success", "not run: " + note)
-                  summary_file.write(f"## Claude review report\n\n{note}\n")
+                  # run on PRs that change this workflow. Nothing was billed,
+                  # but nothing was reviewed either -- such a PR could also
+                  # weaken the gate itself, so it stays red until a maintainer
+                  # has read it and overrides with `/claude-override <reason>`.
+                  note = (
+                      "Claude could not run (this PR changes the review workflow); nothing was "
+                      "billed and nothing reviewed. A maintainer must review it by hand and "
+                      "override with `/claude-override <reason>`."
+                  )
+                  gate("failure", "RED review workflow changed: manual review + /claude-override needed")
+                  summary_file.write(f"## 🔴 Claude review report\n\n{note}\n")
                   print(f"::warning::{note}")
                   sys.exit(0)
               gate("error", "Claude review failed or returned no report")
@@ -276,26 +299,64 @@ jobs:
               light, word = "🟢", "green"
 
 
-          def item(f):
-              return f"- [ ] `{f['path']}:{f['line']}` — {f['issue']}  \n  → **Do:** {f['action']}"
+          repo_url = f"https://github.com/{os.environ['REPO']}"
+
+
+          def ref(f):
+              return f"[`{f['path']}:{f['line']}`]({repo_url}/blob/{sha}/{f['path']}#L{f['line']})"
+
+
+          def section(title, icon, findings, start):
+              out = ["", f"### {icon} {title}"]
+              for n, f in enumerate(findings, start):
+                  out += ["", f"**{n}. {ref(f)}**", "", f["issue"], "", f"**Do:** {f['action']}"]
+              return out
 
 
           lines = [
               MARKER,
-              f"## {light} Claude review — {len(must)} must · {len(should)} should · {len(could)} could",
+              f"## {light} Claude review: {word}",
+              "",
+              "| 🔴 Must | 🟠 Should | 🟡 Could |",
+              "|:---:|:---:|:---:|",
+              f"| {len(must)} | {len(should)} | {len(could)} |",
               "",
               report["summary"],
           ]
-          if must:
-              lines += ["", "### 🔴 Must fix (blocking)", *[item(f) for f in must]]
-          if should:
-              lines += ["", "### 🟠 Should", *[item(f) for f in should]]
-          if could:
-              lines += ["", "### 🟡 Could", *[item(f) for f in could]]
+          n = 1
+          for title, icon, findings in (("Must fix (blocking)", "🔴", must), ("Should", "🟠", should), ("Could", "🟡", could)):
+              if findings:
+                  lines += section(title, icon, findings, n)
+                  n += len(findings)
           if dont:
-              lines += ["", "### Don't / keep as is", *[f"- {d['what']} — {d['why']}" for d in dont]]
+              lines += ["", "### Don't / keep as is", *[f"- **{d['what']}**: {d['why']}" for d in dont]]
           if report["checked"]:
-              lines += ["", "### Checked", " · ".join(report["checked"])]
+              lines += ["", "<details><summary>What was checked</summary>", "", *[f"- {c}" for c in report["checked"]], "", "</details>"]
+
+          actionable = must + should
+          if actionable:
+              prompt = [
+                  f"Fix the Claude review findings on PR #{pr} of {os.environ['REPO']} "
+                  f"(branch {os.environ.get('HEAD_REF', '')}, reviewed at {sha[:8]}).",
+                  "Change only what each item asks for, keep the repository rules in CLAUDE.md, "
+                  "run the affected tests, then commit and push to the PR branch.",
+                  "",
+              ]
+              for n, f in enumerate(actionable, 1):
+                  level = "MUST" if f in must else "SHOULD"
+                  prompt += [f"{n}. [{level}] {f['path']}:{f['line']}", f"   Problem: {f['issue']}", f"   Do: {f['action']}", ""]
+              fence = "````"
+              lines += [
+                  "",
+                  "<details><summary>🤖 Prompt for Claude Code</summary>",
+                  "",
+                  f"{fence}text",
+                  *[line.rstrip() for line in prompt],
+                  fence,
+                  "",
+                  "</details>",
+              ]
+
           lines += [
               "",
               f"<sub>{sha[:8]} · models: {', '.join(models) or 'n/a'} · "
@@ -304,6 +365,8 @@ jobs:
               + "</sub>",
           ]
           body = "\n".join(lines)
+          if len(body) > 60000:
+              body = body[:60000] + "\n\n…(truncated; full report in the run summary)"
 
           comments = call("GET", f"{api}/issues/{pr}/comments?per_page=100") or []
           mine = [c for c in comments if MARKER in (c.get("body") or "")]
@@ -324,7 +387,7 @@ jobs:
               except urllib.error.HTTPError as exc:
                   print(f"::warning::inline comments rejected ({exc.code}); findings are in the sticky comment")
 
-          gate("failure" if must else "success", f"{light} {word}: {len(must)} must, {len(should)} should, {len(could)} could")
+          gate("failure" if must else "success", f"{word.upper()}: {len(must)} must, {len(should)} should, {len(could)} could")
           summary_file.write(body.replace(MARKER, "") + "\n")
 
       - name: Upload report transcript
@@ -358,9 +421,9 @@ jobs:
           ACTOR: ${{ github.actor }}
         run: |
           if [ "$HEAD_REF" = "sync/gitlab" ] || [ "$ACTOR" = "dependabot[bot]" ]; then
-            state=success; description="🟢 skipped: sync or Dependabot PR"
+            state=success; description="GREEN skipped: sync or Dependabot PR"
           else
-            state=failure; description="🔴 external author: a maintainer must /claude-override"
+            state=failure; description="RED external author: a maintainer must /claude-override"
           fi
           gh api -X POST "repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
             -f state="$state" -f context=claude-review-gate -f description="$description"
@@ -395,5 +458,5 @@ jobs:
           fi
           sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq .headRefOid)
           gh api -X POST "repos/$REPO/statuses/$sha" -f state=success -f context=claude-review-gate \
-            -f description="$(printf '🟢 overridden by @%s: %s' "$COMMENTER" "$reason" | cut -c1-140)"
+            -f description="$(printf 'GREEN overridden by @%s: %s' "$COMMENTER" "$reason" | tr -cd '\11\12\15\40-\176' | cut -c1-140)"
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "🟢 Claude review gate overridden for \`${sha:0:8}\` by @$COMMENTER: $reason"
