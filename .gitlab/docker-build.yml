@@ -93,3 +93,27 @@ build:ci-image:
     # block pipelines that don't depend on a fresh image.
     - when: manual
       allow_failure: true
+
+# Smoke test of the image the schedule just pushed. It also keeps the weekly
+# rebuild pipeline alive: GitLab refuses to create a pipeline whose only jobs
+# sit in `.pre`/`.post` ("The resulting pipeline would have been empty"), and
+# on the schedule every other job is `when: never`. The schedule's play call
+# still answers 201, so without this job the rebuild silently never ran.
+# No `image:` and no `before_script:` of its own: the defaults run the fresh
+# `ci:latest` and check every baked tool. The rebuild rule of build:ci-image
+# has no allow_failure, so a failed build skips this job and the pipeline is
+# red instead of testing the previous image.
+test:ci-image:
+  stage: test
+  needs: ["build:ci-image"]
+  script:
+    - |
+      python3 --version
+      uv --version
+      rustc --version
+      cargo llvm-cov --version
+      node --version
+      gfortran --version | head -1
+      mold --version
+  rules:
+    - if: '$CI_IMAGE_REBUILD == "true"'

@@ -39,7 +39,7 @@ def test_every_other_job_is_guarded_or_inherits_an_anchor() -> None:
     offenders = []
     for key, rules in _rules_blocks().items():
         name = key.split(":", 1)[1]
-        if name.startswith(".") or name == "build:ci-image":
+        if name.startswith(".") or name in {"build:ci-image", "test:ci-image"}:
             continue
         inherits = "!reference [.rules_default" in rules or "!reference [.rules_full_only" in rules
         mr_only = (
@@ -59,3 +59,21 @@ def test_build_ci_image_runs_on_the_schedule_and_has_no_version_copies() -> None
     # Versions live only in Dockerfile.ci's ARG defaults (Renovate-managed).
     code = [line for line in text.splitlines() if not line.lstrip().startswith("#")]
     assert not any("--build-arg" in line for line in code)
+
+
+def test_rebuild_pipeline_has_a_job_outside_pre_and_post() -> None:
+    """GitLab drops a pipeline made only of `.pre`/`.post` jobs as empty.
+
+    build:ci-image sits in `.pre`, so the schedule needs test:ci-image in a
+    real stage, running on the rebuilt image after the build.
+    """
+    text = (_GITLAB / "docker-build.yml").read_text()
+    job = text.split("\ntest:ci-image:\n", 1)[1].split("\n\n", 1)[0]
+    stage = re.search(r"^  stage: (\S+)", job, re.MULTILINE)
+    assert stage
+    assert stage.group(1) not in {".pre", ".post"}
+    assert 'needs: ["build:ci-image"]' in job
+    assert "image:" not in job
+    assert "before_script:" not in job
+    rules = _rules_blocks()["docker-build.yml:test:ci-image"]
+    assert rules.strip() == """- if: '$CI_IMAGE_REBUILD == "true"'"""

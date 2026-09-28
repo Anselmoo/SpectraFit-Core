@@ -250,6 +250,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Fixed
 
+- **The weekly CI-image rebuild actually runs.** GitLab drops a pipeline whose
+  only jobs sit in `.pre`/`.post` as empty, and on the schedule every job but
+  `build:ci-image` (a `.pre` job) is `when: never` -- so the schedule answered
+  "201 Created" and never started a pipeline. A new `test:ci-image` job in the
+  `test` stage runs only on the rebuild, after the build, on the fresh image:
+  the default `before_script` checks every baked tool and the job prints their
+  versions. A meta test pins the job outside `.pre`/`.post`.
 - **Both mirror directions work against a private GitHub repository.**
   `backport:github` sends `GITHUB_TOKEN` as a second `http.extraheader`
   scoped to `https://github.com/` (`GIT_CONFIG_COUNT=2`, one header per host),
