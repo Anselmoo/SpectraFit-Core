@@ -1,0 +1,64 @@
+name: Docker pins
+
+# The GitLab CI image (.gitlab/docker/Dockerfile.ci) downloads cargo-llvm-cov
+# and lychee and verifies each against a SHA-256 ARG. Renovate bumps the
+# *_VERSION ARGs but cannot compute the new digests, and the image is only
+# built on GitLab -- after the change has already landed through the
+# backport. This check fetches the pinned release assets and compares them to
+# the ARGs, so a version bump without its digest is red on the PR instead.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".gitlab/docker/Dockerfile.ci"
+      - ".github/workflows/docker-pins.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".gitlab/docker/Dockerfile.ci"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sha256:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Verify SHA-256 pins against the release assets
+        shell: python
+        run: |
+          import hashlib
+          import re
+          import sys
+          import urllib.request
+          from pathlib import Path
+
+          text = Path(".gitlab/docker/Dockerfile.ci").read_text()
+          arg = {m.group(1): m.group(2) for m in re.finditer(r"^ARG (\w+)=(\S+)$", text, re.M)}
+          pins = {
+              "cargo-llvm-cov": (
+                  "https://github.com/taiki-e/cargo-llvm-cov/releases/download/"
+                  f"{arg['LLVM_COV_VERSION']}/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz",
+                  arg["LLVM_COV_SHA256"],
+              ),
+              "lychee": (
+                  "https://github.com/lycheeverse/lychee/releases/download/"
+                  f"lychee-{arg['LYCHEE_VERSION']}/lychee-x86_64-unknown-linux-musl.tar.gz",
+                  arg["LYCHEE_SHA256"],
+              ),
+          }
+          failed = []
+          for tool, (url, expected) in pins.items():
+              with urllib.request.urlopen(url, timeout=120) as resp:
+                  actual = hashlib.sha256(resp.read()).hexdigest()
+              ok = actual == expected
+              print(f"{'OK ' if ok else 'BAD'} {tool}: {url}\n    pinned {expected}\n    actual {actual}")
+              if not ok:
+                  failed.append(tool)
+          if failed:
+              sys.exit(f"::error::SHA-256 pin out of date for {', '.join(failed)} -- update the *_SHA256 ARG in .gitlab/docker/Dockerfile.ci")

@@ -27,6 +27,7 @@ jobs:
     if: >-
       github.event_name == 'push' ||
       github.actor == 'dependabot[bot]' ||
+      github.actor == 'renovate[bot]' ||
       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     # The cargo-clippy / cargo-check pre-commit hooks compile the workspace; with the
