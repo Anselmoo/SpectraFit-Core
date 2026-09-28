@@ -81,9 +81,14 @@ real working tree or index (the filtering happens in a throwaway
 
 **The mechanics**, once `publish_sync.py` runs:
 
-0. **Refuse to lose work** (`sync_guard`). It finds the sync boundary on
+1. Fetch `github/main` and compare its tree against the filtered GitLab tree.
+   If they're identical, it prints `up to date` and exits 0 -- **no PR, no
+   push, no-op.**
+2. **Refuse to lose work** (`sync_guard`) -- only when step 1 found a
+   difference, so an up-to-date pipeline stays a quiet no-op. It finds the
+   sync boundary on
    `github/main` and the GitLab commit its `GitLab-Commit:` trailer names,
-   then stops before building anything if either would lose work:
+   then stops before building the sync commit if either would lose work:
     - **stale pipeline** -- GitHub is already synced from a GitLab commit
       *newer* than this pipeline's `HEAD` (an older pipeline finishing late).
       A sync would roll GitHub back, so the job prints `skipped — stale` and
@@ -97,24 +102,21 @@ real working tree or index (the filtering happens in a throwaway
 
    Both checks need the GitLab commit named in the trailer, so the sync jobs
    run with `GIT_DEPTH: "0"`; a missing commit is itself a refusal.
-1. Fetch `github/main` and compare its tree against the filtered GitLab tree.
-   If they're identical, it prints `up to date` and exits 0 -- **no PR, no
-   push, no-op.**
-2. Otherwise it builds the sync commit, force-pushes it to `sync/gitlab` on
+3. If neither applies, it builds the sync commit, force-pushes it to `sync/gitlab` on
    GitHub through the deploy-key `github-push` remote (force is safe here:
    `sync/gitlab` is a disposable staging branch,
    rewritten on every run -- never build on it by hand), and creates or
    updates a **draft** PR `sync/gitlab -> main`. A draft has no merge button,
    so nobody -- and no auto-merge -- can squash it and re-author the bot
    commit.
-3. It reads the required status checks that the repository's rulesets apply
+4. It reads the required status checks that the repository's rulesets apply
    to `main` and waits until every one of them has passed **on the sync
    commit** (the PR runs `.github/workflows/ci.yml`). No required check
    configured means **no landing** -- the script refuses rather than land
    unguarded. A failed check leaves the PR open and exits non-zero; a check
    still pending after `--check-timeout` leaves the PR open and exits 0, and
    the next run rebuilds the identical commit and resumes waiting.
-4. It then **fast-forwards** `main` to exactly that commit -- a plain `git
+5. It then **fast-forwards** `main` to exactly that commit -- a plain `git
    push`, never `--force`, through the same `github-push` SSH remote,
    authenticated by the deploy key that is the rulesets' only bypass actor. GitHub
    marks the PR merged by itself. If `main` moved in the meantime, the push is

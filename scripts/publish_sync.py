@@ -735,7 +735,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # Only a sync that would actually happen can lose work: guard after the
     # up-to-date check, so a no-op pipeline stays a quiet "up to date".
-    refusal = sync_guard(repo_root, remote_ref)
+    try:
+        refusal = sync_guard(repo_root, remote_ref)
+    except subprocess.CalledProcessError as exc:
+        print(f"publish_sync: FAILED to check the sync boundary — {exc.stderr or exc}")
+        return 1
     if refusal is not None:
         code, reason = refusal
         print(f"publish_sync: {'REFUSED' if code else 'skipped'} — {reason}")

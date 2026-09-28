@@ -750,3 +750,19 @@ def test_up_to_date_pipeline_is_not_refused_while_a_backport_is_pending(
     out = capsys.readouterr().out
     assert "up to date" in out
     assert "REFUSED" not in out
+
+
+def test_a_git_failure_in_the_guard_is_reported_not_raised(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    repo, _remote = _make_repo_with_remote(tmp_path)
+    _commit(repo, {"python/spectrafit_core/fit.py": "# new\n"}, "add file")  # a sync is needed
+    boom = subprocess.CalledProcessError(128, ["git", "rev-list"], stderr="fatal: bad object")
+    with mock.patch.object(sync, "sync_guard", side_effect=boom):
+        assert _run_main(repo, monkeypatch, "--dry-run") == 1
+    assert (
+        "publish_sync: FAILED to check the sync boundary — fatal: bad object"
+        in capsys.readouterr().out
+    )
