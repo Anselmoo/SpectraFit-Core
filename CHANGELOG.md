@@ -71,6 +71,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
   still billed the run (and was red for a denied `WebFetch`). The
   traffic-light review stays the only one, and it no longer re-posts an
   inline "must fix" comment that is already on the PR at the same line.
+- **Compact review comment.** A findings table (light, linked file:line,
+  a one-line title) replaces the wall of text; each finding's problem and
+  "do" sit in a collapsible HTML `<details>` (open for must, closed
+  otherwise), and Claude is asked for a <=10-word title and at most three
+  sentences per finding.
 - **The code-review plugin finishes its run.** Its reviewer subagents ran in
   the background and were still running when the headless session ended
   (4 turns, nothing posted); `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps

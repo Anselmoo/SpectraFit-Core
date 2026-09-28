@@ -76,14 +76,17 @@ jobs:
             Give `suggestion` only when replacing that single line fixes the issue completely.
             `checked` lists what you actually verified (e.g. tests, CLAUDE.md rules, PyO3
             boundary, changelog), one short item each.
-            Write every text field in GitHub Markdown: wrap identifiers, file names, config
-            keys and commands in backticks; put multi-line code in fenced code blocks; keep
-            `issue` to the problem and its consequence, and `action` to what to change.
+            Keep it short and scannable. `title`: at most 10 words, names the problem.
+            `issue`: at most 3 sentences, the problem and its consequence. `action`: at most
+            2 sentences, what to change. `summary`: at most 3 sentences. Do not repeat the
+            file and line inside the text (they are shown as a link). Write GitHub Markdown:
+            wrap identifiers, file names, config keys and commands in backticks; put
+            multi-line code in fenced code blocks.
             Do not post anything yourself; answer only with the structured output.
           claude_args: |
             --model claude-sonnet-5
             --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
-            --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","could","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"could":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
+            --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","could","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"could":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
 
       - name: Post review report and set the gate
         if: ${{ !cancelled() }}
@@ -180,34 +183,49 @@ jobs:
           repo_url = f"https://github.com/{os.environ['REPO']}"
 
 
-          def ref(f):
-              return f"[`{f['path']}:{f['line']}`]({repo_url}/blob/{sha}/{f['path']}#L{f['line']})"
+          def ref(f, short=False):
+              label = f["path"].rsplit("/", 1)[-1] if short else f["path"]
+              url = f"{repo_url}/blob/{sha}/{f['path']}#L{f['line']}"
+              return f'<a href="{url}" title="{f["path"]}:{f["line"]}"><code>{label}:{f["line"]}</code></a>'
 
 
-          def section(title, icon, findings, start):
-              out = ["", f"### {icon} {title}"]
-              for n, f in enumerate(findings, start):
-                  out += ["", f"**{n}. {ref(f)}**", "", f["issue"], "", f"**Do:** {f['action']}"]
-              return out
+          def title(f):
+              return f.get("title") or f["issue"].split(". ")[0][:80]
 
 
+          def as_html(text):
+              # <summary> is HTML: Markdown backticks would show literally there.
+              import html
+              import re
+
+              return re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", html.escape(text, quote=False))
+
+
+          graded = [("🔴", f) for f in must] + [("🟠", f) for f in should] + [("🟡", f) for f in could]
           lines = [
               MARKER,
-              f"## {light} Claude review: {word}",
-              "",
-              "| 🔴 Must | 🟠 Should | 🟡 Could |",
-              "|:---:|:---:|:---:|",
-              f"| {len(must)} | {len(should)} | {len(could)} |",
+              f"## {light} Claude review &nbsp;·&nbsp; 🔴 {len(must)} &nbsp;·&nbsp; 🟠 {len(should)} &nbsp;·&nbsp; 🟡 {len(could)}",
               "",
               report["summary"],
           ]
-          n = 1
-          for title, icon, findings in (("Must fix (blocking)", "🔴", must), ("Should", "🟠", should), ("Could", "🟡", could)):
-              if findings:
-                  lines += section(title, icon, findings, n)
-                  n += len(findings)
+          if graded:
+              lines += ["", "| | Where | Finding |", "|:---:|---|---|"]
+              for n, (icon, f) in enumerate(graded, 1):
+                  lines.append(f"| {icon} {n} | {ref(f, short=True)} | {title(f)} |")
+              for n, (icon, f) in enumerate(graded, 1):
+                  opened = " open" if icon == "🔴" else ""
+                  lines += [
+                      "",
+                      f"<details{opened}><summary><b>{icon} {n} · {as_html(title(f))}</b> &nbsp; {ref(f)}</summary>",
+                      "",
+                      f"**Problem** &nbsp; {f['issue']}",
+                      "",
+                      f"**Do** &nbsp; {f['action']}",
+                      "",
+                      "</details>",
+                  ]
           if dont:
-              lines += ["", "### Don't / keep as is", *[f"- **{d['what']}**: {d['why']}" for d in dont]]
+              lines += ["", "<details><summary>Don't / keep as is</summary>", "", *[f"- **{d['what']}**: {d['why']}" for d in dont], "", "</details>"]
           if report["checked"]:
               lines += ["", "<details><summary>What was checked</summary>", "", *[f"- {c}" for c in report["checked"]], "", "</details>"]
 
@@ -222,7 +240,7 @@ jobs:
               ]
               for n, f in enumerate(actionable, 1):
                   level = "MUST" if f in must else "SHOULD"
-                  prompt += [f"{n}. [{level}] {f['path']}:{f['line']}", f"   Problem: {f['issue']}", f"   Do: {f['action']}", ""]
+                  prompt += [f"{n}. [{level}] {f['path']}:{f['line']} — {title(f)}", f"   Problem: {f['issue']}", f"   Do: {f['action']}", ""]
               fence = "````"
               lines += [
                   "",
