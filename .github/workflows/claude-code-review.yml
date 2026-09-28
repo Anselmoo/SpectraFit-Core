@@ -6,135 +6,13 @@ on:
   # `/claude-override <reason>` from a maintainer turns the review gate green.
   issue_comment:
     types: [created]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+
+# One review per PR (claude-report-run): a single sticky comment with a
+# traffic light plus the required commit status `claude-review-gate`. A second
+# reviewer (the code-review plugin) was removed: it read that comment as
+# "Claude already reviewed this PR", stopped, and still billed the run.
 
 jobs:
-  claude-review:
-    # CWE-1426 hardening: every PR (including forks) feeds its diff/description
-    # to a privileged LLM agent holding CLAUDE_CODE_OAUTH_TOKEN — a realistic
-    # prompt-injection vector on a public repo. Restrict to Dependabot (a fixed,
-    # trusted GitHub App identity) and PR authors who are already a repo
-    # owner/member/collaborator; a first-time external contributor's PR is
-    # skipped until a maintainer signals trust.
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.head_ref != 'sync/gitlab' && (
-      github.actor == 'dependabot[bot]' ||
-      contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
-
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: read
-      id-token: write
-    env:
-      # No Opus in reviews: the plugin launches its bug agents as "opus";
-      # remap that alias (and the subagent default) to Sonnet.
-      ANTHROPIC_DEFAULT_OPUS_MODEL: claude-sonnet-5
-      CLAUDE_CODE_SUBAGENT_MODEL: claude-sonnet-5
-      # The plugin launches its reviewers as subagents; in a headless run a
-      # background subagent is still running when Claude ends its turn, so the
-      # run stopped after 4 turns ("both checks are running in the background").
-      # This forces every subagent into the foreground.
-      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code Review
-        id: claude-review
-        uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790  # v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          # `--comment` is what makes the plugin post at all: without it the
-          # command stops after printing its findings to the job log.
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
-          # The plugin's own `allowed-tools` (plugins/code-review/commands/
-          # code-review.md) plus the subagent tool it launches its haiku/sonnet/
-          # opus reviewers with, and read-only file tools for CLAUDE.md lookups.
-          # Anything missing is denied silently and the run still ends green --
-          # the next step turns that into a red job.
-          claude_args: |
-            --model claude-sonnet-5
-            --allowedTools "Task,Agent,Skill,Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"
-
-      - name: Report review outcome
-        # Always report (except on cancel): turns, cost, denied tools and the
-        # final result go to the job summary, and any permission denial fails
-        # the job -- a review that could not post must not look green.
-        if: ${{ !cancelled() }}
-        env:
-          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
-        shell: python
-        run: |
-          import json
-          import os
-          import sys
-
-          path = os.environ.get("EXECUTION_FILE", "")
-          summary = open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8")
-          if not path or not os.path.exists(path):
-              # No execution file means Claude never ran, so nothing was billed.
-              # The common case: the action refuses to run on a PR that changes
-              # this workflow ("workflow file must ... have identical content to
-              # the version on the repository's default branch").
-              note = (
-                  "Claude did not run (no execution file), so nothing was billed. "
-                  "Expected on PRs that change this workflow; see the step log above."
-              )
-              summary.write(f"## Claude review\n\n{note}\n")
-              print(f"::warning::{note}")
-              sys.exit(0)
-          with open(path, encoding="utf-8") as fh:
-              messages = json.load(fh)
-          result = next((m for m in reversed(messages) if m.get("type") == "result"), {})
-          denials = result.get("permission_denials") or []
-          denied = sorted({str(d.get("tool_name", "?")) for d in denials if isinstance(d, dict)})
-          lines = [
-              "## Claude review",
-              "",
-              "| | |",
-              "|---|---|",
-              f"| outcome | {result.get('subtype', 'unknown')} |",
-              f"| turns | {result.get('num_turns', '?')} |",
-              f"| cost (USD) | {result.get('total_cost_usd', '?')} |",
-              f"| permission denials | {result.get('permission_denials_count', len(denials))} |",
-          ]
-          if denied:
-              lines.append(f"| denied tools | {', '.join(f'`{t}`' for t in denied)} |")
-          final = str(result.get("result", "")).strip()
-          if final:
-              lines += ["", "### Result", "", final[:4000]]
-          summary.write("\n".join(lines) + "\n")
-          print("\n".join(lines))
-          if denials or result.get("is_error"):
-              sys.exit(f"::error::Claude review was blocked ({', '.join(denied) or 'error'}); nothing was posted to the PR")
-
-      - name: Upload review transcript
-        # What the paid run actually did (tool calls, reasoning turns, cost),
-        # kept for 14 days as a downloadable artifact.
-        if: ${{ !cancelled() && steps.claude-review.outputs.execution_file != '' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: claude-review-${{ github.event.pull_request.number }}-${{ github.run_attempt }}
-          path: ${{ steps.claude-review.outputs.execution_file }}
-          retention-days: 14
-          if-no-files-found: warn
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-
-
   claude-report-run:
     # Copilot-style review with a traffic light, run on Sonnet only:
     #   red    = at least one "must" finding   -> gate `claude-review-gate` fails
@@ -376,14 +254,25 @@ jobs:
               call("POST", f"{api}/issues/{pr}/comments", {"body": body})
 
           if must:
+              # One inline comment per finding for the life of the PR: skip a
+              # finding already posted at the same path and line.
+              posted = call("GET", f"{api}/pulls/{pr}/comments?per_page=100") or []
+              seen = {
+                  (c.get("path"), c.get("line") or c.get("original_line"), (c.get("body") or "").split("\n", 1)[0])
+                  for c in posted
+                  if "Must fix:" in (c.get("body") or "")
+              }
               inline = []
               for f in must:
                   text = f"🔴 **Must fix:** {f['issue']}\n\n**Do:** {f['action']}"
+                  if (f["path"], f["line"], text.split("\n", 1)[0]) in seen:
+                      continue
                   if f.get("suggestion"):
                       text += f"\n\n```suggestion\n{f['suggestion']}\n```"
                   inline.append({"path": f["path"], "line": f["line"], "side": "RIGHT", "body": text})
               try:
-                  call("POST", f"{api}/pulls/{pr}/reviews", {"commit_id": sha, "event": "COMMENT", "comments": inline})
+                  if inline:
+                      call("POST", f"{api}/pulls/{pr}/reviews", {"commit_id": sha, "event": "COMMENT", "comments": inline})
               except urllib.error.HTTPError as exc:
                   print(f"::warning::inline comments rejected ({exc.code}); findings are in the sticky comment")
 

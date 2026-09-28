@@ -66,6 +66,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **One Claude review per PR.** The code-review plugin job is gone: it saw the
+  traffic-light comment as "Claude has already reviewed this PR", stopped and
+  still billed the run (and was red for a denied `WebFetch`). The
+  traffic-light review stays the only one, and it no longer re-posts an
+  inline "must fix" comment that is already on the PR at the same line.
 - **The code-review plugin finishes its run.** Its reviewer subagents ran in
   the background and were still running when the headless session ended
   (4 turns, nothing posted); `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` keeps
