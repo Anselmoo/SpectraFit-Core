@@ -24,6 +24,8 @@ from pathlib import Path
 import yaml
 
 _WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "release.yml"
+_BUILD_WORKFLOW = _WORKFLOW.with_name("build-wheels.yml")
+_SMOKE_WORKFLOW = _WORKFLOW.with_name("wheel-smoke.yml")
 
 
 def _load() -> dict:
@@ -92,7 +94,7 @@ def _collect_uses(workflow_path: Path) -> list[str]:
 
 
 def test_all_uses_pinned_to_commit_sha() -> None:
-    """Every ``uses:`` in release.yml must reference a full 40-hex commit SHA.
+    """Every ``uses:`` in release.yml, build-wheels.yml and wheel-smoke.yml is SHA-pinned.
 
     Mutable tags (``@v4``, ``@release/v1``) or branch refs can be moved after
     publication.  In a job that holds ``id-token: write`` (OIDC trusted
@@ -100,10 +102,13 @@ def test_all_uses_pinned_to_commit_sha() -> None:
     token.  Pin to the immutable commit SHA and record the human-readable
     version in a trailing comment.
     """
-    uses_values = _collect_uses(_WORKFLOW)
-    unpinned = [u for u in uses_values if not _SHA40_RE.search(u)]
+    uses_values = (
+        _collect_uses(_WORKFLOW) + _collect_uses(_BUILD_WORKFLOW) + _collect_uses(_SMOKE_WORKFLOW)
+    )
+    # A local reusable workflow (./.github/workflows/...) is pinned by the repo itself.
+    unpinned = [u for u in uses_values if not u.startswith("./") and not _SHA40_RE.search(u)]
     assert not unpinned, (
-        "The following uses: lines in release.yml are NOT pinned to a 40-hex "
+        "The following uses: lines in the release/build/smoke workflows are NOT pinned to a 40-hex "
         "commit SHA — replace each @tag with @<sha>  # tag:\n"
         + "\n".join(f"  {u}" for u in unpinned)
     )
@@ -382,8 +387,14 @@ def test_version_guard_rejects_one_divergent_artifact(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _build_job(name: str) -> dict:
+    jobs = yaml.safe_load(_BUILD_WORKFLOW.read_text())["jobs"]
+    assert name in jobs, f"build-wheels.yml must define a {name} job"
+    return jobs[name]
+
+
 def _build_wheels_step() -> dict:
-    steps = _job("build-wheels").get("steps") or []
+    steps = _build_job("build-wheels").get("steps") or []
     (step,) = [s for s in steps if "maturin-action" in s.get("uses", "")]
     return step
 
@@ -396,7 +407,7 @@ def test_linux_wheels_build_in_manylinux_2_28() -> None:
 
 
 def test_every_wheel_leg_builds_for_all_supported_pythons() -> None:
-    include = _job("build-wheels")["strategy"]["matrix"]["include"]
+    include = _build_job("build-wheels")["strategy"]["matrix"]["include"]
     assert {leg["os"] for leg in include} == {"ubuntu-latest", "macos-latest", "windows-latest"}
     for leg in include:
         interpreters = leg.get("interpreters", "")
@@ -411,3 +422,27 @@ def test_verify_testpypi_covers_every_os_and_python() -> None:
     matrix = _job("verify-testpypi")["strategy"]["matrix"]
     assert set(matrix["os"]) == {"ubuntu-latest", "macos-latest", "windows-latest"}
     assert set(matrix["python-version"]) == {"3.13", "3.14"}
+
+
+def test_release_builds_through_the_shared_build_workflow() -> None:
+    """release.yml and wheel-smoke.yml publish/test the very same build."""
+    assert _job("build").get("uses") == "./.github/workflows/build-wheels.yml"
+    smoke = yaml.safe_load(_SMOKE_WORKFLOW.read_text())
+    assert smoke["jobs"]["build"]["uses"] == "./.github/workflows/build-wheels.yml"
+    assert True in yaml.safe_load(_BUILD_WORKFLOW.read_text())  # `on:` parses as True
+    assert "workflow_call" in yaml.safe_load(_BUILD_WORKFLOW.read_text())[True]
+
+
+def test_wheel_smoke_installs_every_wheel_outside_the_checkout() -> None:
+    jobs = yaml.safe_load(_SMOKE_WORKFLOW.read_text())["jobs"]
+    linux = jobs["smoke-linux"]
+    assert str(linux["container"]).startswith("python:")
+    assert set(linux["strategy"]["matrix"]["python"]) == {"3.13", "3.14"}
+    native = jobs["smoke-native"]["strategy"]["matrix"]
+    assert set(native["os"]) == {"macos-latest", "windows-latest"}
+    assert set(native["python"]) == {"3.13", "3.14"}
+    for job in (linux, jobs["smoke-native"]):
+        steps = job["steps"]
+        # No checkout: the wheel must work without the repository next to it.
+        assert not any("actions/checkout" in s.get("uses", "") for s in steps)
+        assert any("r_squared > 0.99" in s.get("run", "") for s in steps)

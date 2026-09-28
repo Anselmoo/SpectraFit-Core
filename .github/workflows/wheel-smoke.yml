@@ -1,0 +1,159 @@
+name: Wheel smoke
+
+# Builds the exact release artifacts (build-wheels.yml, shared with
+# release.yml) and installs each wheel where nothing from the repository can
+# help it: a stock python:*-slim container on Linux (no compiler, no LAPACK,
+# no checkout), a fresh virtual environment outside the checkout on macOS and
+# Windows. Catches what `maturin develop` in test-matrix cannot: libraries
+# auditwheel failed to bundle, a universal2 wheel missing an architecture, a
+# Windows wheel that does not import. Before this, the first install of a
+# built wheel happened after a tag, on TestPyPI.
+#
+# Runs only when something that shapes the wheel changes. Not a required
+# check (yet).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "python/spectrafit_core/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "pyproject.toml"
+      - ".github/workflows/build-wheels.yml"
+      - ".github/workflows/wheel-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "crates/**"
+      - "python/spectrafit_core/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "pyproject.toml"
+      - ".github/workflows/build-wheels.yml"
+      - ".github/workflows/wheel-smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: wheel-smoke-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-wheels.yml
+
+  smoke-linux:
+    name: Linux wheel in python:${{ matrix.python }}-slim
+    needs: build
+    runs-on: ubuntu-latest
+    container: python:${{ matrix.python }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.14"]
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: python-package-distributions
+          path: /tmp/dist
+
+      - name: Install the manylinux wheel into the bare container
+        run: |
+          tag="cp$(echo "${{ matrix.python }}" | tr -d .)"
+          set -- /tmp/dist/spectrafit_core-*-"$tag"-"$tag"-manylinux*_x86_64.whl
+          [ -f "$1" ] || { echo "::error::no $tag manylinux wheel in the artifact"; ls /tmp/dist; exit 1; }
+          python -m pip install --no-cache-dir "$1"
+
+      - name: Quick start (README)
+        working-directory: /tmp
+        run: |
+          python - <<'EOF'
+          import numpy as np
+          import spectrafit_core
+          from spectrafit_core import MeasurementData, compose, fit, gaussian
+
+          print("spectrafit_core from", spectrafit_core.__file__)
+          assert "site-packages" in spectrafit_core.__file__
+          x = np.linspace(-5, 5, 200)
+          y = 3.0 * np.exp(-0.5 * ((x - 0.5) / 1.2) ** 2) + np.random.default_rng(0).normal(0, 0.05, x.size)
+          graph = compose([gaussian("peak1", amplitude=1.0, center=0.0, sigma=1.0)]).build()
+          result = fit(graph, MeasurementData(x=x.tolist(), y=y.tolist()))
+          assert result.r_squared > 0.99, result.r_squared
+          print("r_squared", result.r_squared)
+          EOF
+
+  smoke-native:
+    name: ${{ matrix.os }} wheel, py${{ matrix.python }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        python: ["3.13", "3.14"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Download distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: python-package-distributions
+          path: ${{ runner.temp }}/dist
+
+      - name: Install the wheel into a fresh environment outside the checkout
+        env:
+          DIST: ${{ runner.temp }}/dist
+          VENV: ${{ runner.temp }}/venv
+        run: |
+          tag="cp$(echo "${{ matrix.python }}" | tr -d .)"
+          case "$RUNNER_OS" in
+            macOS) pattern="*-$tag-$tag-macosx*universal2.whl" ;;
+            Windows) pattern="*-$tag-$tag-win_amd64.whl" ;;
+          esac
+          wheel=$(find "$DIST" -name "$pattern" | head -1)
+          [ -n "$wheel" ] || { echo "::error::no $pattern in the artifact"; ls "$DIST"; exit 1; }
+          echo "wheel: $wheel"
+          python -m venv "$VENV"
+          if [ "$RUNNER_OS" = "Windows" ]; then PY="$VENV/Scripts/python"; else PY="$VENV/bin/python"; fi
+          "$PY" -m pip install --no-cache-dir "$wheel"
+          echo "PY=$PY" >> "$GITHUB_ENV"
+          echo "WHEEL=$wheel" >> "$GITHUB_ENV"
+
+      - name: universal2 wheel carries both architectures
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$RUNNER_TEMP/unz" && cd "$RUNNER_TEMP/unz"
+          unzip -q "$WHEEL"
+          so=$(find . -name '_core*.so' | head -1)
+          archs=$(lipo -archs "$so")
+          echo "$so: $archs"
+          case "$archs" in *x86_64*arm64*|*arm64*x86_64*) ;; *) echo "::error::universal2 wheel is missing an architecture: $archs"; exit 1 ;; esac
+
+      - name: Quick start (README)
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$PY" - <<'EOF'
+          import numpy as np
+          import spectrafit_core
+          from spectrafit_core import MeasurementData, compose, fit, gaussian
+
+          print("spectrafit_core from", spectrafit_core.__file__)
+          assert "site-packages" in spectrafit_core.__file__
+          x = np.linspace(-5, 5, 200)
+          y = 3.0 * np.exp(-0.5 * ((x - 0.5) / 1.2) ** 2) + np.random.default_rng(0).normal(0, 0.05, x.size)
+          graph = compose([gaussian("peak1", amplitude=1.0, center=0.0, sigma=1.0)]).build()
+          result = fit(graph, MeasurementData(x=x.tolist(), y=y.tolist()))
+          assert result.r_squared > 0.99, result.r_squared
+          print("r_squared", result.r_squared)
+          EOF

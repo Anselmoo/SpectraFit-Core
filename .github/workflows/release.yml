@@ -10,103 +10,12 @@ permissions:
   contents: read
 
 jobs:
-  build-wheels:
-    name: Build ${{ matrix.os }} wheels
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # One wheel per supported CPython (requires-python >=3.13): 3.13 and
-        # 3.14. Linux/macOS name the interpreters explicitly; on Windows
-        # setup-python installs exactly these two and --find-interpreter picks
-        # them up through the py launcher.
-        include:
-          - os: ubuntu-latest
-            target: x86_64
-            interpreters: -i python3.13 python3.14
-          - os: macos-latest
-            target: universal2-apple-darwin
-            interpreters: -i python3.13 python3.14
-          - os: windows-latest
-            target: x86_64
-            interpreters: --find-interpreter
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
-        with:
-          python-version: |
-            3.13
-            3.14
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b  # v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist ${{ matrix.interpreters }}
-          sccache: true
-          # manylinux_2_28 (AlmaLinux 8): `auto` resolved to manylinux2014
-          # (CentOS 7), whose cmake 2.8 / gfortran 4.8 cannot build netlib
-          # LAPACK. Only the ubuntu leg runs inside this container;
-          # maturin-action ignores before-script-linux for macOS/Windows.
-          # crates/spectrafit-varpro uses `lapack-netlib` on Linux (needs
-          # Fortran + cmake), Accelerate on macOS and pure-Rust nalgebra on
-          # Windows, so only Linux needs a toolchain here.
-          manylinux: "2_28"
-          before-script-linux: |
-            dnf install -y gcc-gfortran cmake
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: dist-wheels-${{ matrix.os }}-${{ matrix.target }}
-          path: dist/*.whl
-
-  build-sdist:
-    name: Build sdist
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-
-      - name: Build sdist
-        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b  # v1
-        with:
-          command: sdist
-          args: --out dist
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: dist-sdist
-          path: dist/*.tar.gz
-
   build:
-    name: Merge distributions
-    needs: [build-wheels, build-sdist]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all distribution artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
-        with:
-          pattern: dist-*
-          merge-multiple: true
-          path: dist/
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10
-
-      - name: Check distributions
-        run: uvx twine check dist/*
-
-      - name: Upload merged distributions
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: python-package-distributions
-          path: dist/*
+    # Wheels for CPython 3.13/3.14 on Linux (manylinux_2_28), macOS
+    # (universal2) and Windows, plus the sdist, merged into the artifact
+    # `python-package-distributions`. Shared with wheel-smoke.yml, so what a
+    # tag publishes is exactly what PRs and main already installed and tested.
+    uses: ./.github/workflows/build-wheels.yml
 
   version-guard:
     name: Version guard (metadata == tag)
