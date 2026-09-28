@@ -25,7 +25,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.head_ref != 'sync/gitlab' &&
-      github.actor != 'dependabot[bot]' &&
+      !(github.event.pull_request.head.repo.full_name == github.repository && ((startsWith(github.head_ref, 'renovate/') && github.event.pull_request.user.login == 'renovate[bot]') || (startsWith(github.head_ref, 'dependabot/') && github.event.pull_request.user.login == 'dependabot[bot]'))) &&
       contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association)
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -315,7 +315,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' && (
       github.head_ref == 'sync/gitlab' ||
-      github.actor == 'dependabot[bot]' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && ((startsWith(github.head_ref, 'renovate/') && github.event.pull_request.user.login == 'renovate[bot]') || (startsWith(github.head_ref, 'dependabot/') && github.event.pull_request.user.login == 'dependabot[bot]'))) ||
       !contains(fromJson('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association))
     runs-on: ubuntu-latest
     permissions:
@@ -325,10 +325,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.head_ref }}
-          ACTOR: ${{ github.actor }}
+          # A bot PR counts only when the bot opened it from a branch of this
+          # repository: a fork branch named renovate/... must not skip review.
+          IS_BOT_UPDATE: ${{ (github.event.pull_request.head.repo.full_name == github.repository && ((startsWith(github.head_ref, 'renovate/') && github.event.pull_request.user.login == 'renovate[bot]') || (startsWith(github.head_ref, 'dependabot/') && github.event.pull_request.user.login == 'dependabot[bot]'))) }}
         run: |
-          if [ "$HEAD_REF" = "sync/gitlab" ] || [ "$ACTOR" = "dependabot[bot]" ]; then
-            state=success; description="GREEN skipped: sync or Dependabot PR"
+          # Dependency updates are judged by the update bot's own signals
+          # (Renovate merge confidence: age, adoption, passing rate) and CI,
+          # not by a paid review.
+          if [ "$HEAD_REF" = "sync/gitlab" ]; then
+            state=success; description="GREEN skipped: GitLab sync PR"
+          elif [ "$IS_BOT_UPDATE" = "true" ]; then
+            state=success; description="GREEN skipped: dependency update (Renovate)"
           else
             state=failure; description="RED external author: a maintainer must /claude-override"
           fi

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "One update bot for everything (replaces Dependabot). Lives in .github/ so it is part of the published mirror; update PRs are opened on GitHub and reach GitLab through backport:github.",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    "customManagers:dockerfileVersions"
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "dependencyDashboard": true,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "security"],
+    "schedule": ["at any time"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Actions: one weekly PR for minor/patch/digest bumps; majors separately.",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pinDigest"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "rust-numpy must track pyo3's version.",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["pyo3", "numpy"],
+      "groupName": "pyo3 and rust-numpy"
+    },
+    {
+      "description": "The GitLab CI image bakes Playwright browsers for the same version the web tests use.",
+      "matchPackageNames": ["@playwright/test"],
+      "groupName": "Playwright"
+    },
+    {
+      "description": "cargo-llvm-cov is pinned twice (GitLab image ARG, GitHub CI tool pin) and must move in lockstep.",
+      "matchPackageNames": ["taiki-e/cargo-llvm-cov"],
+      "groupName": "cargo-llvm-cov"
+    },
+    {
+      "description": "SHA-256-pinned downloads in the GitLab CI image: Renovate cannot compute the new digest.",
+      "matchPackageNames": ["taiki-e/cargo-llvm-cov", "lycheeverse/lychee"],
+      "prBodyNotes": [
+        "⚠️ This tool is SHA-256 pinned in `.gitlab/docker/Dockerfile.ci`: update the matching `*_SHA256` ARG in this PR. The `docker-pins` check stays red until it matches the release asset."
+      ]
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "cargo-llvm-cov version pinned for taiki-e/install-action in GitHub workflows.",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["tool:\\s*cargo-llvm-cov@(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+      "depNameTemplate": "taiki-e/cargo-llvm-cov",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "ShellCheck version downloaded by the GitLab lint job.",
+      "managerFilePatterns": ["/^\\.gitlab/.+\\.ya?ml$/"],
+      "matchStrings": ["SHELLCHECK_VERSION=\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "koalaman/shellcheck",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ]
+}

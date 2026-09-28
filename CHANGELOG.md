@@ -66,6 +66,15 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **Renovate replaces Dependabot, including the GitLab CI image.**
+  `.github/renovate.json` covers cargo, npm, `uv.lock`, GitHub Actions (kept
+  SHA-pinned), the image's base and `ARG *_VERSION` pins (annotated in
+  `Dockerfile.ci`), the ShellCheck and cargo-llvm-cov pins in CI, weekly lock
+  file maintenance and OSV/GitHub security alerts; related pins are grouped
+  (pyo3 + rust-numpy, Playwright, cargo-llvm-cov). A new `docker-pins` check
+  verifies the image's SHA-256-pinned downloads, so a version bump without its
+  digest is red on the PR, not on GitLab after the backport. Update PRs skip
+  the Claude review only when the bot opened them from this repository.
 - **One Claude review per PR.** The code-review plugin job is gone: it saw the
   traffic-light comment as "Claude has already reviewed this PR", stopped and
   still billed the run (and was red for a denied `WebFetch`). The
