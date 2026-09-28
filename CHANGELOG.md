@@ -114,16 +114,6 @@ This project follows repository release policy enforced by `repo-release-tools`.
   **Do:**; Claude is asked for Markdown code formatting; a count table heads
   the comment; "what was checked" folds into a list; and a collapsible
   "Prompt for Claude Code" carries every must/should item ready to paste.
-- **The GitLab -> GitHub sync refuses to lose work.** `publish_sync.py` now
-  skips a stale pipeline (GitHub already synced from a newer GitLab commit;
-  syncing would roll GitHub back) and refuses, listing the commits, while
-  GitHub `main` has native commits after the sync boundary that are not on
-  GitLab yet (the sync would revert them and move the boundary past them, so
-  `backport:github` would never find them). The sync PR is opened as a draft,
-  so it cannot be squash-merged by hand or auto-merge. The sync jobs run with
-  `GIT_DEPTH: "0"`; the guard runs only when a sync would
-  actually happen, so an up-to-date pipeline never reports REFUSED. The mirror guide documents the working rulesets, the
-  review gate and where cross-platform changes should start.
 - **Claude review report with a traffic light, required and overridable.** A
   second review job (Sonnet only) writes one sticky PR comment -- summary,
   must / should / don't, what was checked -- and sets the commit status
