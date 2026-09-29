@@ -4,26 +4,21 @@ All notable changes to `spectrafit-core` will be documented in this file.
 
 This project follows repository release policy enforced by `repo-release-tools`.
 
-> **Release status — release candidate `0.1.0rc1`; nothing has reached PyPI.**
-> `v0.1.0rc1` is the first version tag: a release candidate that `release.yml`
-> builds and publishes to TestPyPI only, as a GitHub pre-release. There is no
-> `spectrafit-core` project on PyPI. The `[0.1.0b1]` and `[0.1.0a1]` sections
-> below record the dates on which those version bumps were *prepared in-tree*;
-> neither was ever cut as a release, so neither date is a release date.
-> `CITATION.cff` omits its `date-released` field for exactly this reason.
+> **Release status — `0.1.0` is the first release.** Tag `v0.1.0` is the first
+> version published to PyPI, as a GitHub release archived on Zenodo; its date
+> is the `date-released` in `CITATION.cff`. Before it, `v0.1.0rc1` was a
+> release candidate with the same content, published to TestPyPI only as a
+> GitHub pre-release. The `[0.1.0b1]` and `[0.1.0a1]` sections below record the
+> dates on which those version bumps were *prepared in-tree*; neither was ever
+> cut as a release, so neither date is a release date.
 >
-> The package currently ships as **`0.1.0rc1`** (`0.1.0-rc.1` in `Cargo.toml`
-> and the other SemVer targets). Everything since the `0.1.0b1` bump is
-> collected under `[Unreleased]` below; the release candidate carries exactly
-> that content, which will be folded into the first `[0.1.0]` section when the
-> final release is tagged and deposited.
->
-> **Scope note.** `[Unreleased]` below summarises the development log by theme
-> rather than reproducing it entry by entry. Nothing here has been rewritten:
-> no entry below describes a release that happened, because none has.
+> **Scope note.** `[0.1.0]` below collects everything since the `0.1.0b1` bump
+> and summarises the development log by theme rather than reproducing it entry
+> by entry.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-29
 ### Added
 
 - **Only the CI sync can write to the GitHub mirror.** A `guard-public-push`
@@ -67,6 +62,15 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Changed
 
+- **README for the first public release.** A light/dark hero image (absolute
+  `raw.githubusercontent.com` URLs, since the README is also the PyPI
+  description), a new *Installation* section (`pip install spectrafit-core` /
+  `uv add spectrafit-core`, with the source build as the alternative), status
+  "first public release" instead of "public sneak preview" (also in the docs
+  site announce banner; both rrt patterns in `pyproject.toml` follow), and a
+  *Contributing* section that welcomes issues
+  and pull requests on GitHub and names the MPCDF GitLab as the second, synced
+  home. The mirror notice and two bits of internal jargon are gone.
 - **Renovate replaces Dependabot, including the GitLab CI image.**
   `.github/renovate.json` covers cargo, npm, `uv.lock`, GitHub Actions (kept
   SHA-pinned), the image's base and `ARG *_VERSION` pins (annotated in

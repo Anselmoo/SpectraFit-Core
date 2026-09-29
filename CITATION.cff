@@ -25,14 +25,10 @@ authors:
 repository-code: "https://github.com/Anselmoo/SpectraFit-Core"
 url: "https://github.com/Anselmoo/SpectraFit-Core"
 license: MIT
-version: 0.1.0-rc.1
-# date-released: intentionally absent until 0.1.0 is actually tagged and
-# deposited. It previously read 2026-06-13, asserting a release date for a
-# release that does not exist: `git tag -l` shows no version tag, the GitHub
-# releases and tags endpoints both return empty, and PyPI has no
-# spectrafit-core project. CITATION.cff is machine-readable and gets
-# harvested, so a placeholder date is published misinformation rather than a
-# harmless stub. Restore this line, with the real date, as part of tagging.
+version: 0.1.0
+# The date tag v0.1.0 was cut: the first release (PyPI, GitHub release,
+# Zenodo). Earlier in-tree bumps (0.1.0a1, 0.1.0b1) were never released.
+date-released: 2026-09-29
 keywords:
   - curve-fitting
   - spectroscopy

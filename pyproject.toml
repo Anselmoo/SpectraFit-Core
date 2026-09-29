@@ -9,7 +9,7 @@
 
 [project]
 name = "spectrafit-core"
-version = "0.1.0-rc.1"
+version = "0.1.0"
 description = "High-performance numerical fitting framework: Rust kernel + Pydantic schemas"
 readme = "README.md"
 license = "MIT"
@@ -134,7 +134,7 @@ pattern = '\*\*beta\*\* software \(`([^`]+)`,'
 [[tool.rrt.version_targets]]
 path = "README.md"
 kind = "pattern"
-pattern = '\*\*Status: beta \(`([^`]+)`\) — public sneak preview\.\*\*'
+pattern = '\*\*Status: beta \(`([^`]+)`\) — first public release\.\*\*'
 
 [[tool.rrt.version_targets]]
 path = "docs/getting-started/installation.md"
@@ -149,7 +149,7 @@ pattern = '<span class="sf-hero__status">Status: beta \(([^)]+)\)</span>'
 [[tool.rrt.version_targets]]
 path = "overrides/main.html"
 kind = "pattern"
-pattern = 'Status: beta \(([^)]+)\) — public sneak preview\.'
+pattern = 'Status: beta \(([^)]+)\) — first public release\.'
 
 [tool.rrt.publish_targets.github]
 remote = "github"

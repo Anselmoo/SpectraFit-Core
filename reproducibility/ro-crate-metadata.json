@@ -14,7 +14,7 @@
     {
       "@id": "./",
       "@type": "Dataset",
-      "name": "spectrafit-core published evidence — v0.1.0-rc.1",
+      "name": "spectrafit-core published evidence — v0.1.0",
       "description": "Measurement artifacts that spectrafit-core's documentation and LIMITATIONS.md cite as evidence: the reps-ladder and seed-sweep benchmark records with their per-rung provenance, the figure scripts and rendered figures derived from them, the NIST StRD coverage record, and third-party measured spectra vendored under their own licences. Digests for every file are also recorded in checksums.sha256; neither that file nor this one describes the other, so that the pair is satisfiable.",
       "license": {
         "@id": "https://spdx.org/licenses/MIT.html"
@@ -24,8 +24,8 @@
         "name": "Anselm W. Hahn",
         "@id": "https://orcid.org/0000-0003-4543-4833"
       },
-      "datePublished": "2026-09-22",
-      "version": "0.1.0-rc.1",
+      "datePublished": "2026-09-29",
+      "version": "0.1.0",
       "url": "https://github.com/Anselmoo/SpectraFit-Core",
       "keywords": [
         "curve fitting",

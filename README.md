@@ -1,3 +1,13 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)"
+            srcset="https://raw.githubusercontent.com/Anselmoo/SpectraFit-Core/main/docs/images/hero-spectral-field-dark.svg">
+    <img alt="SpectraFit-Core — spectral field"
+         src="https://raw.githubusercontent.com/Anselmoo/SpectraFit-Core/main/docs/images/hero-spectral-field-light.svg"
+         width="100%">
+  </picture>
+</p>
+
 # SpectraFit-Core
 
 > High-performance numerical curve fitting — a Rust kernel with analytical
@@ -9,7 +19,7 @@
 ![license: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![python: 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)
 
-> **Status: beta (`0.1.0-rc.1`) — public sneak preview.** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
+> **Status: beta (`0.1.0`) — first public release.** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
 
 **Documentation:** <https://anselmoo.github.io/SpectraFit-Core/> — start with
 [Installation](https://anselmoo.github.io/SpectraFit-Core/getting-started/installation/)
@@ -25,12 +35,13 @@ it ships a dashboard that verifies its own numbers (independent parity oracle,
 timing-isolation guards, render-truth provenance, NIST StRD validation) and
 visibly discloses what it has *not* verified.
 
-> Development and the authoritative CI run on an institutional GitLab instance;
-> this repository is its public mirror, updated after every green pipeline on
-> `main`. Issues and pull requests here are welcome — see
-> [CONTRIBUTING.md](CONTRIBUTING.md).
+## Installation
 
-## Quick start
+```bash
+pip install spectrafit-core   # or: uv add spectrafit-core
+```
+
+To build from source (Rust toolchain + maturin required):
 
 ```bash
 git clone https://github.com/Anselmoo/SpectraFit-Core.git
@@ -39,7 +50,11 @@ uv sync --extra benchmark   # dev tooling is a dependency-group, installed by de
 uv run maturin develop
 ```
 
-Then fit a single Gaussian peak to synthetic data, using only the public
+In a source checkout, `uv run pytest` runs the full test suite.
+
+## Quick start
+
+Fit a single Gaussian peak to synthetic data, using only the public
 `spectrafit_core` API (verified to run — see
 [Quickstart](https://anselmoo.github.io/SpectraFit-Core/getting-started/quickstart/)
 for the full walkthrough):
@@ -79,8 +94,6 @@ This is deterministic (seeded RNG) and recovers the true amplitude/center/sigma
 > different order. The values are what matter, and they are reproducible: the
 > example seeds its RNG.
 
-Run `uv run pytest` for the full test suite.
-
 ## Benchmark
 
 The benchmark (`python/oracles/`) fits the same problems with **spectrafit**
@@ -111,7 +124,7 @@ PYTHONPATH=python uv run python -m oracles.cli run --reps 10 --mc 30
 PYTHONPATH=python uv run python -m oracles.cli gate
 ```
 
-Each run writes an isolated, run-centric folder (no overwrites, no legacy mirror):
+Each run writes its own folder:
 
 ```
 .spectrafit_reports/<category>/<YYYY-MM-DD>_run_NNN/
@@ -133,8 +146,7 @@ backend's convergence**. Up to four more axes are appended only when their
 backing evidence exists (self-perf, model-selection, σ-calibration, speed
 inference) — the gate is never a fixed axis count. See
 [Why SpectraFit-Core](docs/why-spectrafit-core.md), "A benchmark that
-verifies itself" section, for the full, canonical axis-by-axis description;
-this file summarizes it, it doesn't restate it.
+verifies itself" section, for the full axis-by-axis description.
 
 ### Web report
 
@@ -171,8 +183,11 @@ the TS types from the live OpenAPI schema: `uv run poe serve` then
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, conventions, and the PR
-process.
+Contributions of any size are welcome — issues and pull requests here; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for development setup, conventions, and the
+PR process. SpectraFit-Core is also developed on the
+[MPCDF GitLab](https://gitlab.mpcdf.mpg.de); changes from both places are kept
+in sync automatically.
 
 ## Citing
 

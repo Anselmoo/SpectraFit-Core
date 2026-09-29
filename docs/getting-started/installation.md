@@ -52,7 +52,7 @@ Then run your first fit from inside that checkout — `uv run python -c "import
 spectrafit_core"` should import cleanly.
 
 !!! note
-    **Status: beta (`0.1.0-rc.1`).** APIs and the benchmark contract may still
+    **Status: beta (`0.1.0`).** APIs and the benchmark contract may still
     change before the stable 1.0 release — see the project's `LIMITATIONS.md`
     for currently disclosed gaps.
 
