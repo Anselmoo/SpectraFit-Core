@@ -4,7 +4,8 @@
 ``docs/contributor-guide/project-configuration.md#versioning-rrt``),
 ``CITATION.cff``, ``codemeta.json`` and ``.zenodo.json`` each carry a copy of
 overlapping facts -- version, license, the first author's ORCID, the
-repository URL. ``rrt`` keeps the version in sync across the first three as
+repository URL; ``CITATION.cff``, ``codemeta.json`` and the README badge also
+carry the Zenodo concept DOI. ``rrt`` keeps the version in sync across the first three as
 part of its tracked version targets, but nothing previously asserted the
 values actually agree, or that ``.zenodo.json`` (untracked by ``rrt``, since
 Zenodo's GitHub integration reads the version from the release tag, not from
@@ -158,6 +159,58 @@ def test_repository_url_agrees_case_insensitively() -> None:
     }
     distinct = set(normalized.values())
     assert len(distinct) == 1, f"repository URLs disagree (case-insensitively): {normalized}"
+
+
+# ---------------------------------------------------------------------------
+# Zenodo concept DOI
+# ---------------------------------------------------------------------------
+
+_README = REPO_ROOT / "README.md"
+_DOI_PREFIX = "https://doi.org/"
+_README_DOI_BADGE = re.compile(
+    r"\[!\[DOI\]\(https://zenodo\.org/badge/DOI/(?P<badge>10\.5281/zenodo\.\d+)\.svg\)\]"
+    r"\(https://doi\.org/(?P<link>10\.5281/zenodo\.\d+)\)",
+)
+
+
+def test_concept_doi_agrees_across_citation_codemeta_readme() -> None:
+    """One concept DOI, cited the same way in CITATION.cff, codemeta.json and the README badge."""
+    citation_dois = [
+        i["value"] for i in _citation().get("identifiers", []) if i.get("type") == "doi"
+    ]
+    assert len(citation_dois) == 1, (
+        f"CITATION.cff must list exactly one DOI identifier, got {citation_dois}"
+    )
+    concept_doi = citation_dois[0]
+
+    top_level_doi = _citation().get("doi")
+    assert top_level_doi == concept_doi, (
+        f"CITATION.cff top-level doi {top_level_doi!r} != its DOI identifier {concept_doi!r}"
+    )
+
+    codemeta_id = _codemeta()["@id"]
+    assert codemeta_id == _DOI_PREFIX + concept_doi, (
+        f"codemeta.json @id {codemeta_id!r} != {_DOI_PREFIX + concept_doi!r} (CITATION.cff)"
+    )
+
+    badge = _README_DOI_BADGE.search(_README.read_text())
+    assert badge, "README.md has no Zenodo DOI badge"
+    assert badge["badge"] == badge["link"] == concept_doi, (
+        f"README DOI badge ({badge['badge']}, link {badge['link']}) != {concept_doi} (CITATION.cff)"
+    )
+
+
+def test_citation_cites_the_software_until_an_article_is_accepted() -> None:
+    """No ``preferred-citation`` while the companion article is unpublished.
+
+    GitHub's "Cite this repository" shows ``preferred-citation`` instead of the
+    software, so an in-preparation article would displace the release with its
+    DOI. Re-add it (with journal, year and DOI) once the article is accepted,
+    and relax this test in the same change.
+    """
+    assert "preferred-citation" not in _citation(), (
+        "CITATION.cff has a preferred-citation; re-add it only once the article is accepted"
+    )
 
 
 # ---------------------------------------------------------------------------

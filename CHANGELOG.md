@@ -18,6 +18,40 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ## [Unreleased]
 
+### Added
+
+- **Zenodo concept DOI.** v0.1.0 is archived on Zenodo; its concept DOI
+  `10.5281/zenodo.23043544` (always the latest version) now sits in
+  `CITATION.cff` (`identifiers`), `codemeta.json` (`@id`) and a README badge,
+  and `tests/meta/test_citation_metadata_consistency.py` fails if the three
+  disagree.
+
+### Changed
+
+- **Release guide from the v0.1.0 run.** `docs/contributor-guide/releasing.md`
+  now spells out the hand-set tags on both remotes (GitHub: bot tagger, deploy
+  key, sync commit; GitLab: the `GitLab-Commit:` trailer SHA), the dates to
+  move if a tag slips, and what a slow step looks like: TestPyPI index lag in
+  `verify-testpypi`, the `pypi` approval, Zenodo's *Received* queue and DOI
+  resolution lag. The GitHub repository is never deleted again; restarts go
+  through `publish:github:reset` only.
+- **The citation names the software, not an unpublished article.**
+  `CITATION.cff` drops its `preferred-citation` (a journal article with
+  `status: in-preparation`), which GitHub's "Cite this repository" showed in
+  place of the release; it comes back once the article is accepted, and a
+  meta test holds that line. The concept DOI is also the top-level `doi`, so
+  the citation carries it.
+- **Docs, README and citation metadata may start as a GitHub PR.** The
+  mirror and release guides no longer require them on GitLab; a
+  squash-merged GitHub PR reaches GitLab through `backport:github`. Release
+  bumps stay on GitLab.
+
+### Fixed
+
+- **The docs home page no longer says 0.1.0 is unreleased.** Its *Citing*
+  section claimed no tag or archive existed and described the in-preparation
+  article; it now gives the release date and the concept DOI.
+
 ## [0.1.0] - 2026-09-29
 ### Added
 

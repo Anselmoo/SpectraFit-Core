@@ -24,6 +24,11 @@ authors:
     orcid: "https://orcid.org/0000-0003-4543-4833"
 repository-code: "https://github.com/Anselmoo/SpectraFit-Core"
 url: "https://github.com/Anselmoo/SpectraFit-Core"
+doi: "10.5281/zenodo.23043544"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23043544"
+    description: "Concept DOI: always resolves to the latest archived version."
 license: MIT
 version: 0.1.0
 # The date tag v0.1.0 was cut: the first release (PyPI, GitHub release,
@@ -36,15 +41,3 @@ keywords:
   - trust-region
   - benchmark
   - reproducibility
-# The forthcoming journal article. Represented as `in-preparation` so the
-# citation makes no claim it cannot yet support (no DOI / journal / year until
-# the paper is accepted). On acceptance, set `status` (submitted → in-press →
-# published) and ADD `journal`, `year`, `volume`, `doi` with the real values.
-preferred-citation:
-  type: article
-  title: "spectrafit-core: a Rust-cored nonlinear curve-fitting library with a self-auditing cross-backend benchmark"
-  status: in-preparation
-  authors:
-    - given-names: "Anselm W."
-      family-names: Hahn
-      email: anselm.hahn@gmail.com

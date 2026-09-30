@@ -96,6 +96,33 @@ the real thing:
    spelling) on GitHub at that commit, and tag the *same name* on GitLab at
    the `<sha>` from its trailer -- both remotes end up with an identical tag
    name pointing at the two mirrors' respective copies of the same content.
+   Nothing mirrors tags in either direction, so both are set by hand:
+
+   ```bash
+   TAG=v0.1.0; MSG="spectrafit-core 0.1.0"
+   git fetch gitlab main
+   git fetch https://github.com/Anselmoo/SpectraFit-Core.git +main:refs/remotes/github/main
+   GH=$(git rev-parse github/main)   # the sync commit that landed the release MR
+   GL=$(git log -1 --format='%(trailers:key=GitLab-Commit,valueonly,separator=)' "$GH")
+   git rev-parse "$GL" && git merge-base --is-ancestor "$GL" gitlab/main   # the trailer names a GitLab main commit
+
+   # GitHub: annotated tag with the anonymous bot as tagger, pushed with the deploy key
+   git -c user.name="spectrafit-core-sync[bot]" \
+       -c user.email="334580965+spectrafit-core-sync[bot]@users.noreply.github.com" \
+       tag -a "$TAG-github" -m "$MSG" "$GH"
+   GIT_SSH_COMMAND="ssh -i ~/.ssh/spectrafit_gitlab_sync -o IdentitiesOnly=yes" \
+       git push git@github.com:Anselmoo/SpectraFit-Core.git "refs/tags/$TAG-github:refs/tags/$TAG"
+   git tag -d "$TAG-github"
+
+   # GitLab: the same tag name and message on the trailer SHA
+   git tag -a "$TAG" -m "$MSG" "$GL"
+   git push gitlab "refs/tags/$TAG"
+   ```
+
+   The GitHub tag carries the bot as tagger because every commit on the
+   mirror is anonymous; a tag with a personal tagger would be the one place
+   a name and e-mail appear. The local `-github` helper name only keeps the
+   two annotated tags apart in one clone.
 
 The order matters, and `release.yml` enforces it: its `version-guard` job
 reads the version out of every built wheel's `METADATA` and the sdist's
@@ -132,10 +159,11 @@ Once the rehearsal above is clean, cut the real release:
 
 1. **Bump the version** with `rrt bump` to the final version `X.Y.Z` (no
    pre-release suffix).
-2. **Set `date-released` in `CITATION.cff`** to the actual release date. It
-   is deliberately absent until a version is really tagged and deposited
-   (see the comment above that field in the file), so this is a real edit,
-   not a formality.
+2. **Set `date-released` in `CITATION.cff`** (and `datePublished` in
+   `codemeta.json`) to the day the tag will be cut, and promote the changelog
+   to `[X.Y.Z] - <that day>`. If the tag slips to a later day, move all three
+   dates before tagging: a harvested citation must not claim a release date
+   the tag doesn't have.
 3. **Regenerate the FAIR bundle and checksums**, since `datePublished` in the
    bundle reads `CITATION.cff`'s `date-released`:
 
@@ -169,6 +197,27 @@ Pushing the final tag runs `release.yml` again:
   automatically -- no manual upload, and only because the integration was
   enabled ahead of time in the prerequisites above.
 
+What the v0.1.0 run showed, so a slow step isn't mistaken for a broken one:
+
+- **`verify-testpypi` can lose the race against TestPyPI's index.** Four of
+  the six jobs gave up after their eight retries (under three minutes) with
+  `from versions: 0.1.0rc1` although the upload had succeeded. Nothing was
+  published past TestPyPI (`publish-pypi` needs every verify job). Check
+  that the log shows only that message, then re-run the failed jobs
+  (`gh run rerun <run-id> --failed`); the upload is not repeated.
+- **The `pypi` approval has to be confirmed in the dialog.** Until
+  *Approve and deploy* is clicked the run stays `waiting`;
+  `gh api repos/Anselmoo/SpectraFit-Core/actions/runs/<run-id>/pending_deployments`
+  shows whether an approval is still open.
+- **Zenodo can take close to an hour.** Its GitHub page listed the release
+  as *Received* for about 45 minutes before the record appeared. *Received*
+  is a queue, not an error -- a failed import is listed as *Failed* with an
+  *Errors* tab. Do not re-tag, edit the release or press *Create release*
+  while it waits; each risks a second record.
+- **The DOI resolves later than the record exists.** `doi.org` answers 404
+  until Zenodo has registered the DOI with DataCite; the record page and the
+  badge work before that.
+
 ## After the DOI is minted
 
 1. Zenodo assigns both a **version DOI** (this release) and a **concept
@@ -183,9 +232,10 @@ Pushing the final tag runs `release.yml` again:
        description: "Concept DOI: always resolves to the latest archived version."
    ```
 
-3. Add the same identifier to `codemeta.json` (its own `identifier`-shaped
-   field for a persistent identifier, alongside the existing `identifier` key
-   used for the software name slug -- do not overwrite that one).
+3. Add the same identifier to `codemeta.json` as its JSON-LD `@id`
+   (`"@id": "https://doi.org/10.5281/zenodo.XXXXXXX"`), alongside the
+   existing `identifier` key used for the software name slug -- do not
+   overwrite that one.
 4. Add a DOI badge to `README.md`, next to the existing status/license/python
    badges:
 
@@ -193,9 +243,23 @@ Pushing the final tag runs `release.yml` again:
    [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
    ```
 
-   Make all three of these edits **on GitLab** -- the source of truth -- and
-   let them reach GitHub through the normal sync; see [GitHub mirror
-   workflow](github-mirror-workflow.md).
+   These three edits can go either way: as a GitLab MR, which the sync
+   carries to GitHub, or as a GitHub PR squash-merged into `main`, which
+   `backport:github` carries to GitLab; see [GitHub mirror
+   workflow](github-mirror-workflow.md). The version bump itself stays a
+   GitLab MR -- `rrt bump` also rewrites lockfiles and the FAIR bundle.
+
+This is a one-time step. SpectraFit-Core's concept DOI is
+[`10.5281/zenodo.23043544`](https://doi.org/10.5281/zenodo.23043544), minted
+with v0.1.0 (version DOI `10.5281/zenodo.23043545`). Later releases only
+add version DOIs under it, so the three places above keep the concept DOI;
+`tests/meta/test_citation_metadata_consistency.py` fails if they disagree.
+
+The GitHub repository `Anselmoo/SpectraFit-Core` is never deleted and
+re-created again: the Zenodo webhook, the PyPI and TestPyPI trusted
+publishers and the DOI record are all bound to it. A restart of the mirror's
+history only ever goes through `publish:github:reset` (see
+[GitHub mirror workflow](github-mirror-workflow.md)).
 
 ## Job graph
 

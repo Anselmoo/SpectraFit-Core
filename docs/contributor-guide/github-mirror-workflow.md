@@ -349,8 +349,11 @@ on untrusted input unasked.
 than Linux -- wheels, Windows or macOS behaviour, a new CPython -- is best
 opened as a GitHub PR: GitHub's runners give the full platform matrix that
 GitLab CI does not have, and Mechanism 2 brings the squash commit back to
-GitLab. GitLab-only work (release bumps, benchmark gates, the docs site)
-stays on GitLab.
+GitLab. Changes to published files that need nothing GitLab-only -- the
+docs, the README, citation metadata (`CITATION.cff`, `codemeta.json`) -- may
+also start as a GitHub PR. GitLab-only work stays on GitLab: release bumps
+(`rrt bump` rewrites lockfiles and the FAIR bundle), benchmark gates, and
+anything touching a path the mirror does not publish.
 
 ## For outside contributors (no GitLab access)
 

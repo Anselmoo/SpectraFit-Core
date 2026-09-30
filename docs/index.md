@@ -53,15 +53,11 @@ If you use spectrafit-core in academic work, please cite it via
 - **Author:** Anselm W. Hahn
   ([ORCID: 0000-0003-4543-4833](https://orcid.org/0000-0003-4543-4833))
 - **Type:** software
-- **Version:** 0.1.0
+- **Version:** 0.1.0, released 2026-09-29
+- **DOI:** [10.5281/zenodo.23043544](https://doi.org/10.5281/zenodo.23043544)
+  (concept DOI: always resolves to the latest archived version)
 - **License:** MIT
 - **Repository:** <https://github.com/Anselmoo/SpectraFit-Core>
-
-`CITATION.cff` deliberately omits a `date-released` field: 0.1.0 has not yet
-been tagged or archived, so no release date is asserted. A companion journal
-article is recorded there as `preferred-citation` with `status:
-in-preparation` — no DOI, journal, or publication year exists for it yet, and
-none is claimed here.
 
 ## Acknowledgements
 

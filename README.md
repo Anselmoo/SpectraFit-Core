@@ -18,6 +18,7 @@
 ![status: beta](https://img.shields.io/badge/status-beta-yellow)
 ![license: MIT](https://img.shields.io/badge/license-MIT-blue)
 ![python: 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23043544.svg)](https://doi.org/10.5281/zenodo.23043544)
 
 > **Status: beta (`0.1.0`) — first public release.** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
 
@@ -193,6 +194,9 @@ in sync automatically.
 
 If you use SpectraFit-Core in academic work, please cite it via
 [`CITATION.cff`](CITATION.cff) (GitHub's "Cite this repository" button reads it).
+Every release is archived on Zenodo; the concept DOI
+[10.5281/zenodo.23043544](https://doi.org/10.5281/zenodo.23043544) always
+resolves to the latest version.
 
 ## License
 
