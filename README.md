@@ -20,7 +20,7 @@
 ![python: 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23043544.svg)](https://doi.org/10.5281/zenodo.23043544)
 
-> **Status: beta (`0.1.0`) — first public release.** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
+> **Status: beta (`0.1.1`).** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
 
 **Documentation:** <https://anselmoo.github.io/SpectraFit-Core/> — start with
 [Installation](https://anselmoo.github.io/SpectraFit-Core/getting-started/installation/)

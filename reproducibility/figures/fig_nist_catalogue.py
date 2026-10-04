@@ -79,13 +79,22 @@ def load() -> list[dict]:
     from extract_bench_summary import nist_difficulty_tiers
 
     tiers = nist_difficulty_tiers()
+    unknown = sorted(name for stem, name in FIXTURES.items() if stem not in tiers)
+    if unknown:
+        msg = (
+            f"no NIST difficulty tier for {', '.join(unknown)} — every panel is placed and "
+            "inked by tier, so a default would silently draw the dataset in the wrong band; "
+            "add its fixture under python/oracles/nist_strd/ or repair the Difficulty line "
+            "the fixture is parsed for"
+        )
+        raise SystemExit(msg)
     rows = []
     for stem, name in FIXTURES.items():
         mod = importlib.import_module(f"oracles.nist_strd.{stem}")
         rows.append(
             {
                 "name": name,
-                "tier": tiers.get(stem, "Lower"),
+                "tier": tiers[stem],
                 "x": mod.X,
                 "y": mod.Y,
                 "implemented": True,

@@ -77,7 +77,7 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 mpl.use("Agg")
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[2]
+REPO = HERE.parents[1]
 CRATES = REPO / "crates"
 TYPES_RS = CRATES / "spectrafit-types" / "src" / "types.rs"
 

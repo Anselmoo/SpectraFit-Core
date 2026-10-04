@@ -40,7 +40,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = Path(__file__).resolve().parents[2]
 
 # NIST classifies each StRD nonlinear-regression dataset Lower / Average /
 # Higher difficulty, and that is the axis a numerical-methods reviewer reads

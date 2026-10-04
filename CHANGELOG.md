@@ -26,6 +26,17 @@ This project follows repository release policy enforced by `repo-release-tools`.
   and `tests/meta/test_citation_metadata_consistency.py` fails if the three
   disagree.
 
+- **The NIST agreement table records the machine that produced it.**
+  `reproducibility/figures/nist_table2.py` now writes, next to the lmfit, SciPy
+  and NumPy versions, the spectrafit-core build (version, wheel tag, and whether
+  it came from the package index, a wheel file or a local build), the Python
+  version, and a `host` block: platform, kernel, C library with its
+  distribution patch level, CPU model and vector instructions, and the
+  BLAS/LAPACK that NumPy and SciPy were built against and actually loaded. The
+  last significant figures of the ill-conditioned NIST fits depend on all of
+  these, so a table without them cannot be reproduced on purpose. No timestamp
+  is written: a rerun on the same host produces the same bytes.
+
 ### Changed
 
 - **Release guide from the v0.1.0 run.** `docs/contributor-guide/releasing.md`
@@ -48,9 +59,28 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Fixed
 
+- **The status line no longer calls every release the first public one.**
+  The README status and the docs announcement banner said "beta (`X.Y.Z`) —
+  first public release", and `rrt bump` rewrites only the version inside that
+  sentence, so 0.1.1 would have announced itself as the first public release.
+  Both now read "Status: beta (`X.Y.Z`).", and their `[tool.rrt]` patterns in
+  `pyproject.toml` changed with them.
+
 - **The docs home page no longer says 0.1.0 is unreleased.** Its *Citing*
   section claimed no tag or archive existed and described the in-preparation
   article; it now gives the release date and the concept DOI.
+
+- **The figure scripts in `reproducibility/figures/` find the repository again.**
+  After the scripts moved into `reproducibility/figures/`, one directory
+  shallower than before, `fig_architecture.py`, `extract_bench_summary.py` and
+  `measure_audit_bias.py` still resolved the repository root one directory too
+  high. From a plain checkout of v0.1.0, `fig_architecture.py` stopped with
+  "no crate manifests" and `fig_nist_dual.py` with "no NIST difficulty tier",
+  because `nist_difficulty_tiers()` returned an empty dict; `fig_nist_catalogue.py`
+  would have drawn every dataset in the "Lower" band without a warning, and now
+  stops instead. `tests/meta/test_reproducibility_paths.py` pins the tier roster
+  (all 22 implemented datasets), the crate discovery, and every `parents[N]`
+  under `reproducibility/`.
 
 ## [0.1.0] - 2026-09-29
 ### Added

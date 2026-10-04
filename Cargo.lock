@@ -1477,7 +1477,7 @@ checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
 
 [[package]]
 name = "spectrafit-builder"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "serde_json",
@@ -1487,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "numpy",
  "pyo3",
@@ -1501,7 +1501,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-dogleg"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "faer",
@@ -1511,7 +1511,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-graph"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "nalgebra",
@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-levenberg-marquardt"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "faer",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-models"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "libm",
@@ -1545,7 +1545,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-newton-cg"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "faer",
@@ -1555,7 +1555,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-solver"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "faer",
@@ -1575,7 +1575,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-trust-region"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "faer",
@@ -1584,7 +1584,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-types"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1593,7 +1593,7 @@ dependencies = [
 
 [[package]]
 name = "spectrafit-varpro"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "nalgebra",

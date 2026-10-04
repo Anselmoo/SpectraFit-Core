@@ -42,7 +42,12 @@ Run:  uv run python reproducibility/figures/nist_table2.py
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
+import platform
+import re
+import subprocess
+import sys
 from importlib import import_module
 from pathlib import Path
 from typing import Any
@@ -394,6 +399,124 @@ def build_row(recipe: Any) -> dict[str, Any]:
     }
 
 
+def _spectrafit_core_build() -> dict[str, Any]:
+    """Which build of spectrafit-core ran: version, wheel tag, and how it was installed.
+
+    A PyPI wheel carries no ``direct_url.json``; a wheel file installed by path records its
+    hash there; ``maturin develop`` and editable installs record ``dir_info``. The table
+    must say which of these produced it, because a local build is not the release.
+    """
+    dist = importlib.metadata.distribution("spectrafit-core")
+    wheel = dist.read_text("WHEEL") or ""
+    direct_url = json.loads(dist.read_text("direct_url.json") or "null")
+    match direct_url:
+        case None:
+            source = "index"
+        case {"dir_info": {"editable": True}}:
+            source = "editable local build"
+        case {"dir_info": _}:
+            source = "local build"
+        case {"archive_info": _, "url": url}:
+            source = f"wheel file {Path(url).name}"
+        case _:
+            source = "unknown"
+    return {
+        "version": dist.version,
+        "wheel_tags": [
+            ln.split(":", 1)[1].strip() for ln in wheel.splitlines() if ln.startswith("Tag:")
+        ],
+        "installed_from": source,
+        "archive_hash": (direct_url or {}).get("archive_info", {}).get("hash"),
+    }
+
+
+def _host() -> dict[str, Any]:
+    """The machine the table was measured on.
+
+    The last significant figures of an ill-conditioned fit depend on the CPU's vector
+    instructions, the C maths library and the LAPACK under SciPy, not only on package
+    versions: the same release gives different cells on macOS arm64 and Linux x86-64.
+    No timestamp is recorded, so a rerun on the same host writes the same bytes.
+    """
+    # Imported for its side effect: it loads SciPy's LAPACK, as least_squares does, so
+    # the loaded-library list below names the one the fits actually used.
+    import scipy.linalg
+
+    def build_deps(mod: Any) -> dict[str, Any]:
+        deps = mod.show_config(mode="dicts").get("Build Dependencies", {})
+        return {
+            k: {f: deps[k].get(f) for f in ("name", "version")}
+            for k in ("blas", "lapack")
+            if k in deps
+        }
+
+    host: dict[str, Any] = {
+        "node": platform.node(),
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "kernel": platform.release(),
+        "libc": " ".join(platform.libc_ver()).strip() or None,
+        "cpu": platform.processor() or None,
+        "blas_lapack": {"numpy": build_deps(np), "scipy": build_deps(scipy)},
+    }
+    simd = re.compile(r"^(sse4_[12]|avx|avx2|fma|avx512\w*|neon|asimd\w*|sve\w*)$")
+    match sys.platform:
+        case "linux":
+            # platform.libc_ver() stops at "2.35"; the distribution's patch level
+            # (e.g. "Ubuntu GLIBC 2.35-0ubuntu3.15") is only in ldd's banner.
+            ldd = subprocess.run(["ldd", "--version"], capture_output=True, text=True, check=False)
+            host["libc_build"] = (ldd.stdout.splitlines() or [None])[0]
+            info = Path("/proc/cpuinfo").read_text().splitlines()
+            host["cpu"] = next(
+                (ln.split(":", 1)[1].strip() for ln in info if ln.startswith("model name")),
+                host["cpu"],
+            )
+            flags = next(
+                (
+                    ln.split(":", 1)[1].split()
+                    for ln in info
+                    if ln.startswith(("flags", "Features"))
+                ),
+                [],
+            )
+            host["simd"] = sorted(f for f in flags if simd.match(f))
+            libs = {
+                ln.split()[-1]
+                for ln in Path("/proc/self/maps").read_text().splitlines()
+                if len(ln.split()) >= 6
+                and re.search(r"(openblas|blas|lapack|mkl|libm\.so)", ln.split()[-1])
+            }
+            host["blas_lapack"]["loaded"] = sorted(
+                lib.split("site-packages/", 1)[-1]
+                for lib in libs
+                if ".cpython-" not in Path(lib).name
+            )
+        case "darwin":
+
+            def sysctl(*keys: str) -> str:
+                return subprocess.run(
+                    ["sysctl", *keys],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                ).stdout
+
+            host["cpu"] = sysctl("-n", "machdep.cpu.brand_string").strip() or host["cpu"]
+            features = [
+                ln.split(":")[0].removeprefix("hw.optional.")
+                for ln in sysctl("hw.optional").splitlines()
+                if ln.strip().endswith(": 1")
+            ]
+            host["simd"] = sorted(
+                f
+                for f in features
+                if re.search(r"(neon|AdvSIMD|SVE|SME|FP16|DotProd|BF16|I8MM)", f)
+            )
+        case _:
+            host["simd"] = None
+    return host
+
+
 def main() -> None:
     """Measure all 22 datasets, write the sidecar, and print the table."""
     global TOL, OUT
@@ -419,10 +542,13 @@ def main() -> None:
         "start_point": START,
         "start_point_label": "Start 2",
         "versions": {
+            "spectrafit_core": _spectrafit_core_build(),
+            "python": platform.python_version(),
             "lmfit": lmfit.__version__,
             "scipy": scipy.__version__,
             "numpy": np.__version__,
         },
+        "host": _host(),
         "columns": ["spectrafit_core", "sigma", "lmfit", "scipy_lm", "scipy_trf"],
         "measure": (
             "log-relative error (significant figures of agreement, capped at 15) of "

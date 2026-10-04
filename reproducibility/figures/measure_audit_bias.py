@@ -24,7 +24,7 @@ from oracles.models import MODEL_REGISTRY, _wheel_eval, get_model
 
 # The parity test already fixes a grid and a parameter set per kernel; reusing
 # them keeps this measurement and that assertion describing the same thing.
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tests" / "parity"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests" / "parity"))
 from test_kernel_parity import _X, _params_for
 
 OUT = Path(__file__).with_name("audit_bias.json")

@@ -15,7 +15,7 @@ resolver = "2"
 # target to pin (see `[[tool.rrt.version_targets]]` in pyproject.toml) instead of
 # eleven that can silently disagree.
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 # MSRV. A *derived* floor, not an independently bisected one: it is the highest
 # `rust-version` declared by any crate in the resolved dependency graph

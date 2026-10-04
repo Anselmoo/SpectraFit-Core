@@ -14,7 +14,7 @@
     {
       "@id": "./",
       "@type": "Dataset",
-      "name": "spectrafit-core published evidence — v0.1.0",
+      "name": "spectrafit-core published evidence — v0.1.1",
       "description": "Measurement artifacts that spectrafit-core's documentation and LIMITATIONS.md cite as evidence: the reps-ladder and seed-sweep benchmark records with their per-rung provenance, the figure scripts and rendered figures derived from them, the NIST StRD coverage record, and third-party measured spectra vendored under their own licences. Digests for every file are also recorded in checksums.sha256; neither that file nor this one describes the other, so that the pair is satisfiable.",
       "license": {
         "@id": "https://spdx.org/licenses/MIT.html"
@@ -25,7 +25,7 @@
         "@id": "https://orcid.org/0000-0003-4543-4833"
       },
       "datePublished": "2026-09-29",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "url": "https://github.com/Anselmoo/SpectraFit-Core",
       "keywords": [
         "curve fitting",
@@ -770,7 +770,7 @@
       "name": "extract_bench_summary.py",
       "encodingFormat": "text/x-python",
       "contentSize": 12892,
-      "sha256": "543c62b92dc63572d193aed9c874e64a8c163338e07440065c5644312a019601"
+      "sha256": "d074f5e69232ca966f0f7060c1e468657c16da04ac2eb044166dbd034ac72928"
     },
     {
       "@id": "figures/fig_algorithm_dispatch.pdf",
@@ -826,7 +826,7 @@
       "name": "fig_architecture.py",
       "encodingFormat": "text/x-python",
       "contentSize": 20702,
-      "sha256": "e27a1fc489bdbf5b4c814abd4a4180cad881a80b05d24efd5d7e7886c21231db"
+      "sha256": "1e917769629bf1609242982d548fd15de5eb1a5571f851f558f39523da5f74bf"
     },
     {
       "@id": "figures/fig_benchmark_profile.pdf",
@@ -985,8 +985,8 @@
       "@type": "File",
       "name": "fig_nist_catalogue.py",
       "encodingFormat": "text/x-python",
-      "contentSize": 6609,
-      "sha256": "1ef222b2fde560675941846bb5c9ef9ede983566bf7ee9d11b09065c40ffce98"
+      "contentSize": 7073,
+      "sha256": "8c33b3a268852e4c73988fa2fc138135a9f671c67e14a2f5e5b120842fc72c2d"
     },
     {
       "@id": "figures/fig_nist_dual.pdf",
@@ -1114,7 +1114,7 @@
       "name": "measure_audit_bias.py",
       "encodingFormat": "text/x-python",
       "contentSize": 4020,
-      "sha256": "7f7d45e7b5a7378d54c84c94a5285d4b2f0f4177f7df66a4e96f032f3db86edc"
+      "sha256": "9f6cff2f8477e25cd666abc38164f2427552b3c952ee2ab8dd2527c31523f486"
     },
     {
       "@id": "figures/measure_param_agreement.py",
@@ -1161,8 +1161,8 @@
       "@type": "File",
       "name": "nist_table2.py",
       "encodingFormat": "text/x-python",
-      "contentSize": 17156,
-      "sha256": "1ac230ba6bf3bed4e5ff35a1efee34fa4813b654a7a217e18b0f615a52df4979"
+      "contentSize": 22183,
+      "sha256": "2dc40ec28a9c2ce1f2c46f39d0894c13757bcd7c795128c43ab9985d0faad909"
     },
     {
       "@id": "figures/nist_table2_tol1e15.json",

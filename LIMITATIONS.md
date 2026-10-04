@@ -1,6 +1,6 @@
 # Known Limitations
 
-`spectrafit-core` is **beta** software (`0.1.0`, promoted from alpha 2026-06-23). In the spirit of good scientific
+`spectrafit-core` is **beta** software (`0.1.1`, promoted from alpha 2026-06-23). In the spirit of good scientific
 practice, the benchmark discloses its own credibility ceiling rather than hiding
 it. The dashboard's render-truth credibility rung and claim ledger surface these
 in-app; this file is the prose summary.
