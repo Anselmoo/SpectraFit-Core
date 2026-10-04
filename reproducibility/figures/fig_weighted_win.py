@@ -1,7 +1,7 @@
 r"""Figure: a win only counts if it is bigger than the margin you would defend.
 
 WHY THIS EXISTS. Both accuracy comparisons in this project are reported as raw
-win counts: "spectrafit-core is most accurate on 16 of the 22", "the composite
+win counts: "spectrafit-core is most accurate on 15 of the 22", "the composite
 win rate is 133 of 151". A raw win count treats a difference in the eleventh
 decimal exactly like a difference of two significant figures. It answers *who
 was ahead*, which is almost never the question; the question is *whether being

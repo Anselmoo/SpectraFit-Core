@@ -77,8 +77,9 @@ tolerance the shipped audit itself runs at, not a tighter one chosen to make
 the table look better. The comparison generator
 (`reproducibility/figures/nist_table2.py`) holds every backend to that same
 $10^{-12}$, and the choice runs against spectrafit-core rather than for it:
-regenerating at $10^{-15}$ raises spectrafit-core's figure on 20 of the 22 and
-lowers none, while the comparators move less.
+regenerating at $10^{-15}$ raises spectrafit-core's figure on 17 of the 22 and
+lowers none, while the comparators move in both directions (lmfit falls on five
+datasets, SciPy-lm on six, SciPy-trf on seven).
 
 **Projection back to NIST's parameterization.** spectrafit-core does not fit
 NIST's algebra directly. It composes a model graph out of its own kernels, so a
@@ -191,18 +192,24 @@ Two things are true at once, and both belong in any summary of it:
 **spectrafit-core clears four significant figures on all 22 — and so does
 lmfit.** spectrafit-core's worst case is 6.496 significant figures (Thurber);
 lmfit's worst case is 4.630 (Rat43). Both are above the threshold everywhere.
-The only sub-four cells in the table belong to SciPy: `method="lm"` at 2.167 and
-`method="trf"` at 2.166, both on Hahn1 and on no other dataset. Anyone
+The only recovered parameters below four figures belong to SciPy: `method="lm"`
+at 2.167 and `method="trf"` at 2.166, both on Hahn1 and on no other dataset. (The
+one other sub-four cell is spectrafit-core's *standard error* on Lanczos1, 0.599,
+discussed above; it measures uncertainty, not a recovered value.) Anyone
 describing this result as "no other implementation matches our NIST accuracy"
 would be stating something the committed artifact contradicts.
 
-**No solver dominates.** spectrafit-core is the most accurate on 16 of the 22,
-SciPy-trf on four, lmfit and SciPy-lm on one each; spectrafit-core is last of
-the four on Lanczos1 and nowhere else. And the curves themselves settle nothing:
+**No solver dominates.** spectrafit-core is the most accurate on 15 of the 22,
+SciPy-trf on five and SciPy-lm on two; spectrafit-core is last of the four on
+Lanczos1 and nowhere else. These counts are from the host the table records
+(its `host` block: Linux x86-64, AMD EPYC, glibc 2.35, OpenBLAS). Where two
+solvers differ only in the last digits, which one wins can change from one
+machine to another: on macOS arm64 the same release gives 16, four, one, and
+one for lmfit. The agreement figures themselves move far less than the ranking. And the curves themselves settle nothing:
 `reproducibility/figures/fig_nist_dual.py` records that spectrafit-core's
 and lmfit's fitted curves differ by between 5e-14 and 8e-7 of a dataset's range,
 while the parameters recovered from those same curves differ by up to 3.46
-significant figures, and by at least one figure on 17 of the 22. That gap is the
+significant figures, and by at least one figure on 16 of the 22. That gap is the
 actual argument for using certified values at all: a reader comparing plotted
 curves would call the two implementations equivalent, and would be wrong.
 

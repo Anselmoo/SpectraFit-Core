@@ -113,7 +113,7 @@ still draws one curve, for the reason above. The right column draws two dots per
 row joined by a connector, because that is where the difference between them is
 not invisible: the fitted curves differ by 5e-14 to 8e-7 of a dataset's range,
 while the parameters recovered from them differ by up to 3.46 significant figures
-and by at least one on 17 of the 22 datasets. The dumbbell is that gap at the
+and by at least one on 16 of the 22 datasets. The dumbbell is that gap at the
 scale it actually has.
 
 **Three readability fixes, from the author failing to read his own panel.**
@@ -494,7 +494,7 @@ def plot(rows: list[dict]) -> None:
         # says something the data panel cannot: the two fitted CURVES differ by
         # between 5e-14 and 8e-7 of a dataset's range, which is why only one is
         # drawn to the left, while the parameters they recover differ by up to
-        # 3.46 significant figures, and by at least one on 17 of the 22. The gap
+        # 3.46 significant figures, and by at least one on 16 of the 22. The gap
         # between the two dots is that difference, drawn at the scale it actually
         # has. Plotting the residual difference instead would put a 1e-8 wiggle
         # where a 3.46-significant-figure disagreement belongs -- the same

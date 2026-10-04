@@ -10,13 +10,17 @@ This project follows repository release policy enforced by `repo-release-tools`.
 > release candidate with the same content, published to TestPyPI only as a
 > GitHub pre-release. The `[0.1.0b1]` and `[0.1.0a1]` sections below record the
 > dates on which those version bumps were *prepared in-tree*; neither was ever
-> cut as a release, so neither date is a release date.
+> cut as a release, so neither date is a release date. `0.1.1` is a patch
+> release of the repository's reproducibility material; its compiled library is
+> built from the same sources as `0.1.0`.
 >
 > **Scope note.** `[0.1.0]` below collects everything since the `0.1.0b1` bump
 > and summarises the development log by theme rather than reproducing it entry
 > by entry.
 
 ## [Unreleased]
+
+## [0.1.1] - 2026-10-04
 
 ### Added
 
@@ -59,6 +63,47 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ### Fixed
 
+- **The archived NIST tables did not match what the release produces.**
+  The three files v0.1.0 shipped in `reproducibility/figures/`
+  (`nist_table2.json`, `nist_table2_tol1e15.json`, `nist_head_to_head.json`)
+  were made on macOS arm64 and recorded no host. Regenerated from the same
+  release on Linux x86-64, 38 and 39 of the 108 cells of `nist_table2.json` (on
+  two different hosts) moved by 0.05 significant figures or more: spectrafit-core on Misra1b by 2.27
+  (10.30 to 8.03) and on Kirby2 by 1.08, Hahn1 by 1.57 in the other direction,
+  and lmfit and SciPy as well. The cause is the platform, not a change of code:
+  the v0.1.0 wheel on an Apple M1 reproduces the archived spectrafit-core, sigma,
+  lmfit and SciPy `lm` columns bit for bit (88 of 108 cells; the 20 SciPy `trf`
+  cells depend on the LAPACK, which the archive did not record), and on two
+  different x86-64 Linux CPUs spectrafit-core's columns are bit-identical while
+  the comparators move. The tables are now regenerated on one recorded host
+  (Linux x86-64, AMD EPYC, glibc 2.35, OpenBLAS) with the release workflow's own
+  0.1.1 manylinux wheel (`spectrafit_core-0.1.1-cp313-cp313-manylinux_2_28_x86_64.whl`,
+  sha256 `9f87f8d98346397a7459bbca9c882a7e126e28703f406b3297d851761830d45c`),
+  which gives the same 108 cells as the v0.1.0 PyPI wheel on that host. Every
+  figure that reads them (`fig_nist_dual`, `fig_nist_head_to_head`,
+  `fig_weighted_win`) and the two whose scripts changed (`fig_nist_catalogue`,
+  `fig_architecture`) were redrawn on the same host. The macOS tables are kept,
+  byte-unchanged, in `reproducibility/figures/comparison/macos-arm64/` with an
+  account of what is known about them. Quotes that change with the host are
+  updated from the new tables: spectrafit-core is the most accurate on 15 of 22
+  (was 16), SciPy-trf on five, SciPy-lm on two, lmfit on none; the 1e-15 rerun
+  raises spectrafit-core on 17 of 22 (was 20) and lowers none. The worst-case
+  agreement (6.496, Thurber), lmfit's worst case (4.630, Rat43) and the
+  four-figure threshold results are unchanged.
+- **`LIMITATIONS.md` names the platform dependence, and its NIST provenance
+  points at files that exist.** A new entry states that the last digits, and
+  with them the per-dataset ranking of the four solvers, change from host to
+  host. The provenance line cited `reproducibility/nist/nist_table2.json`, which
+  never existed, and credited `nist_table2.py` with a count it does not derive;
+  it now cites the `_RECIPES` roster and
+  `reproducibility/nist_unimplemented/datasets.json`.
+- **`docs/explanation/nist-validation.md` no longer says the only sub-four cells
+  belong to SciPy.** spectrafit-core's standard error on Lanczos1 agrees to
+  0.599 figures, as the same page discusses; the sentence now separates
+  recovered values from standard errors.
+- **`reproducibility/figures/README.md` lists the scripts that exist.** It named
+  three that are not in the repository and omitted four that are; it now also
+  documents how to regenerate the NIST tables and why they record their host.
 - **The status line no longer calls every release the first public one.**
   The README status and the docs announcement banner said "beta (`X.Y.Z`) —
   first public release", and `rrt bump` rewrites only the version inside that

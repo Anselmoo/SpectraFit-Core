@@ -1,118 +1,110 @@
-# Paper figures
+# Figures and measurements
 
-Scripts that generate the software metapaper's figures. Each writes a vector PDF
-(for submission) and a 300 dpi PNG (for preview) next to itself.
+Scripts that draw the published figures and write the measurements behind them.
+Each figure script writes a vector PDF and a 300 dpi PNG next to itself; each
+measurement script writes a JSON sidecar next to itself.
 
-### Figures the paper carries
-
-| Script | Figure | Input |
-|---|---|---|
-| `fig_model_graph.py` | **1** — the declaration ledger: components, declared parameters, expression edges | `../fecl4/fecl4_fit_results.json` + `fecl4_constraint_scenarios.json` |
-| `fig_architecture.py` | **2** — Rust/PyO3/Pydantic architecture | none — the layout is authored |
-| `../fecl4/fig_constraint_grid.py` | **3** — the Fe L-edge case study | `../fecl4/` |
-| `fig_benchmark_profile.py` | **4** — cross-backend performance profile | `bench_summary.json` |
-| `fig_ladder_stability.py` | **5** — speedup against repetition depth and against random seed | `../ladder/ladder.json` + per-rung manifests, `../seed-sweep/sweep.json` + per-seed manifests |
-| `fig_nist_dual.py` | **6** — NIST cases, residuals and agreement | `nist_head_to_head.json` |
-
-### Floats whose caption is inside the image
-
-| Script | Float | Input |
-|---|---|---|
-| `fig_algorithm_dispatch.py` | Algorithm 1, solver dispatch | `fig_algorithm_dispatch.tex` |
-| `fig_code_compose.py` | Listing 1, the composable model API in use | `fig_code_compose.tex` |
-| `fig_code_constraints.py` | Listing 2, constraints and joint fits | `fig_code_constraints.tex` |
-| `fig_code_benchmark.py` | Listing 3, reproducing a measured run | `fig_code_benchmark.tex` |
-
-### Figures the paper has no room for
-
-These ship in the FAIR data package rather than the paper.
+## Figures
 
 | Script | What it shows | Input |
 |---|---|---|
-| `fig_nist_accuracy.py` | per-parameter agreement with NIST certified values | `bench_summary.json` |
-| `fig_nist_catalogue.py` | all 27 NIST StRD datasets, implemented or not | `../nist_unimplemented/datasets.json` |
+| `fig_architecture.py` | Rust/PyO3/Pydantic architecture | the crate manifests under `crates/` |
+| `fig_benchmark_profile.py` | cross-backend performance profile | `bench_summary.json`, `../ladder/` |
+| `fig_performance_profile.py` | Dolan-Moré performance profile across backends | `bench_summary.json`, `../ladder/` |
+| `fig_ladder_stability.py` | speedup against repetition depth and against random seed | `../ladder/ladder.json` + per-rung manifests, `../seed-sweep/sweep.json` + per-seed manifests |
+| `fig_speed_accuracy_joint.py` | speed and accuracy together, per case | `bench_summary.json`, `../ladder/ladder.json`, `../seed-sweep/sweep.json` |
+| `fig_nist_dual.py` | NIST datasets, residuals and certified-value agreement | `nist_head_to_head.json`, NIST tiers from `python/oracles/nist_strd/` |
 | `fig_nist_head_to_head.py` | spectrafit-core against lmfit: accuracy and evaluations | `nist_head_to_head.json` |
+| `fig_nist_accuracy.py` | per-parameter agreement with NIST certified values | `bench_summary.json` |
+| `fig_nist_catalogue.py` | all 27 NIST StRD datasets, implemented or not | fixtures in `python/oracles/nist_strd/`, `../nist_unimplemented/datasets.json` |
+| `fig_weighted_win.py` | win counts with an equivalence margin | `nist_table2.json`, `bench_summary.json` |
 
-### Measurements, not figures
+Three floats carry their caption inside the image and are typeset with `pdflatex`
+rather than plotted: `fig_algorithm_dispatch.py` (solver dispatch),
+`fig_code_compose.py` (the composable model API) and `fig_code_benchmark.py`
+(the commands that run the benchmark), each from the `.tex` file of the same
+name. Their PDF and PNG are committed, so a reader without TeX is never blocked.
 
-Each writes a pinned JSON that the prose quotes, so a number in the paper can be
-re-derived rather than trusted.
+## Measurements
 
 | Script | Output | What it measures |
 |---|---|---|
-| `extract_bench_summary.py` | `bench_summary.json` | reduces a benchmark run directory |
-| `nist_table2.py` | `nist_table2.json` | Table 4 — all 22 NIST datasets, four solvers plus sigma, at 1e-12 |
-| `nist_head_to_head.py` | `nist_head_to_head.json` | spectrafit-core against lmfit on the same 22 |
+| `nist_table2.py` | `nist_table2.json`, with `--tolerance 1e-15` `nist_table2_tol1e15.json` | all 22 implemented NIST datasets: spectrafit-core, its standard errors, lmfit, SciPy `lm` and `trf` |
+| `nist_head_to_head.py` | `nist_head_to_head.json` | spectrafit-core against lmfit on the same 22, with fitted curves |
+| `extract_bench_summary.py` | `bench_summary.json` | reduces a benchmark run directory to what the figures read |
 | `measure_param_agreement.py` | `param_agreement.json` | parameter recovery across all six backends |
-| `measure_audit_bias.py` | `audit_bias.json` | compiled-kernel vs plain-array cost, and kernel parity |
+| `measure_audit_bias.py` | `audit_bias.json` | compiled-kernel against plain-array evaluation cost, and kernel parity |
+| `measure_se_timer_bias.py` | `se_timer_bias.json` | the standard-error timer asymmetry |
+
+`bench_summary.json`, `param_agreement.json` and `audit_bias.json`, like the
+ladder and the seed sweep, are timing measurements from the benchmark host. They
+are committed and pinned in `../checksums.sha256` and are **not** regenerated on
+another machine: a wall-clock ratio measured elsewhere is a different measurement.
+
+## The NIST tables record their host
+
+The last significant figures of the ill-conditioned NIST fits depend on the
+machine, not only on package versions: the CPU's vector instructions, the C
+maths library and the LAPACK under SciPy all play a part. `nist_table2.json`
+therefore records, next to the lmfit, SciPy and NumPy versions, the
+spectrafit-core build and a `host` block (platform, kernel, glibc patch level,
+CPU and vector instructions, BLAS/LAPACK built against and loaded). The tables
+in this directory were produced on Linux x86-64 with the release's own
+manylinux wheel. The v0.1.0 tables, made on macOS arm64 without that record,
+are kept in `comparison/macos-arm64/` with an account of how they differ.
 
 ## Reproducing
 
+The NIST tables and the figures that read them, from a checkout:
+
 ```bash
-uv sync --group reproducibility
+uv sync --extra benchmark
 
-# no input needed
-uv run --group reproducibility python reproducibility/figures/fig_architecture.py
+cd reproducibility/figures
+export MPLBACKEND=Agg SOURCE_DATE_EPOCH=1700000000
+PYTHONPATH=../../python uv run --no-sync python nist_head_to_head.py
+PYTHONPATH=../../python uv run --no-sync python nist_table2.py
+PYTHONPATH=../../python uv run --no-sync python nist_table2.py --tolerance 1e-15
+for f in fig_nist_dual fig_nist_head_to_head fig_weighted_win fig_nist_catalogue fig_architecture; do
+  PYTHONPATH=../../python uv run --no-sync python $f.py
+done
+```
 
-# needs pdflatex (with algorithm2e) and pdftoppm; the PDF and PNG are committed,
-# so a reader without TeX is never blocked and only a regeneration needs them
-uv run --group reproducibility python reproducibility/figures/fig_algorithm_dispatch.py
-uv run --group reproducibility python reproducibility/figures/fig_code_compose.py
+The scripts write next to themselves, so this overwrites the committed files;
+compare with `git diff`. `SOURCE_DATE_EPOCH` fixes the timestamps in the PDF
+files, so an unchanged figure is byte-identical. On a host other than the one
+`nist_table2.json` records, expect the last digits to differ; the drift is the
+point of the `host` block, not a failure.
 
-# the two benchmark figures share one extraction step
-uv run --group reproducibility python reproducibility/figures/extract_bench_summary.py <run-dir>
+`uv sync` builds spectrafit-core from source. To regenerate with a released
+wheel instead, install it into a fresh environment together with lmfit, SciPy and
+NumPy at the versions `nist_table2.json` records, and put only `python/oracles`
+on `PYTHONPATH`, so the source package cannot shadow the wheel.
+
+The benchmark figures read the committed sidecar and need no run:
+
+```bash
 uv run --group reproducibility python reproducibility/figures/fig_benchmark_profile.py
 uv run --group reproducibility python reproducibility/figures/fig_nist_accuracy.py
 ```
 
-`<run-dir>` is a directory holding `results.json`, `manifest.json` and
-`trust.json` — either a local `.spectrafit_reports/benchmark/<run>/`, or the
-`canonical/` directory from a `benchmark:deep` CI artifact.
-
-## Why two of these are LaTeX
-
-`fig_algorithm_dispatch` and `fig_code_compose` are typeset by `pdflatex` rather
-than plotted by matplotlib: an algorithm float and a syntax-highlighted code
-listing are what the venue's papers use, and Word is a poor host for either as
-text. Both carry their caption **inside** the image, so `method.md` has no
-caption paragraph beneath them; the paper's figure registry marks each
-`caption_in_image` and the renderer's caption guard honours that flag. Their PDF
-and PNG are committed, so a reader without TeX is never blocked.
-
-## Why the extraction step exists
-
-A full `results.json` is ~46 MB, nearly all of it per-point curve and residual
-arrays no figure reads. `extract_bench_summary.py` performs one heavy read and
-writes a few-kilobyte sidecar; the figure scripts consume that. The repo's
-`guard-memory-hazards` hook refuses direct reads of files that size, and it is
-right to — loading it once per figure is both slow and a real memory hazard.
-
-`bench_summary.json` **is committed**, and deliberately so: it is the pinned
-input that makes Figures 3 and 4 reproducible from a clean checkout, with no
-benchmark run and no access to CI artifacts. Run the figure scripts directly.
-
-Regeneration is only for adopting a *new* benchmark run, and needs the run
-directory that produced it — either a local `.spectrafit_reports/benchmark/<run>/`
-(gitignored) or the `canonical/` directory from a `benchmark:deep` CI artifact
-(30-day retention, on the private GitLab instance). Neither is available to an
-outside reader, which is precisely why the sidecar is committed rather than
-regenerated on demand.
+`extract_bench_summary.py <run-dir>` is only for adopting a *new* benchmark run,
+where `<run-dir>` holds `results.json`, `manifest.json` and `trust.json`. A full
+`results.json` is about 46 MB, nearly all of it per-point curves no figure reads;
+the script performs one heavy read and writes the few-kilobyte sidecar the figure
+scripts consume.
 
 ## Conventions these figures follow
 
 Colour is assigned by the job it does, and the palette is validated rather than
-eyeballed. The benchmark profile carries five backend series (JAX is excluded — see the
-paper), against a measured practical ceiling of six: at six, one adjacent
-pair sits inside the 6–8 ΔE colour-vision floor band and two hues fall under
-3:1 contrast. That is legal only with secondary
-encoding, so series identity there is carried three ways — hue, a distinct dash
-pattern, and a direct end-of-line label — never by hue alone. Darkening the
-palette to clear the warnings was tried and measured worse: the hues trip the
-chroma floor (they read grey) and colour-vision separation drops to ΔE 3.8.
+eyeballed. The benchmark profile carries five backend series against a measured
+practical ceiling of six: at six, one adjacent pair sits inside the 6–8 ΔE
+colour-vision floor band and two hues fall under 3:1 contrast. That is legal only
+with secondary encoding, so series identity there is carried three ways — hue, a
+distinct dash pattern, and a direct end-of-line label — never by hue alone.
 
-The NIST figure plots each dataset's **worst** parameter, not its mean, and
-draws the individual parameters behind it as light ticks. A mean would let one
+The NIST figure plots each dataset's **worst** parameter, not its mean, and draws
+the individual parameters behind it as light ticks. A mean would let one
 badly-recovered parameter hide behind seven good ones, which is exactly the
-failure a certified-value check exists to catch. Coverage (datasets exercised
-out of datasets published) is stated on the figure itself, not only in the
-caption.
+failure a certified-value check exists to catch. Coverage (datasets exercised out
+of datasets published) is stated on the figure itself.

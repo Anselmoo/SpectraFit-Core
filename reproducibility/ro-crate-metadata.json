@@ -24,7 +24,7 @@
         "name": "Anselm W. Hahn",
         "@id": "https://orcid.org/0000-0003-4543-4833"
       },
-      "datePublished": "2026-09-29",
+      "datePublished": "2026-10-04",
       "version": "0.1.1",
       "url": "https://github.com/Anselmoo/SpectraFit-Core",
       "keywords": [
@@ -44,6 +44,18 @@
         },
         {
           "@id": "figures/bench_summary.json"
+        },
+        {
+          "@id": "figures/comparison/macos-arm64/README.md"
+        },
+        {
+          "@id": "figures/comparison/macos-arm64/nist_head_to_head.json"
+        },
+        {
+          "@id": "figures/comparison/macos-arm64/nist_table2.json"
+        },
+        {
+          "@id": "figures/comparison/macos-arm64/nist_table2_tol1e15.json"
         },
         {
           "@id": "figures/extract_bench_summary.py"
@@ -745,8 +757,8 @@
       "@type": "File",
       "name": "README.md",
       "encodingFormat": "text/markdown",
-      "contentSize": 6455,
-      "sha256": "6a7958f9a785e6b07afe8eee13ee48e843b2ba79acfdc68ea941dd18b0696167"
+      "contentSize": 6559,
+      "sha256": "54297e2834e0180810a81cb98e611451850547cdeb7ebf6a99dd9c0e807f2349"
     },
     {
       "@id": "figures/audit_bias.json",
@@ -763,6 +775,38 @@
       "encodingFormat": "application/json",
       "contentSize": 298499,
       "sha256": "6fea7fdeb2d2eab7a00b4bd57450d442dab31cd4dc51788e715099fc548d9103"
+    },
+    {
+      "@id": "figures/comparison/macos-arm64/README.md",
+      "@type": "File",
+      "name": "README.md",
+      "encodingFormat": "text/markdown",
+      "contentSize": 1708,
+      "sha256": "b77ebfcacfaa49f8096c61db3f1143c094402dbf34ecddb6b6ead29d631d644f"
+    },
+    {
+      "@id": "figures/comparison/macos-arm64/nist_head_to_head.json",
+      "@type": "File",
+      "name": "nist_head_to_head.json",
+      "encodingFormat": "application/json",
+      "contentSize": 144614,
+      "sha256": "7ea951d85c84b49071dd944c12bbdd8aec376770cb07faaba691dad4971df5bf"
+    },
+    {
+      "@id": "figures/comparison/macos-arm64/nist_table2.json",
+      "@type": "File",
+      "name": "nist_table2.json",
+      "encodingFormat": "application/json",
+      "contentSize": 16629,
+      "sha256": "a5eeea724532c19ec188f90987d14106c80ab3e295c635a2bb2460a6cae522de"
+    },
+    {
+      "@id": "figures/comparison/macos-arm64/nist_table2_tol1e15.json",
+      "@type": "File",
+      "name": "nist_table2_tol1e15.json",
+      "encodingFormat": "application/json",
+      "contentSize": 16704,
+      "sha256": "3cd402b9553a8fdb10c263dc975c6720a8b5105a2117bf38cd6c769e2a8e4cb9"
     },
     {
       "@id": "figures/extract_bench_summary.py",
@@ -809,16 +853,16 @@
       "@type": "File",
       "name": "fig_architecture.pdf",
       "encodingFormat": "application/pdf",
-      "contentSize": 58169,
-      "sha256": "0659fd51bbe25757e3dab2e0828a9a8b9aebd4f3a85f48c664cd48cd9a222a87"
+      "contentSize": 58168,
+      "sha256": "59cc09b6e61879f5d328adbd69cb193349ffd414991e2a3c26e92ad39082df42"
     },
     {
       "@id": "figures/fig_architecture.png",
       "@type": "File",
       "name": "fig_architecture.png",
       "encodingFormat": "image/png",
-      "contentSize": 247430,
-      "sha256": "7ad1013a7f95d9321d0e2b5f5d79c4c7a9e725230941e7f3e4a594550a805921"
+      "contentSize": 272443,
+      "sha256": "ad4fb4c4343788139d4294fcf08c08029a1283ebcd8373c4834bf6e0c8238e18"
     },
     {
       "@id": "figures/fig_architecture.py",
@@ -970,15 +1014,15 @@
       "name": "fig_nist_catalogue.pdf",
       "encodingFormat": "application/pdf",
       "contentSize": 78494,
-      "sha256": "d1eccb63164b40ed91bd0470ab8860488ff44374a61b9b55540298702ded5809"
+      "sha256": "b7058747ada6bf68fd6c7c4935f373555466cccd34a51867e0d72e618a0e21e7"
     },
     {
       "@id": "figures/fig_nist_catalogue.png",
       "@type": "File",
       "name": "fig_nist_catalogue.png",
       "encodingFormat": "image/png",
-      "contentSize": 416520,
-      "sha256": "a0942f03dc8252af3b030f907647def7b3043d8be738820ba22e0b328117f6a4"
+      "contentSize": 457403,
+      "sha256": "0dc40ec407db1a4264b294348b4176042460069158437a87f011ed4b5f0eedf6"
     },
     {
       "@id": "figures/fig_nist_catalogue.py",
@@ -993,16 +1037,16 @@
       "@type": "File",
       "name": "fig_nist_dual.pdf",
       "encodingFormat": "application/pdf",
-      "contentSize": 104822,
-      "sha256": "92c6e288cfa9036c501432182aab9309deb131a958fe6daf0d31bbabe298d139"
+      "contentSize": 104802,
+      "sha256": "fd7fa8f9c7a243284a1e0dc56dcb7e89c2882c663210648f08d296b834eab7d1"
     },
     {
       "@id": "figures/fig_nist_dual.png",
       "@type": "File",
       "name": "fig_nist_dual.png",
       "encodingFormat": "image/png",
-      "contentSize": 705436,
-      "sha256": "fb42f0994edcc1add035d9ab2503cc45812da92d9fead1655a58872d0ec70722"
+      "contentSize": 760961,
+      "sha256": "c59102b5bf7c096bf8995a6fdad70931dd41a1a2c252e6116132f28fcff269b1"
     },
     {
       "@id": "figures/fig_nist_dual.py",
@@ -1010,23 +1054,23 @@
       "name": "fig_nist_dual.py",
       "encodingFormat": "text/x-python",
       "contentSize": 33219,
-      "sha256": "39fe7f10bdb58722c5ee73c911bfee9b251b4fbdd1a707e1f17bda3be9e1f9dc"
+      "sha256": "0f2bdea524ecc2dbe35447069585b730145bd73f964423996e9f5236af248755"
     },
     {
       "@id": "figures/fig_nist_head_to_head.pdf",
       "@type": "File",
       "name": "fig_nist_head_to_head.pdf",
       "encodingFormat": "application/pdf",
-      "contentSize": 40765,
-      "sha256": "fa0450a04796ac31987c050ea47b6cb5a4e2eed55e16a59ccb28305fc2327dd9"
+      "contentSize": 40797,
+      "sha256": "6c2e80774a41be06c85dd543327e8d081eebcb9075517efbd9a4b7f945dc439a"
     },
     {
       "@id": "figures/fig_nist_head_to_head.png",
       "@type": "File",
       "name": "fig_nist_head_to_head.png",
       "encodingFormat": "image/png",
-      "contentSize": 256536,
-      "sha256": "da9ebcd2baeae2c6202d600fd28e36ba4a4b6296edfae8fd6785020c68465ed5"
+      "contentSize": 284724,
+      "sha256": "e094d1d674c521973260e8738f077497f7c6b423091b15dc0e2038fad6d217ef"
     },
     {
       "@id": "figures/fig_nist_head_to_head.py",
@@ -1089,16 +1133,16 @@
       "@type": "File",
       "name": "fig_weighted_win.pdf",
       "encodingFormat": "application/pdf",
-      "contentSize": 43431,
-      "sha256": "2b32466016cefec2629ac6ae42a5de652730f195bfeb3346f218474b386256fb"
+      "contentSize": 43377,
+      "sha256": "36dc4ea2b5d2ce35c2f767462e75e3d70acae3bfdbc19709b7658a1f9fb4d0ba"
     },
     {
       "@id": "figures/fig_weighted_win.png",
       "@type": "File",
       "name": "fig_weighted_win.png",
       "encodingFormat": "image/png",
-      "contentSize": 331471,
-      "sha256": "669c6723c600b0464c94ad5fc6a9bdbdc5b957826b4fe0ab5995902a933ab7f0"
+      "contentSize": 362040,
+      "sha256": "87dec30a708bdb8ab9d742801e15967526a2d5a8381008ed94e42550ac7e7468"
     },
     {
       "@id": "figures/fig_weighted_win.py",
@@ -1106,7 +1150,7 @@
       "name": "fig_weighted_win.py",
       "encodingFormat": "text/x-python",
       "contentSize": 12625,
-      "sha256": "662f24fcad28bdc922af8ef7e21950267ecf9c446c2dcd0b50ae49ee20167f30"
+      "sha256": "9b56d806aa7597c5b2513d171cc2abc1f29b63b72fd1bc21d6a670506cc66e4a"
     },
     {
       "@id": "figures/measure_audit_bias.py",
@@ -1137,8 +1181,8 @@
       "@type": "File",
       "name": "nist_head_to_head.json",
       "encodingFormat": "application/json",
-      "contentSize": 144614,
-      "sha256": "7ea951d85c84b49071dd944c12bbdd8aec376770cb07faaba691dad4971df5bf"
+      "contentSize": 144643,
+      "sha256": "06f87759ff171d5b268652c98b85b29cb6429f96babba546e593a984a72f6681"
     },
     {
       "@id": "figures/nist_head_to_head.py",
@@ -1153,8 +1197,8 @@
       "@type": "File",
       "name": "nist_table2.json",
       "encodingFormat": "application/json",
-      "contentSize": 16629,
-      "sha256": "a5eeea724532c19ec188f90987d14106c80ab3e295c635a2bb2460a6cae522de"
+      "contentSize": 17777,
+      "sha256": "4f8cd886c68ac53a51cefe83d52de766d396d27bb78ee717dd9bdd857490db68"
     },
     {
       "@id": "figures/nist_table2.py",
@@ -1169,8 +1213,8 @@
       "@type": "File",
       "name": "nist_table2_tol1e15.json",
       "encodingFormat": "application/json",
-      "contentSize": 16704,
-      "sha256": "3cd402b9553a8fdb10c263dc975c6720a8b5105a2117bf38cd6c769e2a8e4cb9"
+      "contentSize": 17863,
+      "sha256": "ad668dbc90335cfd1a3656a9bc4813949241fb4231998f1610868b421baff24c"
     },
     {
       "@id": "figures/param_agreement.json",

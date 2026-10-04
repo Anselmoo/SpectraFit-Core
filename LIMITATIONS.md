@@ -40,9 +40,11 @@ in-app; this file is the prose summary.
     exclusion is local to the test and never reaches the W8 wire.) Broader
     coverage is planned — see the roadmap.
 
-    *Provenance:* the 22/27 count and the five named exclusions are derived
-    by `reproducibility/figures/nist_table2.py` and recorded in
-    `reproducibility/nist/nist_table2.json`.
+    *Provenance:* the 22 implemented datasets are the `_RECIPES` roster in
+    `python/oracles/audit/nist.py`, out of `NIST_STRD_TOTAL = 27`; the five
+    that are not implemented are listed, with their data, in
+    `reproducibility/nist_unimplemented/datasets.json`. Their agreement is in
+    `reproducibility/figures/nist_table2.json`.
 
 - **The accuracy and speed denominators disagree, in this project's favour on
   both.** The headline $\max \lvert \Delta r^2 \rvert$ accuracy figure is
@@ -89,13 +91,27 @@ in-app; this file is the prose summary.
 - **The NIST agreement figures are at the shipped tolerance, not the best one.**
   The certified-value audit runs every solver at 1e-12, the tolerance the
   shipped audit itself uses. A rerun at 1e-15 also ships, and it raises
-  spectrafit-core's own significant-figure agreement without lowering any of
-  them — so the shipped choice is not the most favourable one available to this
-  project. See [NIST validation](explanation/nist-validation.md) for the method
+  spectrafit-core's own significant-figure agreement on 17 of the 22 datasets
+  without lowering it on any (the comparators fall on some) — so the shipped
+  choice is not the most favourable one available to this project. See [NIST validation](explanation/nist-validation.md) for the method
   and for both tolerance runs. *Provenance:* the two runs are
   `reproducibility/figures/nist_table2.json` (1e-12, shipped) and
   `reproducibility/figures/nist_table2_tol1e15.json` (1e-15, the
   favourable rerun).
+- **The last significant figures of the NIST table depend on the machine.**
+  The same release, with the same lmfit, SciPy and NumPy versions, gives
+  different last digits on different hosts: between macOS arm64 and Linux
+  x86-64, spectrafit-core's own agreement on Misra1b differs by 2.3 significant
+  figures at 1e-12 (still above 8), and lmfit and SciPy move as well; between two
+  x86-64 Linux CPUs, spectrafit-core's columns were bit-identical while lmfit
+  and SciPy moved by up to 1.6 figures. No claim in this project depends on a
+  digit at that level, but the per-dataset ranking of the four solvers can:
+  where two of them differ only in the last digits, which one is "most accurate"
+  changes from host to host. The table therefore records the host that produced
+  it, and v0.1.0's table, which did not, is kept beside it for comparison.
+  *Provenance:* the `versions` and `host` blocks of
+  `reproducibility/figures/nist_table2.json`; the earlier macOS table in
+  `reproducibility/figures/comparison/macos-arm64/`.
 
 ## Solver results
 

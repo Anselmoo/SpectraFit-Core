@@ -57,8 +57,9 @@ _SOURCE_RE = re.compile(r"^Source:\s*(\S+)\s*$", re.MULTILINE)
 _LITERATURE_RE = re.compile(r"\(([A-Z][\w.'-]+(?:\s+(?:and|&)\s+[A-Z][\w.'-]+)*,\s*\d{4})\)")
 
 # Significant-figures-of-agreement threshold this page reports each backend's
-# clearing count against — matches the value ``nist_table2.py`` itself treats as
-# "adequate" agreement for a NIST StRD nonlinear-regression certified result.
+# clearing count against — the 4.0 the certified-value audit uses
+# (``oracles.audit.nist``); ``nist_table2.py`` itself records LREs and applies no
+# threshold.
 SIG_FIGS_THRESHOLD = 4.0
 
 # Table/summary column order: the four fitted-value backends first (spectrafit-core's
