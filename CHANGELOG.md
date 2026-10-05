@@ -20,7 +20,7 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-10-04
+## [0.1.1] - 2026-10-05
 
 ### Added
 
@@ -42,6 +42,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
   is written: a rerun on the same host produces the same bytes.
 
 ### Changed
+
+- **The release date moved to the day the tag was cut.** The tag slipped past
+  2026-10-04, the date the release commit set, so `CITATION.cff`,
+  `codemeta.json`, the docs home and this heading now say 2026-10-05, as the
+  release guide requires before tagging.
 
 - **Release guide from the v0.1.0 run.** `docs/contributor-guide/releasing.md`
   now spells out the hand-set tags on both remotes (GitHub: bot tagger, deploy
