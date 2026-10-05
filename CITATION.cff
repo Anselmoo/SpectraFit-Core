@@ -34,7 +34,7 @@ version: 0.1.1
 # The date tag v0.1.1 is cut (PyPI, GitHub release, Zenodo). The first
 # release, v0.1.0, was 2026-09-29; earlier in-tree bumps (0.1.0a1, 0.1.0b1)
 # were never released.
-date-released: 2026-10-04
+date-released: 2026-10-05
 keywords:
   - curve-fitting
   - spectroscopy

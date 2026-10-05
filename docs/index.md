@@ -53,7 +53,7 @@ If you use spectrafit-core in academic work, please cite it via
 - **Author:** Anselm W. Hahn
   ([ORCID: 0000-0003-4543-4833](https://orcid.org/0000-0003-4543-4833))
 - **Type:** software
-- **Version:** 0.1.1, released 2026-10-04 (first release 0.1.0, 2026-09-29)
+- **Version:** 0.1.1, released 2026-10-05 (first release 0.1.0, 2026-09-29)
 - **DOI:** [10.5281/zenodo.23043544](https://doi.org/10.5281/zenodo.23043544)
   (concept DOI: always resolves to the latest archived version)
 - **License:** MIT
