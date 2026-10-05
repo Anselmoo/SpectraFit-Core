@@ -12,13 +12,33 @@ This project follows repository release policy enforced by `repo-release-tools`.
 > dates on which those version bumps were *prepared in-tree*; neither was ever
 > cut as a release, so neither date is a release date. `0.1.1` is a patch
 > release of the repository's reproducibility material; its compiled library is
-> built from the same sources as `0.1.0`.
+> built from the same sources as `0.1.0`. `0.1.2` adds the benchmark harness's JAX
+> compile budget; the compiled library is unchanged again.
 >
 > **Scope note.** `[0.1.0]` below collects everything since the `0.1.0b1` bump
 > and summarises the development log by theme rather than reproducing it entry
 > by entry.
 
 ## [Unreleased]
+
+## [0.1.2] - 2026-10-05
+
+### Fixed
+
+- **The benchmark's JAX backend no longer aborts a full run.** Every distinct
+  compiled JAX executable costs memory mappings, and JAX keeps them for the life
+  of the process; a full six-backend run compiles about 360 of them, which
+  crosses the kernel's `vm.max_map_count` (65530 by default) and aborts with
+  `LLVM ERROR: Unable to allocate section memory` while most of the RAM is still
+  free. The JAX backend now drops its compiled-executable cache after 64 distinct
+  executables (`SPECTRAFIT_BENCH_JAX_COMPILE_BUDGET` overrides it), and
+  `oracles.cli run` reports peak RSS, mapping count, cache clears and the budget.
+  The archived timing measurement in `reproducibility/` was taken with exactly
+  this code (commit `990a4c7`), which had never been merged; a full run of the
+  released 0.1.1 harness on the same host aborted after 58 minutes. The cap acts
+  on the JAX backend only. `scripts/bench_ladder.py` no longer sets two
+  `XLA_FLAGS` that were measured to have no effect (one was never parsed), and
+  records `vm.max_map_count` instead.
 
 ## [0.1.1] - 2026-10-05
 

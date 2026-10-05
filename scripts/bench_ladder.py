@@ -55,25 +55,33 @@ REPORTS = REPO / ".spectrafit_reports" / "benchmark"
 # A naive 1,2,10,25,50,100 wastes a rung: 1 and 2 both collapse to 1.
 DEFAULT_LADDER = "2,4,10,25,50,100"
 
-# WHY THIS IS SET. The first ladder run died on every rung with SIGSEGV/SIGABRT
-# and "LLVM compilation error: Cannot allocate memory", 16 threads deep — one
-# per core. jax's XLA sizes its intra-op thread pool to the core count, and each
-# thread JIT-compiles independently; on a 16-core host the transient cost of
-# concurrent LLVM compilation across 127 distinct case layouts exhausted 31 GiB.
-# The benchmark engine itself does not parallelise, so this is entirely jax's
-# internal pool. This is the first time jax has ever run in this benchmark, so
-# nothing could have surfaced it earlier.
+# WHY NOTHING IS SET HERE ANY MORE. An earlier version of this script exported
+# XLA_FLAGS="--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1",
+# believing the ladder's SIGSEGV/SIGABRT deaths were concurrent LLVM compilation
+# exhausting the host's 31 GiB. Both halves of that were wrong, and both were
+# measured wrong rather than reasoned wrong:
 #
-# Measured on that host over all 127 jax-eligible cases:
-#     unconstrained                  -> OOM, every rung dead
-#     with these flags               -> peak RSS 1.54 GB
+#   * `intra_op_parallelism_threads=1` carries no `--`, so XLA's parser treats it
+#     as a positional argument and drops it silently. (A bogus `--`-prefixed flag
+#     aborts the process outright with "Unknown flag in XLA_FLAGS" — that this
+#     string imported cleanly is the proof it was never applied.)
+#   * `--xla_cpu_multi_thread_eigen=false` governs Eigen's RUNTIME op pool, not
+#     codegen. Over the full 127-case sweep it is indistinguishable from the
+#     defaults: 1.76 GB / 90.6 s with, 1.75 GB / 90.3 s without. Pinning the real
+#     codegen knob (`--xla_cpu_parallel_codegen_split_count=1`) changes nothing
+#     either: 1.72 GB / 87.7 s.
 #
-# Deliberately NOT setting RAYON_NUM_THREADS / OMP_NUM_THREADS here, though they
-# also stop the OOM: rayon is what spectrafit-core's own Rust core uses, so
-# pinning it would throttle the subject, change what the benchmark measures, and
-# break comparability with every previously recorded run. These flags constrain
-# only the comparator's compiler, which is the actual fault.
-JAX_XLA_FLAGS = "--xla_cpu_multi_thread_eigen=false intra_op_parallelism_threads=1"
+# The actual limit was `vm.max_map_count` — a count of mmap regions, not bytes.
+# It is fixed in the jax backend itself (see "Compile budget" in
+# oracles/backends/_jax.py), which is where the mappings are created. So jax now
+# runs at its stock defaults, exactly as a user would get it, and this script's
+# job is to RECORD the limit and the headroom rather than to guess at flags.
+#
+# RAYON_NUM_THREADS / OMP_NUM_THREADS are still deliberately not set. They also
+# stopped the crash — by making the run slower and thread-poorer, so it reached
+# the mapping cap later — but rayon is what spectrafit-core's own Rust core uses,
+# so pinning it would throttle the subject and break comparability with every
+# previously recorded run.
 
 
 def _sh(*cmd: str, cwd: Path | None = None) -> str:
@@ -119,6 +127,19 @@ def _ram_gb() -> float | None:
         return None
 
 
+def _max_map_count() -> int | None:
+    """Per-process mmap-region cap, or None off Linux.
+
+    Recorded because this — not RAM — is the limit that killed the six-backend run.
+    A reader comparing two hosts needs it to tell "ran with headroom" from "ran three
+    mappings under the cap", and the two are indistinguishable in a timing table.
+    """
+    try:
+        return int(Path("/proc/sys/vm/max_map_count").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+
+
 def environment() -> dict:
     """Capture everything needed to interpret a timing number later.
 
@@ -139,6 +160,7 @@ def environment() -> dict:
             "cpu": _cpu_model(),
             "cores": os.cpu_count(),
             "ram_gb": _ram_gb(),
+            "vm_max_map_count": _max_map_count(),
             "os": platform.platform(),
             "kernel": platform.release(),
         },
@@ -175,6 +197,23 @@ def newest_run() -> str | None:
     return runs[-1] if runs else None
 
 
+def _parse_resources(stdout: str) -> dict:
+    """Pull the run's own resource line out of its stdout.
+
+    ``oracles.cli run`` echoes ``peak_rss_gb=… mmap_regions=… jax_cache_clears=…
+    jax_compile_budget=…``. The child has to report these itself: ``ru_maxrss`` for
+    ``RUSAGE_CHILDREN`` is a high-water mark across every child the parent has ever
+    reaped, so it cannot attribute a peak to one rung, and the mapping count is gone
+    the moment the process exits.
+    """
+    fields = ("peak_rss_gb", "mmap_regions", "jax_cache_clears", "jax_compile_budget")
+    out: dict[str, float | int | None] = dict.fromkeys(fields)
+    for key in fields:
+        if m := re.search(rf"\b{key}=([\d.]+)\b", stdout):
+            out[key] = float(m.group(1)) if key == "peak_rss_gb" else int(m.group(1))
+    return out
+
+
 def one_rung(reps: int, mc: int, out: Path, env: dict) -> dict:
     """Run a single rung and return its provenance record."""
     started = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -189,12 +228,7 @@ def one_rung(reps: int, mc: int, out: Path, env: dict) -> dict:
     proc = subprocess.run(
         [sys.executable, "-m", "oracles.cli", "run", "--reps", str(reps), "--mc", str(mc)],
         cwd=REPO,
-        env={
-            **os.environ,
-            "PYTHONPATH": str(REPO / "python"),
-            # Prepend so an operator-supplied XLA_FLAGS still wins.
-            "XLA_FLAGS": f"{JAX_XLA_FLAGS} {os.environ.get('XLA_FLAGS', '')}".strip(),
-        },
+        env={**os.environ, "PYTHONPATH": str(REPO / "python")},
         capture_output=True,
         text=True,
         check=False,
@@ -236,10 +270,12 @@ def one_rung(reps: int, mc: int, out: Path, env: dict) -> dict:
             "reps_effective": effective,
             "mc": mc,
             "seed": 20260603,  # oracles.cases.build_catalog default
-            "xla_flags": JAX_XLA_FLAGS,
+            # Empty unless the operator set it: this script no longer injects flags.
+            "xla_flags": os.environ.get("XLA_FLAGS", ""),
         },
         "timing": {"started_utc": started, "finished_utc": finished},
         "exit_status": proc.returncode,
+        "resources": _parse_resources(proc.stdout),
         "local_run_dir": produced,
         "headline": headline,
         **env,
@@ -277,6 +313,7 @@ def main() -> int:
                 "reps_requested": r["params"]["reps_requested"],
                 "reps_effective": r["params"]["reps_effective"],
                 "exit_status": r["exit_status"],
+                **r["resources"],
                 **r["headline"],
             }
             for r in records

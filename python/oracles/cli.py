@@ -21,6 +21,8 @@ Note:
 from __future__ import annotations
 
 import json
+import os
+import resource
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -134,6 +136,31 @@ def _resolve_run_backends(
     return resolved, baseline_id
 
 
+def _resource_line(backends: Sequence[Backend]) -> str:
+    """One machine-parseable line of what the run cost the host.
+
+    Peak RSS is the number the operator watches, but the limit that actually killed
+    the six-backend run was ``vm.max_map_count`` — mmap regions, not bytes (see
+    "Compile budget" in :mod:`oracles.backends._jax`). Both are echoed, along with how
+    often jax had to drop its compiled-executable cache to stay under the cap, so a
+    provenance record can carry them without re-deriving anything.
+    """
+    peak_gb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024**2
+    maps = "n/a"
+    try:
+        with Path(f"/proc/{os.getpid()}/maps").open(encoding="utf-8") as fh:
+            maps = str(sum(1 for _ in fh))
+    except OSError:  # pragma: no cover - non-Linux
+        pass
+    jax_backend = next((b for b in backends if b.name == "jax"), None)
+    clears = getattr(jax_backend, "n_cache_clears", "n/a")
+    budget = getattr(jax_backend, "compile_budget", "n/a")
+    return (
+        f"  peak_rss_gb={peak_gb:.2f} mmap_regions={maps} "
+        f"jax_cache_clears={clears} jax_compile_budget={budget}"
+    )
+
+
 @app.command()
 def run(
     reps: int = typer.Option(5, help="Timing repetitions per case."),
@@ -212,6 +239,7 @@ def run(
     )  # recompute wires from the sidecar; inline trust_block into results.json
 
     typer.echo(f"benchmark complete → {run_dir}")
+    typer.echo(_resource_line(resolved_backends))
     typer.echo(
         f"  {manifest['n_cases']} cases · geomean speedup vs {manifest['baseline_solver_id']} "
         f"{manifest['geomean_speedup_vs_baseline']:.2f}x · max |Δr²| "

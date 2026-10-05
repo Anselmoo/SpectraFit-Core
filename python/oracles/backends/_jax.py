@@ -1,4 +1,4 @@
-"""jax + optimistix oracle — vectorized GPU/CPU challenger backend.
+r"""jax + optimistix oracle — vectorized GPU/CPU challenger backend.
 
 Supports any case whose components all carry a jax kernel (the registry's derived
 ``jax_supported`` flag, i.e. ``PeakModel.jax_evaluate is not None`` — today every
@@ -13,11 +13,62 @@ kernel — porting more shapes cannot reach them.
 Both the per-component shape layout (which kernel, how many params) and the kernel
 itself are read from the model registry, not a private map — so a new jax shape is
 one ``jax_evaluate=`` entry in :mod:`oracles.jax_kernels`, with no edit here.
+
+## Compile budget — why the compiled-executable cache is bounded
+
+Every distinct compiled XLA executable costs mmap regions — LLVM's
+``SectionMemoryManager`` maps each section separately — and jax retains them for the
+life of the process. The kernel caps a process at ``vm.max_map_count`` mappings
+(65530 by default). Past that, ``mmap`` returns ``ENOMEM``, which surfaces as
+``LLVM compilation error: Cannot allocate memory`` with tens of GB of RAM still free,
+and the process aborts.
+
+Warning:
+    The limit that kills a full run is a count of mappings, **not** a quantity of
+    memory. Peak RSS stays near 2 GB on a 31 GiB host while the run dies. Profiling
+    bytes will not find this, and no ``XLA_FLAGS`` thread or codegen setting moves it.
+
+A full benchmark run compiles far more than one executable per case:
+:func:`oracles._engine_profile._scaling` re-materializes every analyzed case at
+``n_points`` 128/512/2048, so the 127 jax-eligible cases produce roughly 360–384
+distinct executables $\approx$ 68k–73k mappings — over the cap. That is why every rung of the
+FAIR reps ladder died with ``SIGABRT``/``SIGSEGV``. Driving jax alone compiles only the
+127 base shapes ($\approx$ 24k mappings) and stays under the cap, which is why a standalone
+probe never reproduced the failure. Monte-Carlo refits add nothing: they reuse the
+base shape.
+
+``jax.clear_caches()`` alone releases the mappings (measured: 8708 → 823 mappings after
+40 fits). :func:`_residual_for`'s memo does **not** need clearing, so the amortization
+rationale documented there stays intact.
+
+Note:
+    The budget is a fixed **count** rather than a reading of live map pressure on
+    purpose: a run has to compile and clear at the same points on every host, or two
+    machines running one commit produce different jax timings and the ladder stops
+    being recomputable. Override with ``SPECTRAFIT_BENCH_JAX_COMPILE_BUDGET``.
+
+Measured over the full 127-case × 4-shape compile load, against the 65530 cap:
+
+| budget | clears | peak mappings | headroom | peak RSS |
+| -----: | -----: | ------------: | -------: | -------: |
+|    128 |      3 |        41 314 |     37 % |  2.87 GB |
+|     64 |      6 |        22 706 |     65 % |  1.98 GB |
+
+64 is the default. 128 bounds the run, but 37 % is too little margin for a host whose
+``vm.max_map_count`` is below the kernel default or a jax release that maps more
+sections per executable. Halving the budget doubles the clears — a few extra minutes of
+recompilation on a run that takes hours — and buys back nearly a third of the cap.
+
+Bounding the cache also removes a measurement bias. Uncapped, jax silently reuses a
+compile whenever a later case repeats an earlier case's layout — the catalog's 127
+eligible cases cover only 96 distinct base ``(layout, n_points)`` pairs — an advantage
+lmfit and the scipy backends never get.
 """
 
 from __future__ import annotations
 
 import functools
+import os
 from typing import Any, override
 
 import numpy as np
@@ -32,6 +83,11 @@ from oracles.cases import BenchCase, curve
 from oracles.exceptions import BackendError
 
 _R2_CEILING_TOL = 1e-3
+
+# Distinct compiled executables kept before the cache is dropped. See "Compile budget"
+# in the module docstring for the mmap accounting this number comes from.
+_DEFAULT_COMPILE_BUDGET = 64
+_COMPILE_BUDGET_ENV = "SPECTRAFIT_BENCH_JAX_COMPILE_BUDGET"
 
 
 def _layout(case: BenchCase) -> tuple[tuple[str, int], ...]:
@@ -57,11 +113,39 @@ class JaxBackend(Backend):
 
     name = "jax"
 
-    def __init__(self) -> None:
+    def __init__(self, compile_budget: int | None = None) -> None:
         import jax
 
         jax.config.update("jax_enable_x64", True)  # noqa: FBT003 — jax.config.update's own signature, not ours
         import optimistix  # noqa: F401  (availability check)
+
+        env = os.environ.get(_COMPILE_BUDGET_ENV)
+        budget = compile_budget if compile_budget is not None else int(env) if env else None
+        self.compile_budget = max(1, budget if budget is not None else _DEFAULT_COMPILE_BUDGET)
+        # Distinct executables live since the last clear, and how often we have cleared.
+        # The run records the clear count so a reader can see the cache was bounded.
+        self._compiled: set[tuple[tuple[tuple[str, int], ...], int]] = set()
+        self.n_cache_clears = 0
+
+    def _charge_compile(self, case: BenchCase) -> None:
+        """Account one ``(layout, n_points)`` executable, clearing at the budget.
+
+        Called before every build. A key already seen since the last clear is free — it
+        is the reuse the memoized residual exists to get. Crossing the budget drops the
+        whole compiled population at once; the next fit recompiles, which is the cost of
+        not aborting the run. See "Compile budget" in the module docstring for why the
+        trigger is a fixed count and where 128 comes from.
+        """
+        import jax
+
+        key = (_layout(case), int(np.asarray(case.x).size))
+        if key in self._compiled:
+            return
+        if len(self._compiled) >= self.compile_budget:
+            jax.clear_caches()
+            self._compiled.clear()
+            self.n_cache_clears += 1
+        self._compiled.add(key)
 
     @override
     def is_supported(self, case: BenchCase) -> bool:
@@ -87,6 +171,7 @@ class JaxBackend(Backend):
         """Build (y0, x, y, layout) from the case guess (layout is static metadata)."""
         import jax.numpy as jnp
 
+        self._charge_compile(case)
         y0 = jnp.asarray(_flat_guess(case), dtype=jnp.float64)
         return y0, jnp.asarray(case.x), jnp.asarray(case.y), _layout(case)
 
