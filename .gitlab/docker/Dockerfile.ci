@@ -41,7 +41,7 @@ ARG LYCHEE_VERSION=v0.24.2
 # lychee-x86_64-unknown-linux-musl.tar.gz for this tag.
 ARG LYCHEE_SHA256=73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5
 # renovate: datasource=github-releases depName=rust-lang/rust
-ARG RUST_VERSION=1.96.0
+ARG RUST_VERSION=1.99.1
 # renovate: datasource=npm depName=@playwright/test
 ARG PLAYWRIGHT_VERSION=1.63.0
 
