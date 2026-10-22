@@ -347,7 +347,7 @@ jobs:
           # cargo-llvm-cov binaries days apart, shifting LLVM_PROFILE_FILE
           # templating / line-counting behavior between runs. Bump only in
           # lockstep with Dockerfile.ci's LLVM_COV_VERSION/LLVM_COV_SHA256.
-          tool: cargo-llvm-cov@0.8.7
+          tool: cargo-llvm-cov@0.9.1
 
       - name: Clean previous coverage profiles
         run: cargo llvm-cov clean --workspace
