@@ -33,7 +33,7 @@
 # OR: manually trigger the `build:ci-image` job in GitLab CI.
 
 # renovate: datasource=github-releases depName=taiki-e/cargo-llvm-cov
-ARG LLVM_COV_VERSION=v0.8.7
+ARG LLVM_COV_VERSION=v0.9.1
 ARG LLVM_COV_SHA256=9a75fe29538d3800b3da57f6f6efb64cba5c720a257bf0cb8b51f39d495a9168
 # renovate: datasource=github-releases depName=lycheeverse/lychee extractVersion=^lychee-(?<version>v.+)$
 ARG LYCHEE_VERSION=v0.24.2
