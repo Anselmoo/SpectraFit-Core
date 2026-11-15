@@ -117,8 +117,10 @@ jobs:
           VENV: ${{ runner.temp }}/venv
         run: |
           tag="cp$(echo "${{ matrix.python }}" | tr -d .)"
+          # maturin >= 1.16 sorts the compressed platform tags, so `universal2`
+          # is no longer last: macosx_10_12_universal2.macosx_10_12_x86_64.macosx_11_0_arm64.
           case "$RUNNER_OS" in
-            macOS) pattern="*-$tag-$tag-macosx*universal2.whl" ;;
+            macOS) pattern="*-$tag-$tag-macosx*universal2*.whl" ;;
             Windows) pattern="*-$tag-$tag-win_amd64.whl" ;;
           esac
           wheel=$(find "$DIST" -name "$pattern" | head -1)

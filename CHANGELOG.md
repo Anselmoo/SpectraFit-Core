@@ -145,6 +145,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
   aliases that `BenchReport` emits (`wireId`, `nClaimsAudited`,
   `nistValidation`, ...), so the file round-trips through the contract
   unchanged. `trust.json` keeps the snake_case names. No values change.
+- **Wheel smoke finds the macOS universal2 wheel again.** maturin 1.16 sorts
+  the compressed platform tags, so the wheel is now named
+  `...-macosx_10_12_universal2.macosx_10_12_x86_64.macosx_11_0_arm64.whl`
+  instead of ending in `universal2.whl`, and the smoke job's filename pattern
+  matched nothing. The pattern now accepts either order. The wheel itself is
+  unchanged: its extension module carries `x86_64` and `arm64`, and it
+  declares the same three tags as `0.1.2`. CI only.
 
 ## [0.1.2] - 2026-10-05
 
