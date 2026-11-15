@@ -96,7 +96,7 @@ def _resolve_path(payload: Any, path: str) -> bool:
 
 # This dict mirrors what run_audit writes into results.json:
 #   - BenchReport top-level uses camelCase (by_alias=True via write_run)
-#   - trustBlock internals are snake_case (block.model_dump(mode="json") — no alias)
+#   - trustBlock internals are camelCase too (block.model_dump(mode="json", by_alias=True))
 #
 # Only the fields referenced by audited claims need to be present; everything
 # else can be omitted.
@@ -104,11 +104,11 @@ def _resolve_path(payload: Any, path: str) -> bool:
 _NIST_DATASET_Gauss1 = {
     "name": "Gauss1",
     "model": "Three-term Gaussian",
-    "n_params": 8,
+    "nParams": 8,
     "params": [
-        {"name": "b1", "certified": 98.0, "fitted": 98.0, "sig_figs_agreed": 6.0},
+        {"name": "b1", "certified": 98.0, "fitted": 98.0, "sigFigsAgreed": 6.0},
     ],
-    "min_sig_figs": 6.0,
+    "minSigFigs": 6.0,
     "passed": True,
 }
 _NIST_DATASET_Gauss2 = {**_NIST_DATASET_Gauss1, "name": "Gauss2"}
@@ -127,29 +127,29 @@ _RUNG5_PAYLOAD: dict[str, Any] = {
         "spectrafitWinRate": 0.9,
         "gateState": "pass",
     },
-    # --- trustBlock (snake_case — TrustBlock.model_dump(mode="json") has no alias) ---
+    # --- trustBlock (camelCase — TrustBlock.model_dump(mode="json", by_alias=True)) ---
     "trustBlock": {
         "rung": 5,
         "wires": [
             {
-                "wire_id": "W8",
+                "wireId": "W8",
                 "name": "NIST",
                 "status": "pass",
                 "evidence": "ok",
                 "details": {},
             },
         ],
-        "n_claims_audited": 20,
-        "n_claims_total": 20,
-        "nist_validation": {
-            "threshold_sig_figs": 4.0,
+        "nClaimsAudited": 20,
+        "nClaimsTotal": 20,
+        "nistValidation": {
+            "thresholdSigFigs": 4.0,
             "datasets": [
                 _NIST_DATASET_Gauss1,
                 _NIST_DATASET_Gauss2,
                 _NIST_DATASET_Gauss3,
                 _NIST_DATASET_Lanczos1,
             ],
-            "min_sig_figs": 6.0,
+            "minSigFigs": 6.0,
             "passed": True,
         },
     },

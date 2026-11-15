@@ -36,6 +36,7 @@ open_issues in the accompanying report) and still holds.
 from __future__ import annotations
 
 import json
+import math
 
 from spectrafit_core import ModelType, _core
 
@@ -181,10 +182,20 @@ def test_fit_json_boundary_success_path_serialises_result() -> None:
     ``fit_arrays``/``fit_arrays_numpy``). This is the only direct,
     successful exercise of the JSON `fit()` entrypoint's return-serialisation
     line in this suite.
+
+    The data are 11 points of a Gaussian (amplitude 1.3, center 0.4, sigma
+    1.2) with a deterministic alternating offset of 0.002, so the least-squares
+    problem has a finite minimiser near the truth. The graph starts the fit at
+    (1, 0, 1), near but not at it.
     """
     graph_j = _gaussian_graph_json()
     options_j = _options_json()
-    data_j = _measurement_json(x=[[0.0], [1.0], [2.0]], y=[1.0, 0.5, 0.25])
+    xs = [-3.0 + 0.6 * i for i in range(11)]
+    ys = [
+        1.3 * math.exp(-((x - 0.4) ** 2) / (2 * 1.2**2)) + 0.002 * (-1) ** i
+        for i, x in enumerate(xs)
+    ]
+    data_j = _measurement_json(x=[[x] for x in xs], y=ys)
 
     result = _core.fit(graph_j, data_j, options_j)
 

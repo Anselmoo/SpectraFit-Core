@@ -52,6 +52,7 @@ from oracles.backends._base import (
     r2_score,
     reconstruct_history,
 )
+from oracles.backends._tolerance import StopTolerances
 from oracles.cases import BenchCase
 from oracles.exceptions import BackendError
 from oracles.models import SHAPE_BOUNDS, get_model
@@ -405,8 +406,16 @@ class _PinnedResult:
         self.status: int = 1
 
 
-def _solve(method: _Method, box: _ParamBox, case: BenchCase) -> Any:
+def _solve(
+    method: _Method,
+    box: _ParamBox,
+    case: BenchCase,
+    tolerances: StopTolerances | None = None,
+) -> Any:
     """Dispatch to ``least_squares`` with the method-appropriate bounds policy.
+
+    ``tolerances`` (``--tolerance-mode common``) adds ``ftol``/``xtol``/``gtol`` to the
+    call; ``None`` leaves the call exactly as before, at scipy's defaults.
 
     Only the FREE parameter slice (``box.free_x0``, ``box.free_lo``,
     ``box.free_hi``) is passed to the optimizer.  Fixed params are held
@@ -427,10 +436,15 @@ def _solve(method: _Method, box: _ParamBox, case: BenchCase) -> Any:
     if not box.free_indices:
         return _PinnedResult(x=box.fixed_vals.copy(), n_data=len(case.y))
 
+    tol: dict[str, float] = (
+        {}
+        if tolerances is None
+        else {"ftol": tolerances.ftol, "xtol": tolerances.xtol, "gtol": tolerances.gtol}
+    )
     match method:
         case "lm":
             residual = _make_lm_residual(case, box)
-            return least_squares(residual, box.free_x0, method="lm")
+            return least_squares(residual, box.free_x0, method="lm", **tol)
         case "trf" | "dogbox":
             residual = _make_bounded_residual(case, box)
             return least_squares(
@@ -438,6 +452,7 @@ def _solve(method: _Method, box: _ParamBox, case: BenchCase) -> Any:
                 box.free_x0,
                 method=method,
                 bounds=(box.free_lo, box.free_hi),
+                **tol,
             )
         case _:  # pragma: no cover - Literal types pin this at the type level
             msg = f"_solve: unsupported method {method!r}"
@@ -559,9 +574,10 @@ def _upgrade_success(raw: Any, r2_quality: float) -> bool:
 
     (status $\geq 0$, $r^2 \geq 0.9$).
 
-    Mirrors the post-fit policy in ``apply_postfit_guards``
-    (`crates/spectrafit-solver/src/postfit.rs`), which promotes soft-failure
-    terminations to success via the same $r^2$-quality threshold.
+    Applies to the scipy comparator backends only. spectrafit-core has no
+    such rule: since #93 ``apply_postfit_guards``
+    (`crates/spectrafit-solver/src/postfit.rs`) never turns a soft stop into
+    success on $r^2$, and its success flag needs a stationary end point.
     ``scipy.optimize.least_squares`` reports `success = False` for
     `status == 0` (max_nfev reached); for trf/dogbox `status == 0` is
     genuinely budget-exhausted, and for `lm` the soft-barrier residual
@@ -582,11 +598,13 @@ def _upgrade_success(raw: Any, r2_quality: float) -> bool:
 class ScipyLeastSquaresBackend(Backend):
     """Fit a case via `scipy.optimize.least_squares` (one instance per method)."""
 
-    def __init__(self, method: _Method) -> None:
+    def __init__(self, method: _Method, tolerances: StopTolerances | None = None) -> None:
+        """One ``least_squares`` method, at scipy's defaults or a common stopping setting."""
         import scipy.optimize  # noqa: F401  (import-time availability check)
 
         self._method: _Method = method
         self.name = f"scipy-ls-{method}"
+        self.tolerances = tolerances
 
     @override
     def is_supported(self, case: BenchCase) -> bool:
@@ -602,7 +620,7 @@ class ScipyLeastSquaresBackend(Backend):
     def run(self, model: Any, case: BenchCase) -> Any:
         """Invoke `least_squares` with the method-appropriate bounds policy."""
         ctx: _FitContext = model
-        return _solve(self._method, ctx.box, case)
+        return _solve(self._method, ctx.box, case, self.tolerances)
 
     @override
     def extract(self, raw: Any, case: BenchCase) -> BackendOutcome:

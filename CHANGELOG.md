@@ -13,13 +13,138 @@ This project follows repository release policy enforced by `repo-release-tools`.
 > cut as a release, so neither date is a release date. `0.1.1` is a patch
 > release of the repository's reproducibility material; its compiled library is
 > built from the same sources as `0.1.0`. `0.1.2` adds the benchmark harness's JAX
-> compile budget; the compiled library is unchanged again.
+> compile budget; the compiled library is unchanged again. `0.1.3` changes the
+> compiled library: the meaning of `success` and the bound handling of the LM
+> solvers (#93), the tied-parameter finite-difference step (#92) and the true
+> Voigt profile (#106).
 >
 > **Scope note.** `[0.1.0]` below collects everything since the `0.1.0b1` bump
 > and summarises the development log by theme rather than reproducing it entry
 > by entry.
 
 ## [Unreleased]
+
+## [0.1.3] - 2026-11-16
+
+### Added
+
+- **An option to force finite-difference Jacobians (#93).**
+  `FitOptions(jacobian="finite_difference")` (Rust `FitOptionsSpec.jacobian`,
+  default `"analytic"`) replaces every kernel's Jacobian with the forward
+  difference of the weighted residual vector in the Levenberg-Marquardt-family
+  solvers (`lm`, `lm-legacy`, `trf`, `geodesic`, `dogleg`, `newton-cg`, the
+  inner fits of `irls` and the refinement of `global`) and in the post-fit
+  covariance. `varpro` rejects it, and `auto` does not route to VarPro while it
+  is set. Payloads without the field deserialize as before, and the default
+  path is unchanged. The benchmark runs it as the opt-in backend
+  `spectrafit_fd` (`--backends spectrafit,spectrafit_fd,...`).
+- **A fit graph's JSON runs in lmfit, and its JSON Schema ships with the
+  package (#93).** `reproducibility/interop/graph_to_lmfit.py` reads a
+  `FitGraph.model_dump_json()` file without importing SpectraFit-Core and
+  builds the same model in lmfit, every expression edge an lmfit `expr`; 20
+  kernels map onto `lmfit.lineshapes`, and any other kernel or construct
+  outside the expression grammar raises with its name. `fe_l23_lmfit.py` fits
+  the Fe L2,3 EELS constrained model from one graph file with both libraries.
+  `python/spectrafit_core/graph.schema.json` is written by
+  `scripts/export_graph_schema.py` (`--check` exits 1 when the file is stale);
+  open `min`/`max` bounds are `null`, so graphs with open bounds validate
+  against it.
+- **Benchmark at a common stopping tolerance.**
+  `python -m oracles.cli run --tolerance-mode common` hands every backend the
+  same setting, ftol = xtol = gtol = 1e-8, for each stopping test its library
+  has, and records it in `tolerances.json` next to the results; tests a library
+  does not have keep their defaults. The default, `--tolerance-mode default`,
+  makes exactly the library calls it made before. The contributor guide tables
+  every backend's defaults and what `common` passes.
+- **NIST StRD table from both certified starts.**
+  `reproducibility/figures/nist_table2.py --start {START1,START2,both}`.
+  `START2`, the default, writes `nist_table2.json` exactly as before; `START1`
+  writes the same table from NIST's Start 1; `both` writes
+  `nist_table2_both.json` with, for every dataset, start and implementation
+  (spectrafit-core, lmfit, scipy lm, scipy trf), the least accurately recovered
+  parameter and standard error, the log relative error of the residual sum of
+  squares against the certified value, the success flag and the termination
+  reason, and one summary line per start and implementation.
+- **`TrustRegionProblem::bounds()` (#93).** The Rust trust-region problem
+  contract gains a defaulted accessor that returns the box per free parameter
+  in the solver's working units, or `None` when nothing is bounded; `LmProblem`
+  implements it as the physical bounds divided by `Parameter.scale`.
+
+### Changed
+
+- **`success` means a convergence stop at a verified stationary end point
+  (#93).** The LM-family solvers (`lm`, `lm-legacy`, `trf`, `geodesic`,
+  `dogleg`, `newton-cg`, `auto` when it does not route to VarPro, and the LM
+  refinement inside `global` and `irls`) report `success=True` only when the
+  solver stopped on a convergence test (`gtol`, `ftol`, `xtol` or zero
+  residuals) or on `no_improvement_possible`, **and** the end point is
+  stationary: the Gauss-Newton predicted decrease of the weighted RSS, over
+  the parameters not held at an active bound, is at most 1e-6 of the RSS. A
+  convergence test that fires at a non-stationary point gives `success=False`,
+  and a `max_iterations` stop never gives `success=True`. An end point whose
+  weighted RSS is at round-off level counts as stationary, so a converged fit
+  to noise-free data stays a success. The termination message is unchanged,
+  no result field is added, and VarPro results are not gated. The measure is
+  the Gauss-Newton model decrease (Dennis and Schnabel 1996, ch. 10) with the
+  bound rule of Bertsekas (1982). The r² soft-stop upgrade is removed: r²
+  plays no part in `success`, a `no_improvement_possible` or `max_iterations`
+  stop is no longer promoted to `success=True` because r² ≥ 0.9, and the
+  `_accepted_at_r2_<value>` suffix of the termination message is gone; code
+  that matched it sees the plain termination key.
+- **`benchmark_gate` reads a shrink-only known-failure list (#93).**
+  `python/oracles/known_failures.py` names, per entry, the case, the issue, the
+  failure class and the condition for its removal. A listed case that
+  regresses is reported as a known failure and is not counted as a regression;
+  a listed case that runs without regressing fails the gate with
+  `remove <case> from the known-failure list (<issue>)`, so the list cannot go
+  stale. `--json` output gains a `known_failures` key. The gate thresholds are
+  unchanged.
+
+### Fixed
+
+- **Bounds in the faer LM solvers: projected step with an active set (#93).**
+  In `lm`, `trf`, `geodesic`, and `auto` when it does not route to VarPro, a
+  trial point that crosses a bound is projected onto the box instead of being
+  reflected, and a component on a bound whose gradient points out of the box is
+  held: the damped step is solved on the free components only. A step that the
+  projection reduces to zero, or a point where every component is held, ends
+  as `Gtol` (projected gradient zero) instead of `NoImprovement`. Geodesic
+  acceleration is not applied while a component is held. With no bound active
+  the iteration is unchanged. `lm-legacy`, `dogleg` and `newton-cg` keep the
+  reflection. Sources: Bertsekas, SIAM J. Control Optim. 20(2):221–246, 1982;
+  Kanzow, Yamashita, Fukushima, J. Comput. Appl. Math. 172:375–397, 2004.
+- **Tied-parameter Jacobian no longer collapses at zero (#92).** The
+  forward-difference step for expression-tied fits was `1e-7·max(|θ|, 1e-7)`,
+  i.e. `1e-14` at θ = 0. It is now `√ε·max(|θ'|, 1)` in scaled units, so
+  `Parameter.scale` sets the floor; bound intervals narrower than the step are
+  handled explicitly.
+- **The true Voigt profile is evaluated at full double precision (#106).**
+  `true_voigt` uses a full-precision Faddeeva function in place of the
+  Hui–Armstrong–Wray approximation; the function and its derivative agree with
+  a 50-digit reference to 1e-12.
+- **Documentation of `success`, bound handling and `solver="trf"` (#93).**
+  `FitResult.success`, the fitting and failed-fit gallery pages and LIMITATIONS
+  describe success as a convergence stop at a verified stationary end point.
+  The parameter-model and architecture pages say that the faer LM family
+  (`lm`, `trf`, `geodesic`) projects trial points onto the bounds and holds an
+  at-bound parameter, and that only `lm-legacy`, `dogleg` and `newton-cg`
+  reflect. `"trf"`, and the `"auto"` fallback to it, is described as the
+  Levenberg-Marquardt core with Coleman–Li bound-distance scaling, which acts
+  on parameters with two finite bounds; the solver guide and the
+  bounded-fitting gallery page no longer present it as an active-bounds solver.
+- **Docs layout: section-index heroes and wide tables span the content
+  column.** The hero banner on the six section-index pages (and, on the
+  gallery index, all content inside it) ended 3.8rem short of the column
+  next to the floated "View source"/"Edit this page" buttons; it is now in
+  normal block flow with the same vertical rhythm. Wide tables ended 1.6rem
+  before the right edge of the surrounding text because the reading-width
+  cap clamped their scroll wrapper; they now reach it. CSS only.
+- **The trust block in `results.json` uses the contract's field names.** The
+  audit wrote the fields of `trustBlock` under their Python names (`wire_id`,
+  `n_claims_audited`, `nist_validation`, ...); it now writes the camelCase
+  aliases that `BenchReport` emits (`wireId`, `nClaimsAudited`,
+  `nistValidation`, ...), so the file round-trips through the contract
+  unchanged. `trust.json` keeps the snake_case names. No values change.
 
 ## [0.1.2] - 2026-10-05
 

@@ -23,7 +23,7 @@ options = FitOptions(solver="auto")
 `"auto"` picks `"varpro"` when the model graph is separable (amplitudes are
 the only linear parameters, no tied parameters, no bound constraints on the
 nonlinear parameters) — VarPro's preconditions — and otherwise falls back to
-`"trf"` (Coleman–Li bound-scaled Levenberg-Marquardt).
+`"trf"` (the Levenberg-Marquardt core with Coleman–Li bound-distance scaling).
 
 That fallback is a deliberate choice rather than a guess, but its evidence is
 narrower than "across problem classes" would suggest, so take it with a
@@ -41,14 +41,21 @@ override it deliberately.
 
 ## Decision guide
 
-**Your fit has bounds that are frequently active** (e.g. widths constrained
-to be positive, amplitudes constrained non-negative) →
-use **`"trf"`** (Trust Region Reflective). Plain `"lm"` doesn't scale steps
-as a parameter approaches an active bound; `"trf"` does, via Coleman–Li
-bound scaling[^coleman-li-1996].
+**Your fit has parameters with two finite bounds** (e.g. a centre held in a
+window, a mixing fraction in [0, 1]) → **`"trf"`** scales their steps by
+the distance to the bound. Plain `"lm"` doesn't scale steps as such a
+parameter approaches a bound; `"trf"` does, via Coleman–Li bound-distance
+scaling[^coleman-li-1996]. The scaling acts only on parameters with two finite
+bounds: with one-sided bounds only (widths constrained positive, amplitudes
+non-negative) `"trf"` takes the same steps as `"lm"`. Otherwise both handle
+bounds the same way: trial points are projected onto the bounds, and a
+parameter on a bound whose descent direction points out of the box is held
+there by the active-set step. The scaling changes the path, so on a fit with
+several local minima the two can end on different ones; which ends lower
+depends on the problem and the start. `"trf"` is not a
+trust-region-reflective method.
 
-**Your model is well-conditioned and unimodal, and you don't need bound
-constraints to hold tightly** → use **`"lm"`** (Levenberg-Marquardt[^levenberg-1944][^marquardt-1963], the
+**Your model is well-conditioned and unimodal** → use **`"lm"`** (Levenberg-Marquardt[^levenberg-1944][^marquardt-1963], the
 default). It runs on the faer-native trust-region core (pure-Rust SIMD, no
 BLAS) and is regime-adaptive: normal equations for tall-skinny problems, SVD
 for many parameters. It's the fastest general-purpose choice when bounds
@@ -67,10 +74,11 @@ steepest-descent steps within an explicit trust radius, at the cost of one
 Cholesky factorization per iteration — a solid, inexpensive alternative to
 `"lm"`. Avoid it on large problems or ones with many active bounds: the
 Cholesky factorization is still an explicit `JᵀJ` formation
-(`O(N_params^2)` to build, `O(N_params^3)` to factor), and dogleg's
-interpolated step has no bound-reflection logic of its own the way `"trf"`
-does — `"newton-cg"` or `"trf"` scale better on the first count, `"trf"` is
-the better fit on the second.
+(`O(N_params^2)` to build, `O(N_params^3)` to factor), and dogleg handles a
+bound only by reflecting the trial point back into the box, without the
+active-set hold of the LM family — `"newton-cg"` or `"trf"` scale better on
+the first count, `"lm"` or `"trf"` hold components at an active bound on the
+second.
 
 **Your problem has many parameters or many residuals, or is
 ill-conditioned enough that forming `JᵀJ` is itself a problem** → use
@@ -175,6 +183,23 @@ and JSON/Rust entry points.
     reproducibility comparison. Changing them on a well-conditioned problem is
     unlikely to help and can mask a modeling issue that a solver switch (see the
     [decision guide](#decision-guide) above) would actually fix.
+
+## Forcing a finite-difference Jacobian
+
+`FitOptions(jacobian="finite_difference")` replaces every kernel's Jacobian with
+the forward difference of the weighted residual vector: one extra residual
+evaluation per free parameter, with step `1e-7 * max(|theta|, 1e-7)`. MINPACK
+`lmdif` (and so lmfit's `leastsq`) uses the same forward difference with its
+own step, `sqrt(epsfcn) * |theta|`. The default,
+`"analytic"`, uses each kernel's own Jacobian.
+
+The option exists to measure how much of the solver's speed comes from the
+analytic Jacobians: the benchmark runs it as the opt-in backend
+`spectrafit_fd` (`--backends spectrafit,spectrafit_fd,lmfit`). It is honoured by
+`"lm"`, `"lm-legacy"`, `"trf"`, `"geodesic"`, `"dogleg"`, `"newton-cg"`,
+`"irls"` and the refinement step of `"global"`. `"varpro"` differentiates its
+basis functions itself and rejects the option; `"auto"` does not route to VarPro
+while it is set. There is no reason to set it for an ordinary fit.
 
 ## Next steps
 

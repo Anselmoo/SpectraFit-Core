@@ -31,7 +31,7 @@ the universal post-fit stats live in `crates/spectrafit-solver/src/{dispatch,pos
 |--------|----------|
 | `lm` | faer LM (default), regime-adaptive |
 | `lm-legacy` | nalgebra parity oracle |
-| `trf` | Trust-Region-Reflective (Coleman–Li `bound_scaling`) |
+| `trf` | faer LM + Coleman–Li bound-distance scaling (`bound_scaling`; two-sided bounds only, trial points projected) |
 | `geodesic` | LM + geodesic acceleration |
 | `dogleg` | Powell dogleg (Δ-radius) |
 | `newton-cg` / `steihaug` | matrix-free Newton-CG |

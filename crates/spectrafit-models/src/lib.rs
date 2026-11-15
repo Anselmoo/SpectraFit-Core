@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 pub(crate) mod erf_ext;
+pub(crate) mod faddeeva;
 pub(crate) mod math_backend;
 
 /// Asymmetric IR band (Gaussian × logistic sigmoid).

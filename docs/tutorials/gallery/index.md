@@ -103,9 +103,9 @@ constraints actually look like, not just which solver runs fastest.
 -   ![Small near-zero peak with an active amplitude >= 0 bound](_static/bounded_fitting-thumb-light.png){ .sf-gallery-thumb--light width="300" data-src="_static/bounded_fitting.png" loading="lazy" }
     ![Small near-zero peak with an active amplitude >= 0 bound](_static/bounded_fitting-thumb-dark.png){ .sf-gallery-thumb--dark .off-glb width="300" loading="lazy" }
 
-    **[Bounded Fitting with an Active-Bounds Solver](bounded_fitting.md)**
+    **[Bounded Fitting with `lm` and `trf`](bounded_fitting.md)**
 
-    A likely-active physical bound (amplitude &ge; 0) where `"trf"` adds Coleman–Li step scaling near the boundary that plain `"lm"` lacks, though both remain bound-compliant here.
+    A likely-active one-sided physical bound (amplitude &ge; 0). `"trf"` scales steps only for parameters with two finite bounds, so here `"lm"` and `"trf"` take the same steps and both stay bound-compliant.
 
 -   ![Outlier-robust fitting: plain lm vs. irls:bisquare](_static/robust_fitting-thumb-light.png){ .sf-gallery-thumb--light width="300" data-src="_static/robust_fitting.png" loading="lazy" }
     ![Outlier-robust fitting: plain lm vs. irls:bisquare](_static/robust_fitting-thumb-dark.png){ .sf-gallery-thumb--dark .off-glb width="300" loading="lazy" }
@@ -114,8 +114,8 @@ constraints actually look like, not just which solver runs fastest.
 
     A handful of corrupted spike points down-weighted automatically by `"irls:bisquare"`, instead of dragging a plain least-squares fit off the true peak.
 
--   ![Bad initial guess: lm's wrong local optimum vs. global's correct fit](_static/global_optimizer-thumb-light.png){ .sf-gallery-thumb--light width="300" data-src="_static/global_optimizer.png" loading="lazy" }
-    ![Bad initial guess: lm's wrong local optimum vs. global's correct fit](_static/global_optimizer-thumb-dark.png){ .sf-gallery-thumb--dark .off-glb width="300" loading="lazy" }
+-   ![Bad initial guess: lm's wrong end point vs. global's correct fit](_static/global_optimizer-thumb-light.png){ .sf-gallery-thumb--light width="300" data-src="_static/global_optimizer.png" loading="lazy" }
+    ![Bad initial guess: lm's wrong end point vs. global's correct fit](_static/global_optimizer-thumb-dark.png){ .sf-gallery-thumb--dark .off-glb width="300" loading="lazy" }
 
     **[Escaping Local Minima with the Global Solver](global_optimizer.md)**
 

@@ -2,8 +2,7 @@
 
 When initial guesses are poor, or the objective is genuinely multi-modal
 (e.g. two overlapping peaks whose starting positions are ambiguous or
-swapped), a local solver like ``"lm"`` can converge cleanly and still land
-in the *wrong* place — there is no way to tell from ``success=True`` alone.
+swapped), a local solver like ``"lm"`` can stop far from the right answer.
 ``"global"`` (Differential Evolution + LM refinement, per
 :class:`~spectrafit_core.FitOptions`'s own docstring) explores the full
 parameter space with DE before refining locally, at the cost of materially
@@ -117,14 +116,16 @@ global_result, global_time = runs["global"]
 
 # --8<-- [start:compare]
 def compare(lm_result: FitResult, global_result: FitResult) -> None:
-    """Report chi2/r_squared for both — the concrete "wrong optimum" evidence.
+    """Report chi2/r_squared for both — the concrete evidence of the wrong answer.
 
-    ``lm``, started with both peaks at the same wrong location, converges
-    (``success=True``) to a single broad blob straddling the gap between the
-    true peaks rather than resolving two — a textbook local optimum that
-    "converged" without being right. ``global`` explores via differential
-    evolution first (``n_de_generations`` reports how many generations that
-    took) and finds the true two-peak solution.
+    ``lm``, started with both peaks at the same wrong location, stops
+    (``converged_ftol``) where both peaks coincide in a single broad blob
+    straddling the gap between the true peaks. The Jacobian is rank-deficient
+    there, so the end point cannot be verified as a minimum, and
+    ``success=False`` reports that; ``chi2`` and $r^2 = 0.035$ show the wrong
+    answer. ``global`` explores via differential evolution first
+    (``n_de_generations`` reports how many generations that took) and
+    recovers the planted two-peak solution.
     """
     print(f"{'solver':8s} {'chi2':>10s} {'r_squared':>10s} {'success':>8s}")
     for name, result in (("lm", lm_result), ("global", global_result)):
@@ -133,14 +134,14 @@ def compare(lm_result: FitResult, global_result: FitResult) -> None:
         )
     print(f"\nglobal: n_de_generations = {global_result.n_de_generations}")
 
-    assert lm_result.success
+    assert not lm_result.success
     assert global_result.success
     assert global_result.r_squared > 0.98, (
         "global should recover the true two-peak solution on this fixture"
     )
     assert lm_result.r_squared < 0.5, (
-        "lm, started with both peaks at the same wrong location, should land "
-        "in a visibly wrong local optimum on this fixture"
+        "lm, started with both peaks at the same wrong location, should stop "
+        "at a visibly wrong end point on this fixture"
     )
     assert global_result.chi2 < lm_result.chi2
 
@@ -150,14 +151,14 @@ compare(lm_result, global_result)
 
 if __name__ == "__main__":
     # Plot the data with the global solver's correct two-peak fit, overlaying
-    # lm's wrong local optimum for contrast, with a text panel reporting the
+    # lm's wrong end point for contrast, with a text panel reporting the
     # measured wall-clock gap and fit-quality numbers.
     fig, ax = plot_fit(
         x,
         y,
         np.array(global_result.best_fit),
         components=global_result.components,
-        title="Bad initial guess: lm's wrong local optimum vs. global's correct fit",
+        title="Bad initial guess: lm's wrong end point vs. global's correct fit",
     )
     ax.plot(
         x,
@@ -165,7 +166,7 @@ if __name__ == "__main__":
         color=MUTED_COLOR,
         linestyle=":",
         linewidth=1.6,
-        label="lm fit (wrong local optimum)",
+        label="lm fit (peaks coincide)",
         zorder=3,
     )
     ax.legend(loc="best")

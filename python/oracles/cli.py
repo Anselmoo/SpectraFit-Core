@@ -24,14 +24,15 @@ import json
 import os
 import resource
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any, Literal
 
 import typer
 from pydantic import BaseModel, ConfigDict, Field
 
-from oracles.backends import Backend, get_backends
+from oracles.backends import ABLATION_BACKENDS, Backend, get_backends
+from oracles.backends._tolerance import TOLERANCE_MODES, ToleranceMode, tolerances_for
 from oracles.bench_contract import (
     CalibrationResult,
     GateState,
@@ -41,6 +42,13 @@ from oracles.bench_contract import (
 )
 from oracles.engine import build_report
 from oracles.forensics import render_regressions
+from oracles.known_failures import (
+    KNOWN_FAILURES,
+    KnownFailure,
+    KnownFailureResult,
+    classify_known_failures,
+    stale_entry_message,
+)
 from oracles.reports import (
     REPORTS_ROOT,
     _worst_gate_state,
@@ -64,6 +72,7 @@ GateAxisName = Literal[
     "model_selection",
     "sigma_calibration",
     "speed_inference",
+    "known_failures",
 ]
 """Pure-function gate-axis identifiers. ``self_perf`` is NOT included here —
 it requires filesystem I/O (``read_perf_baseline``) and so lives in the Typer
@@ -75,14 +84,42 @@ command wrapper, not in the pure ``_gate_evaluate`` kernel.
 
 ``sigma_calibration`` and ``speed_inference`` are likewise evidence-conditional:
 only present when their respective inferential-stats records are provided
-(mirror ``model_selection`` / W9 — no pass-by-absence)."""
+(mirror ``model_selection`` / W9 — no pass-by-absence).
+
+``known_failures`` is evidence-conditional on the run's suite case ids: it is
+only present when ``run_case_ids`` is passed, and it fails when a case on the
+shrink-only known-failure list ran without regressing (#93)."""
 
 app = typer.Typer(help="spectrafit-core benchmark engine", no_args_is_help=True)
+
+
+def _tolerance_mode(value: str) -> ToleranceMode:
+    """Validate ``--tolerance-mode``."""
+    match value:
+        case "default" | "common":
+            return value
+        case _:
+            msg = f"unknown tolerance mode {value!r} (expected one of {TOLERANCE_MODES})"
+            raise typer.BadParameter(msg, param_hint="--tolerance-mode")
+
+
+def _write_tolerance_sidecar(run_dir: Path, mode: str) -> None:
+    """Record the common stopping setting next to a ``common`` run's results.
+
+    A ``default`` run writes nothing, so its run directory is exactly what it was
+    before the modes existed.
+    """
+    tol = tolerances_for(_tolerance_mode(mode))
+    if tol is None:
+        return
+    record = {"mode": mode, "tolerances": tol.model_dump()}
+    (run_dir / "tolerances.json").write_text(json.dumps(record), encoding="utf-8")
 
 
 def _resolve_run_backends(
     backends_arg: str | None,
     baseline_arg: str | None,
+    tolerance_mode: str = "default",
 ) -> tuple[list[Backend], str]:
     """Resolve --backends/--baseline into a concrete backend list + baseline id.
 
@@ -92,10 +129,16 @@ def _resolve_run_backends(
     to ``"lmfit"`` if present in the filtered list, else the first name in
     ``backends_arg`` -- so a single-backend run (``--backends spectrafit``) gets a
     well-defined, self-consistent baseline without needing ``--baseline`` too.
+    ``tolerance_mode`` (``--tolerance-mode``) is handed to every backend unchanged.
+
+    The ablation variants in :data:`oracles.backends.ABLATION_BACKENDS`
+    (``spectrafit_fd``, #93) resolve only when named explicitly; the default
+    roster (``backends_arg is None``) never contains them.
     """
-    available = {b.name: b for b in get_backends()}
+    roster = get_backends(_tolerance_mode(tolerance_mode), ablation=True)
+    available = {b.name: b for b in roster}
     if backends_arg is None:
-        resolved = list(available.values())
+        resolved = [b for b in roster if b.name not in ABLATION_BACKENDS]
     else:
         requested = [n.strip() for n in backends_arg.split(",") if n.strip()]
         if not requested:
@@ -175,7 +218,9 @@ def run(
         help=(
             "Comma-separated backend names to run (default: all available -- "
             "spectrafit, lmfit, jax, scipy-ls-lm/trf/dogbox). e.g. "
-            "--backends spectrafit for a fast, single-backend smoke run."
+            "--backends spectrafit for a fast, single-backend smoke run. "
+            "The Jacobian-ablation variant spectrafit_fd runs only when named, "
+            "e.g. --backends spectrafit,spectrafit_fd,lmfit."
         ),
     ),
     baseline: str | None = typer.Option(
@@ -184,6 +229,15 @@ def run(
         help=(
             "Baseline solver id for speedup/Δr² (default: 'lmfit', or the first "
             "--backends entry if lmfit isn't in the selected set)."
+        ),
+    ),
+    tolerance_mode: str = typer.Option(
+        "default",
+        "--tolerance-mode",
+        help=(
+            "Stopping tolerances: 'default' = each library's own tests and defaults; "
+            "'common' = ftol = xtol = gtol = 1e-8 for every backend that has the test "
+            "(recorded in tolerances.json next to the results)."
         ),
     ),
 ) -> None:
@@ -197,7 +251,11 @@ def run(
         per-case warning spam — that spam is what tempted an operator to ^C the
         ``report_html`` sequence before it could finish.
     """
-    resolved_backends, baseline_solver_id = _resolve_run_backends(backends, baseline)
+    resolved_backends, baseline_solver_id = _resolve_run_backends(
+        backends,
+        baseline,
+        tolerance_mode,
+    )
     audit_sink: dict[tuple[str, str], dict[str, Any]] = {}
     report = build_report(
         n_reps=reps,
@@ -207,6 +265,7 @@ def run(
         audit_sink=audit_sink,
     )
     run_dir = write_run(report, category=category)
+    _write_tolerance_sidecar(run_dir, tolerance_mode)
     manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
     audit_records = []
     for (cid, bn), entry in audit_sink.items():
@@ -357,6 +416,7 @@ class GateReport(BaseModel):
     regression_ids: list[str] = Field(default_factory=list)
     geomean_speedup: float
     max_abs_delta_r2: float
+    known_failures: list[KnownFailureResult] = Field(default_factory=list)
 
 
 def _append_bool_axis(
@@ -393,6 +453,8 @@ def _gate_evaluate(
     nested_adequacy: NestedAdequacy | None = None,
     calibration: CalibrationResult | None = None,
     speed_inference: SpeedInferenceResult | None = None,
+    run_case_ids: Collection[str] | None = None,
+    known_failures: Sequence[KnownFailure] = KNOWN_FAILURES,
 ) -> GateReport:
     """Evaluate the 3-axis gate (speed / accuracy / regressions) — pure function.
 
@@ -421,6 +483,15 @@ def _gate_evaluate(
     ``speed_inference`` — when provided and not skipped, a ``speed_inference`` axis
     is added that fails if ``speed_inference.passed is False``. When absent (``None``)
     or skipped, the axis is not included (no pass-by-absence, mirrors W9/W11).
+
+    ``known_failures`` — the shrink-only list from :mod:`oracles.known_failures`.
+    Listed cases are removed from the regression ids before the ``regressions``
+    axis is counted and are reported in ``GateReport.known_failures``. The
+    accuracy and speed axes are unaffected. ``run_case_ids`` — the case ids the
+    run evaluated; when provided, a ``known_failures`` axis is added that fails
+    if a listed case ran without regressing. When absent (``None``), the axis is
+    not included, because absence from the regression list is not evidence that
+    a case ran.
     """
     # Normalise the input — accept either a raw dict (the on-disk manifest.json
     # shape, which has extra keys this kernel doesn't read) or a typed
@@ -440,6 +511,7 @@ def _gate_evaluate(
         reg_ids = list(manifest.get("regression_case_ids") or [])
         nonfinite_dr2_ids = list(manifest.get("nonfinite_dr2_case_ids") or [])
 
+    reg_ids, known_results = classify_known_failures(reg_ids, run_case_ids, known_failures)
     n_reg = len(reg_ids)
     # Per-axis state resolution — direction conventions match the inline
     # CLI logic exactly (speed=higher-is-better, the others=lower-is-better).
@@ -514,6 +586,25 @@ def _gate_evaluate(
     if speed_inference is not None and not speed_inference.skipped:
         _append_bool_axis(axes, "speed_inference", passed=speed_inference.passed)
 
+    # Evidence-conditional known_failures axis — only present when the run's case
+    # ids are provided: a listed case that ran and did not regress makes the list
+    # stale, and the gate fails until the entry is removed (shrink-only).
+    if run_case_ids is not None:
+        n_stale = sum(1 for r in known_results if r.status == "passing")
+        axes.append(
+            GateAxisResult(
+                axis="known_failures",
+                state=_gate_axis_level(
+                    float(n_stale),
+                    fail_threshold=0.0,
+                    warn_threshold=None,
+                    higher_is_better=False,
+                ),
+                value=float(n_stale),
+                threshold=0.0,
+            ),
+        )
+
     overall = _worst_gate_state([a.state for a in axes])
     return GateReport(
         overall=overall,
@@ -521,6 +612,7 @@ def _gate_evaluate(
         regression_ids=reg_ids,
         geomean_speedup=geomean,
         max_abs_delta_r2=max_dr2,
+        known_failures=known_results,
     )
 
 
@@ -531,6 +623,8 @@ def build_gate_report(
     nested_adequacy: NestedAdequacy | None = None,
     calibration: CalibrationResult | None = None,
     speed_inference: SpeedInferenceResult | None = None,
+    run_case_ids: Collection[str] | None = None,
+    known_failures: Sequence[KnownFailure] = KNOWN_FAILURES,
 ) -> GateReport:
     """Public entry point for the pure gate evaluation kernel.
 
@@ -549,6 +643,8 @@ def build_gate_report(
         nested_adequacy=nested_adequacy,
         calibration=calibration,
         speed_inference=speed_inference,
+        run_case_ids=run_case_ids,
+        known_failures=known_failures,
     )
 
 
@@ -616,6 +712,50 @@ def _gate_load_inference_evidence(
         calibration = None
         speed_inference = None
     return calibration, speed_inference
+
+
+def _gate_load_suite_ids(path: Path) -> frozenset[str] | None:
+    """Return the ids of every suite case in results.json, or ``None``.
+
+    The known-failure check needs positive evidence that a listed case ran
+    before it may call the case passing. A missing or malformed ``suite``
+    yields ``None`` (no evidence), which keeps the ``known_failures`` axis out
+    of the gate instead of guessing.
+    """
+    try:
+        suite = json.loads(path.read_text(encoding="utf-8"))["suite"]
+        return frozenset(str(case["id"]) for case in suite)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _gate_known_failure_summary(
+    report: GateReport,
+    *,
+    failures: list[str],
+    say: Callable[..., None],
+) -> list[dict[str, str]]:
+    """Report each known-failure entry and fail on a stale one.
+
+    A ``failing`` or ``not_in_run`` entry is echoed via ``say``; a ``passing``
+    entry appends the removal instruction to ``failures`` in place. Returns the
+    ``known_failures`` list for the --json payload.
+    """
+    payload: list[dict[str, str]] = []
+    for result in report.known_failures:
+        entry = result.entry
+        match result.status:
+            case "failing":
+                say(
+                    f"known failure {entry.case_id} ({entry.issue}): still failing, "
+                    f"not counted as a regression; remove when: {entry.removal_condition}",
+                )
+            case "passing":
+                failures.append(stale_entry_message(entry))
+            case "not_in_run":
+                say(f"known failure {entry.case_id} ({entry.issue}): not in this run")
+        payload.append({**entry.model_dump(), "status": result.status})
+    return payload
 
 
 def _gate_axis_summary(
@@ -809,6 +949,7 @@ def _gate_emit_verdict(
     pin_summary: dict[str, str | bool | float | None] | None,
     failures: list[str],
     warnings: list[str],
+    known_failures: list[dict[str, str]],
 ) -> None:
     """Compute the overall status and print/exit exactly like the original inline tail.
 
@@ -841,6 +982,7 @@ def _gate_emit_verdict(
             "pinned_baseline": pin_summary,
             "failures": failures,
             "warnings": warnings,
+            "known_failures": known_failures,
         }
         typer.echo(json.dumps(result, indent=2))
         if status == "fail":
@@ -958,6 +1100,7 @@ def gate(
     # Extract inference evidence from results.json for the evidence-conditional gate
     # axes (W10/W11: sigma_calibration + speed_inference).
     _gate_calibration, _gate_speed_inference = _gate_load_inference_evidence(path)
+    run_case_ids = _gate_load_suite_ids(path)
 
     # Pure-kernel evaluation of the 3 manifest-driven axes (speed / accuracy /
     # regressions). The self-vs-self perf axis is appended below because it
@@ -976,6 +1119,7 @@ def gate(
         thresholds,
         calibration=_gate_calibration,
         speed_inference=_gate_speed_inference,
+        run_case_ids=run_case_ids,
     )
 
     geomean, reg_ids, axes, failures, warnings = _gate_axis_summary(
@@ -987,6 +1131,12 @@ def gate(
         warn_geomean=warn_geomean,
         warn_dr2=warn_dr2,
         warn_regressions=warn_regressions,
+        say=_say,
+    )
+
+    known_failures_payload = _gate_known_failure_summary(
+        report,
+        failures=failures,
         say=_say,
     )
 
@@ -1012,6 +1162,7 @@ def gate(
         pin_summary=pin_summary,
         failures=failures,
         warnings=warnings,
+        known_failures=known_failures_payload,
     )
 
 

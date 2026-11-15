@@ -585,6 +585,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
 
         let cfg = DeConfig {
@@ -689,6 +690,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
 
         let result = solve_global(&graph, vec![dataset], &options, DeConfig::default())
@@ -798,6 +800,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
 
         let result = solve_global(&graph, vec![dataset], &options, DeConfig::default())
@@ -888,6 +891,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
         let cfg = DeConfig {
             pop_size: 4,
@@ -959,6 +963,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
         let cfg = DeConfig {
             pop_size: 4,

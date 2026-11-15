@@ -24,7 +24,7 @@ use crate::error::SolverError;
 /// Default IRLS outer-iteration cap used by the `solver="irls"` dispatch path.
 ///
 /// Named per this crate's own convention for comparable tunables (see
-/// `postfit::apply_postfit_guards`'s `OFF_DOMAIN_R2_FLOOR`/`SOFT_SUCCESS_R2_FLOOR`)
+/// `postfit::apply_postfit_guards`'s `OFF_DOMAIN_R2_FLOOR`)
 /// instead of a bare literal at the call site.
 pub(crate) const DEFAULT_MAX_OUTER_ITER: usize = 20;
 
@@ -626,6 +626,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
         (graph, dataset, options)
     }

@@ -3,9 +3,11 @@
 # Remote: https://gitlab.mpcdf.mpg.de/anhahn/spectrafit-core.git
 #
 # GitHub (Anselmoo/SpectraFit-Core) carries a public, history-free snapshot
-# mirror of `main`, republished automatically on every push to the default
-# branch by the `publish:github` job in .gitlab/70-publish.yml (not manual —
-# that's the separate `publish:github:fast` job). GitHub does run its own CI
+# mirror of `main`. Publishing is opt-in and off by default: only with the
+# CI/CD variable PUBLISH_GITHUB=true is it republished automatically on every
+# push to the default branch by the `publish:github` job in
+# .gitlab/70-publish.yml (not manual — that's the separate
+# `publish:github:fast` job); see that file's header. GitHub does run its own CI
 # (lint/review workflows fire on PRs, including Dependabot's — see
 # .github/workflows/) but it does not gate `main`: the mirror is periodically
 # force-pushed as a fresh snapshot, discarding prior GitHub-side history and
@@ -83,4 +85,5 @@ include:
   - local: .gitlab/65-docs.yml
   - local: .gitlab/60-pages.yml
   - local: .gitlab/70-publish.yml
+  - local: .gitlab/72-rc-wheel.yml
   - local: .gitlab/75-backport.yml

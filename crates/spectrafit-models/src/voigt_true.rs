@@ -1,61 +1,5 @@
+use crate::faddeeva;
 use crate::Model;
-
-/// Hui–Armstrong–Wray (1978) rational-approximation coefficients.
-///
-/// Reference: Hui, Armstrong & Wray, JQSRT **19** 509 (1978).
-/// Accuracy ≈ 1e-6 over the spectroscopy domain (|z| not too large).
-/// Literals are the shortest decimal that round-trips to the same f64
-/// (clippy `excessive_precision` flagged the original 17-digit values).
-const HAW_A: [f64; 7] = [
-    122.607_931_777_104_33,
-    214.382_388_694_706_44,
-    181.928_533_092_181_54,
-    93.155_580_458_138_45,
-    30.180_142_196_210_59,
-    5.912_626_209_773_153,
-    0.564_189_583_562_615,
-];
-const HAW_B: [f64; 8] = [
-    122.607_931_773_875_35,
-    352.730_625_110_963_56,
-    457.334_478_783_897_74,
-    348.703_917_719_495_8,
-    170.354_001_821_091_47,
-    53.992_906_912_940_21,
-    10.479_857_114_260_4,
-    1.0,
-];
-
-/// Full complex Faddeeva function `w(z) = exp(−z²)·erfc(−iz)` for `Im(z) ≥ 0`,
-/// via the Hui–Armstrong–Wray (1978) 6th-order rational approximation.
-///
-/// Returns `(Re[w(z)], Im[w(z)])`. The approximation accuracy is ≈1e-6.
-fn faddeeva_complex(zr: f64, zi: f64) -> (f64, f64) {
-    // t = -i·z = (zi, -zr)
-    let (tr, ti) = (zi, -zr);
-    let (mut nr, mut ni) = (HAW_A[6], 0.0);
-    for k in (0..6).rev() {
-        let (pr, pi) = (nr * tr - ni * ti, nr * ti + ni * tr);
-        nr = pr + HAW_A[k];
-        ni = pi;
-    }
-    let (mut dr, mut di) = (HAW_B[7], 0.0);
-    for k in (0..7).rev() {
-        let (pr, pi) = (dr * tr - di * ti, dr * ti + di * tr);
-        dr = pr + HAW_B[k];
-        di = pi;
-    }
-    let denom = dr * dr + di * di;
-    // Re[N/D] and Im[N/D]
-    let wr = (nr * dr + ni * di) / denom;
-    let wi = (ni * dr - nr * di) / denom;
-    (wr, wi)
-}
-
-/// Real part of the Faddeeva function (convenience wrapper used by `eval`).
-fn faddeeva_re(zr: f64, zi: f64) -> f64 {
-    faddeeva_complex(zr, zi).0
-}
 
 /// True Voigt profile (Gaussian ⊗ Lorentzian) via the Faddeeva function.
 ///
@@ -75,19 +19,16 @@ impl Model for TrueVoigt {
         let inv = 1.0 / (sigma * std::f64::consts::SQRT_2);
         let zr = (x[0] - c) * inv;
         let zi = gamma.abs() * inv;
-        let peak = faddeeva_re(0.0, zi); // Re[w(z₀)] at the center
-        a * faddeeva_re(zr, zi) / peak
+        let peak = faddeeva::w(0.0, zi).0; // Re[w(z₀)] at the center
+        a * faddeeva::w(zr, zi).0 / peak
     }
 
     /// Analytical Jacobian of the true Voigt profile.
     ///
-    /// Uses the Faddeeva derivative identity: `dw(z)/dz = −2z·w(z) + 2i/√π`,
-    /// which gives (treating `z_r` and `z_i` as independent real parameters):
+    /// Uses the Faddeeva derivative `w'(z) = −2z·w(z) + 2i/√π` (from
+    /// `faddeeva::w_with_derivative`); by the Cauchy–Riemann equations
     ///
-    ///   `∂Re[w]/∂z_r = Re[dw/dz]  = −2(z_r·w_r − z_i·w_i)`
-    ///   `∂Re[w]/∂z_i = −Im[dw/dz] =  2(z_r·w_i + z_i·w_r) − 2/√π`
-    ///
-    /// where `(w_r, w_i) = faddeeva_complex(z_r, z_i)`.
+    ///   `∂Re[w]/∂z_r = Re[w'(z)]`,  `∂Re[w]/∂z_i = −Im[w'(z)]`.
     ///
     /// For the profile `f = A·w_r / peak0` (with `peak0 = Re[w(0, z_i)]`):
     ///
@@ -95,33 +36,25 @@ impl Model for TrueVoigt {
     ///   ∂f/∂c = A / peak0 · dwr_dzr · (−inv)      [∂z_r/∂c = −inv]
     ///   ∂f/∂σ and ∂f/∂γ use the quotient rule because `peak0` also changes.
     ///
-    /// # Accuracy note
-    ///
-    /// The HAW approximation has ≈1e-6 accuracy; the Jacobian inherits that
-    /// floor, so the self-consistency test uses tolerance 1e-5 (10× the default
-    /// analytic budget). This is a justified relaxation, not a correctness gap.
+    /// `w` and `w'` are evaluated at full double precision (see the `faddeeva`
+    /// module), so the Jacobian carries no approximation floor.
     fn jacobian(&self, x: &[f64], params: &[f64]) -> Vec<f64> {
         let (a, c, sigma, gamma) = (params[0], params[1], params[2], params[3]);
-        let sqrt2 = std::f64::consts::SQRT_2;
-        let inv_sqrt_pi = 1.0 / std::f64::consts::PI.sqrt();
-        let inv = 1.0 / (sigma * sqrt2);
+        let inv = 1.0 / (sigma * std::f64::consts::SQRT_2);
 
         let zr = (x[0] - c) * inv;
         let zi = gamma.abs() * inv;
 
-        // Full complex Faddeeva at the profile point and at the peak centre.
-        let (wr, wi) = faddeeva_complex(zr, zi);
-        let (w0r, w0i) = faddeeva_complex(0.0, zi);
+        // Faddeeva value and derivative at the profile point and at the peak centre.
+        let ((wr, _), (dwr, dwi)) = faddeeva::w_with_derivative(zr, zi);
+        let ((w0r, _), (_, dw0i)) = faddeeva::w_with_derivative(0.0, zi);
 
         // ∂Re[w]/∂z_r and ∂Re[w]/∂z_i at (z_r, z_i)
-        let dwr_dzr = -2.0 * (zr * wr - zi * wi);
-        let dwr_dzi = 2.0 * (zr * wi + zi * wr) - 2.0 * inv_sqrt_pi;
+        let dwr_dzr = dwr;
+        let dwr_dzi = -dwi;
 
         // ∂Re[w0]/∂z_i at (0, z_i)
-        let dw0r_dzi = 2.0 * zi * w0r - 2.0 * inv_sqrt_pi;
-        // Note: at z_r=0, the term (z_r·w0i) = 0, so dw0r_dzi = 2·z_i·w0r − 2/√π.
-        // We also don't need w0i except for the above; reference it via the full form:
-        let _ = w0i; // unused — the formula above is already simplified for z_r=0.
+        let dw0r_dzi = -dw0i;
 
         let peak0 = w0r;
 
@@ -175,15 +108,30 @@ mod tests {
 
     #[test]
     fn gamma_to_zero_is_gaussian() {
-        // With a vanishing Lorentzian width the Voigt collapses to a Gaussian:
-        // Re[w((x-c)/(σ√2), 0)] = exp(-(x-c)²/(2σ²)).
+        // With no Lorentzian width the Voigt is a Gaussian:
+        // Re[w((x-c)/(σ√2), 0)] = exp(-(x-c)²/(2σ²)) and Re[w(0)] = 1.
         let m = TrueVoigt;
-        let (a, c, sigma) = (3.0, 0.0, 1.0);
+        let (a, c, sigma) = (3.0, 0.4, 1.3);
         for i in -30..=30 {
-            let x = i as f64 * 0.15;
-            let got = m.eval(&[x], &[a, c, sigma, 1e-6]);
-            let gauss = a * (-0.5 * (x / sigma) * (x / sigma)).exp();
-            assert_relative_eq!(got, gauss, epsilon = 5e-4, max_relative = 5e-4);
+            let x = c + f64::from(i) * 0.15;
+            let got = m.eval(&[x], &[a, c, sigma, 0.0]);
+            let gauss = a * (-0.5 * ((x - c) / sigma) * ((x - c) / sigma)).exp();
+            assert_relative_eq!(got, gauss, epsilon = 0.0, max_relative = 1e-14);
+        }
+    }
+
+    #[test]
+    fn sigma_to_zero_is_lorentzian() {
+        // For σ ≪ γ the Voigt tends to the Lorentzian γ²/((x-c)² + γ²), with a
+        // relative correction of order (σ/γ)²; σ/γ = 1e-4 leaves ~1e-8.
+        let m = TrueVoigt;
+        let (a, c, gamma) = (2.0, -0.3, 0.8);
+        let sigma = 1e-4 * gamma;
+        for i in -20..=20 {
+            let x = c + f64::from(i) * 0.25;
+            let got = m.eval(&[x], &[a, c, sigma, gamma]);
+            let lorentz = a * gamma * gamma / ((x - c) * (x - c) + gamma * gamma);
+            assert_relative_eq!(got, lorentz, epsilon = 0.0, max_relative = 1e-7);
         }
     }
 
@@ -200,36 +148,23 @@ mod tests {
 
     #[test]
     fn jacobian_matches_central_difference_across_regimes() {
-        // Central difference is O(h^2); the old forward-difference pattern
-        // (see fano.rs::jacobian_finite_diff_check) was O(h), i.e. its own
-        // truncation error was the size of the 1e-4 tolerance it asserted
-        // against.
-        //
-        // Exception: the Hui-Armstrong-Wray rational approximation to the
-        // Faddeeva function is itself only accurate to ~1e-6 (see the module
-        // doc comment on `faddeeva_complex` and the "Accuracy note" on
-        // `jacobian`), and that accuracy degrades further from the documented
-        // "|z| not too large" spectroscopy domain outward. A sweep over
-        // |x-centre|/sigma up to 3 finds the analytic/numeric gap for
-        // d/d(sigma) and d/d(gamma) crossing 1e-5 past that point (e.g.
-        // ~1.1e-5 at |x-c|=3*sigma), so this test is deliberately bounded to
-        // |x-c| <= 2*sigma, where the worst measured agreement is ~9e-6 —
-        // consistent with, not looser than, the ~1e-5 floor for this one
-        // kernel. This loosened tolerance is NOT extended to
-        // cauchy_dispersion, doniach, or skewed_gaussian, which are exact
-        // closed-form derivatives verified to epsilon = 1e-7.
+        // Central difference is O(h^2); with h = 1e-6·max(|p|, 1) its truncation
+        // and rounding errors stay well below the 1e-7 bound used for the exact
+        // closed-form kernels (cauchy_dispersion, doniach, skewed_gaussian).
+        // The Faddeeva value and derivative are full double precision, so the
+        // sweep covers the wings out to |x-c| = 8σ.
         let m = TrueVoigt;
         let param_sets = [
             [4.0, 0.5, 1.0, 0.7],    // nominal
             [1e-3, 0.0, 0.05, 0.05], // small amplitude, width and Lorentzian HWHM
             [5.0, -2.0, 3.0, -1.2],  // offset centre, wide, negative gamma
+            [1.5, 0.3, 0.2, 4.0],    // Lorentzian-dominated: z₀ deep on the imaginary axis
         ];
         for p in param_sets {
             let (center, sigma) = (p[1], p[2]);
-            // Offsets expressed in units of sigma so every regime samples the
-            // same shape of the profile (near the peak, on the shoulder, and
-            // toward but not past the ~2*sigma HAW-accuracy boundary above).
-            for &mult in &[-2.0_f64, -1.0, -0.1, 0.0, 0.1, 1.0, 2.0] {
+            for &mult in &[
+                -8.0_f64, -4.0, -2.0, -1.0, -0.1, 0.0, 0.1, 1.0, 2.0, 4.0, 8.0,
+            ] {
                 let x = center + mult * sigma;
                 let j = m.jacobian(&[x], &p);
                 for i in 0..p.len() {
@@ -238,7 +173,9 @@ mod tests {
                     a[i] += h;
                     b[i] -= h;
                     let fd = (m.eval(&[x], &a) - m.eval(&[x], &b)) / (2.0 * h);
-                    assert_relative_eq!(j[i], fd, epsilon = 1e-5, max_relative = 1e-5);
+                    // Absolute floor scaled to the profile height for entries
+                    // that vanish by symmetry (e.g. ∂f/∂c at x = c).
+                    assert_relative_eq!(j[i], fd, epsilon = 1e-7 * p[0].abs(), max_relative = 1e-7);
                 }
             }
         }

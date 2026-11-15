@@ -8,31 +8,24 @@
  * --radius-* are actually defined (not just assumed via fallback).
  */
 .sf-section-hero {
-  display: flex;
-  flex-direction: column;
-  /* flex-direction:column defaults
-     align-items to stretch, forcing every child to the container's full
-     cross-axis width. That was invisible while every child was a block
-     element that wants full width anyway (h1, p) — until
-     overrides/section-index.html started wrapping partials/content.html's
-     full output (edit/view action buttons included) inside this element,
-     and those 30px icon buttons got stretched to ~800px. Explicit
-     flex-start: every child keeps its own natural width; nothing here
-     ever needed the stretch. */
-  align-items: flex-start;
-  gap: var(--space-2, 8px);
+  /* Plain block flow, deliberately NOT flex/grid/flow-root. The page's
+     floated "View source"/"Edit this page" buttons
+     (partials/actions.html) render immediately before this element in
+     overrides/section-index.html, and any element that establishes its own
+     formatting context (flex, grid, flow-root, overflow != visible) may not
+     overlap a float: the browser shrinks the whole box by the float's width
+     instead. As a flex container this hero ended ~3.8rem (two buttons plus
+     margins) short of the column while the card grid below it spans the
+     full column, and on the gallery index, whose entire content sits inside
+     the hero, every block stopped short of the buttons' right edge. As an
+     ordinary block, the box spans the column and only the H1's line boxes
+     wrap beside the buttons, exactly as on every other page. The 8px
+     rhythm the old flex `gap` supplied is restored with explicit margins
+     on the hero's own parts below; Markdown content inside the hero keeps
+     the theme's normal (collapsing) prose margins. */
   padding-bottom: var(--space-4, 16px);
   margin-bottom: var(--space-4, 16px);
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
-}
-
-.sf-section-hero__title,
-.sf-section-hero__tagline {
-  /* Block children need this back explicitly now that align-items no
-     longer supplies it for free — the icon badge and action buttons
-     (fixed/intrinsic size) must NOT get it, which is the entire point
-     of the change above. */
-  width: 100%;
 }
 
 /* Puts the section's own icon directly in the page content, not only the
@@ -49,7 +42,10 @@
   justify-content: center;
   background: linear-gradient(150deg, var(--md-primary-fg-color), var(--md-accent-fg-color));
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--md-accent-fg-color) 60%, transparent);
-  margin-bottom: var(--space-1, 4px);
+  /* 4px of its own spacing + the hero's 8px rhythm; in block flow this
+     margin collapses with the next sibling's top margin instead of adding
+     to a flex gap. */
+  margin-bottom: calc(var(--space-1, 4px) + var(--space-2, 8px));
 }
 
 .sf-section-hero__icon svg {
@@ -89,6 +85,13 @@
   margin: 0;
 }
 
+/* The theme's `.md-typeset h1` bottom margin (1.25em) outranks the rule
+   above; keep it and add the hero's 8px rhythm on top, as the flex gap
+   used to. */
+.md-typeset .sf-section-hero__title {
+  margin-bottom: calc(1.25em + var(--space-2, 8px));
+}
+
 .sf-section-hero__tagline {
   margin: 0;
   max-width: 60ch;
@@ -102,10 +105,12 @@
    .sf-button--secondary, never --primary (that role stays reserved for the
    homepage's own Quickstart button, so there is only one single-most-likely
    action per page). Reuses .sf-button/.sf-button--secondary as-is
-   (components/buttons.css); no new button styling is introduced here. No
-   margin-top here: .sf-section-hero's own `gap: var(--space-2, 8px)`
-   already spaces every child uniformly — an added margin-top here would
-   double-count that gap (flex gap and a child's own margin both apply). */
+   (components/buttons.css); no new button styling is introduced here.
+   `.sf-button` is inline-flex; block-level `display: flex` keeps the CTA
+   on its own line at its own width without an inline line box around it,
+   and the margin-top is the hero's 8px rhythm (formerly the flex gap). */
 .sf-section-hero__action {
+  display: flex;
   width: fit-content;
+  margin-top: var(--space-2, 8px);
 }

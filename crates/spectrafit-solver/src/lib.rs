@@ -18,5 +18,8 @@ mod irls;
 mod lm_problem;
 mod postfit;
 
+#[cfg(test)]
+mod jacobian_mode_tests;
+
 pub use dispatch::fit;
 pub use error::SolverError;

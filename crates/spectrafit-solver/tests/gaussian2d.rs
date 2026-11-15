@@ -34,6 +34,7 @@ fn options(solver: &str) -> FitOptionsSpec {
         delta0: None,
         max_delta: None,
         eta: None,
+        ..Default::default()
     }
 }
 

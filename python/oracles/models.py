@@ -254,9 +254,11 @@ def true_voigt(
     A\cdot\mathrm{Re}[w(z)]/\mathrm{Re}[w(z_0)],\quad z=\dfrac{(x-c)+i\gamma}{\sigma\sqrt{2}},\quad z_0=\dfrac{i\gamma}{\sigma\sqrt{2}}
     $$
 
-    NOTE: the Rust kernel uses the Hui–Armstrong–Wray Faddeeva approximation
-    (~1e-6 accuracy) while the numpy fallback uses ``scipy.special.wofz``, so
-    wheel-vs-numpy parity here is ~1e-4 — see ``test_kernel_parity.py``.
+    NOTE: both sides evaluate the Faddeeva function at full double precision.
+    The Rust kernel ports S. G. Johnson's Faddeeva Package, the algorithm behind
+    ``scipy.special.wofz``, so wheel-vs-numpy parity holds at the default bounds
+    ($\mathrm{rtol} = 10^{-9}$, $\mathrm{atol} = 10^{-12}$); see
+    ``test_kernel_parity.py``.
     """
     inv = 1.0 / (sigma * _SQRT2)
     z = ((x - center) + 1j * abs(gamma)) * inv

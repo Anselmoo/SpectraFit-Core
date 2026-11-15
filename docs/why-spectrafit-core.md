@@ -207,8 +207,11 @@ When you do ask for `solver="auto"`, it inspects the model graph's
 *structure* — separability, tied parameters, active bounds — and routes on
 what it finds. A graph that is separable, with no tied parameters and no
 bounds on the nonlinear parameters, goes to VarPro (Variable Projection).
-Everything else goes to **Trust-Region-Reflective** (TRF), the Coleman–Li
-bound-scaled variant of Levenberg-Marquardt.
+Everything else goes to **`"trf"`**, the Levenberg-Marquardt core with
+Coleman–Li bound-distance scaling: steps of a parameter with two finite bounds
+shrink as it approaches the bound it moves toward. It is not a
+trust-region-reflective method; trial points are projected onto the bounds as
+in `"lm"`.
 
 Under `"auto"` there is no plain-Levenberg-Marquardt branch at all,
 because bound scaling is set for `Auto` on every non-VarPro path

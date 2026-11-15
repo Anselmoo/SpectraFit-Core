@@ -279,7 +279,7 @@ _RECORDS: list[ValueProvenance] = [
     _record(
         "nist.gauss1",
         "oracles.audit.nist.run_nist_validation",
-        "trustBlock.nist_validation.datasets[Gauss1]",
+        "trustBlock.nistValidation.datasets[Gauss1]",
         wire_id="W8",
         reference=_NIST_CERT,
         panel_id="nist-validation",
@@ -287,7 +287,7 @@ _RECORDS: list[ValueProvenance] = [
     _record(
         "nist.gauss2",
         "oracles.audit.nist.run_nist_validation",
-        "trustBlock.nist_validation.datasets[Gauss2]",
+        "trustBlock.nistValidation.datasets[Gauss2]",
         wire_id="W8",
         reference=_NIST_CERT,
         panel_id="nist-validation",
@@ -295,7 +295,7 @@ _RECORDS: list[ValueProvenance] = [
     _record(
         "nist.gauss3",
         "oracles.audit.nist.run_nist_validation",
-        "trustBlock.nist_validation.datasets[Gauss3]",
+        "trustBlock.nistValidation.datasets[Gauss3]",
         wire_id="W8",
         reference=_NIST_CERT,
         panel_id="nist-validation",
@@ -303,7 +303,7 @@ _RECORDS: list[ValueProvenance] = [
     _record(
         "nist.lanczos1",
         "oracles.audit.nist.run_nist_validation",
-        "trustBlock.nist_validation.datasets[Lanczos1]",
+        "trustBlock.nistValidation.datasets[Lanczos1]",
         wire_id="W8",
         reference=_NIST_CERT,
         panel_id="nist-validation",

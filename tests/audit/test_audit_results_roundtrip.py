@@ -20,6 +20,14 @@ import pytest
 from oracles.bench_contract import SCHEMA_VERSION, BenchReport
 from oracles.migrate import migrate_payload_to_current
 from oracles.reports import REPORTS_ROOT
+from oracles.trust_ledger import (
+    CredibilityRung,
+    NistDataset,
+    NistParam,
+    NistValidation,
+    TrustBlock,
+    WireResult,
+)
 
 # How many of the newest runs the default (non-slow) test round-trips. Bounded so
 # the audit suite stays memory-safe; the slow test below covers full history.
@@ -91,3 +99,61 @@ def test_results_json_canonical_roundtrip_full_history(path: Path):
     machine/CI, never in the default suite.
     """
     _assert_canonical_roundtrip(path)
+
+
+def _nist_dataset(name: str) -> NistDataset:
+    """A passing, finite NIST dataset record named ``name``."""
+    return NistDataset(
+        name=name,
+        model="test model",
+        n_params=1,
+        params=[NistParam(name="b1", certified=98.0, fitted=98.0, sig_figs_agreed=6.0)],
+        min_sig_figs=6.0,
+        passed=True,
+    )
+
+
+def test_inlined_trust_block_is_canonical(tmp_path: Path):
+    """The runner's trust-block inlining keeps results.json canonical.
+
+    ``_inline_trust_block`` must write the block under the contract's camelCase
+    aliases (``wireId``, ``nClaimsAudited``, ``nistValidation``, ...); a
+    snake_case dump parses (``populate_by_name``) but re-emits differently, so
+    W3's parse -> ``model_dump_json(by_alias=True)`` comparison fails on the
+    ``/trustBlock`` keys. The four NIST datasets keep the W8 claims' evidence
+    paths resolvable for the runtime L3 guard, and the parsed block must equal
+    the one written, so no value changes on the way through the file.
+    """
+    from oracles.audit.runner import _inline_trust_block
+    from oracles.synth import build_report
+
+    results_path = tmp_path / "results.json"
+    results_path.write_text(build_report().model_dump_json(by_alias=True))
+    _assert_canonical_roundtrip(results_path)
+
+    block = TrustBlock(
+        rung=CredibilityRung.RUNG_3,
+        wires=[
+            WireResult(
+                wire_id="W8",
+                name="NIST",
+                status="pass",
+                evidence="ok",
+                details={"n_datasets": 4},
+            ),
+        ],
+        n_claims_audited=4,
+        n_claims_total=20,
+        nist_validation=NistValidation(
+            threshold_sig_figs=4.0,
+            datasets=[_nist_dataset(n) for n in ("Gauss1", "Gauss2", "Gauss3", "Lanczos1")],
+            min_sig_figs=6.0,
+            passed=True,
+        ),
+    )
+    _inline_trust_block(results_path, block, {"W8": "pass"})
+
+    raw = json.loads(results_path.read_text())
+    assert raw["schemaVersion"] == SCHEMA_VERSION
+    _assert_canonical_roundtrip(results_path)
+    assert BenchReport.model_validate(raw).trust_block == block

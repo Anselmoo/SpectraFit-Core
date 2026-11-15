@@ -8,7 +8,11 @@
 /// Why the solve stopped.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Termination {
-    /// `‖Jᵀr‖_∞ ≤ gtol` — first-order optimality.
+    /// `‖Jᵀr‖_∞ ≤ gtol` — first-order optimality. For a bounded problem the
+    /// LM driver also reports it when the projected gradient vanishes: every
+    /// component is held at a bound with an outward gradient, or the
+    /// active-set projected step is fully clamped by the box (a step that
+    /// merely rounds away against the parameters does not count).
     Gtol,
     /// Relative cost decrease `≤ ftol`.
     Ftol,

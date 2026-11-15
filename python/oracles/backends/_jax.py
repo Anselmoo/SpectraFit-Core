@@ -79,6 +79,7 @@ from oracles.backends._base import (
     r2_score,
     reconstruct_history,
 )
+from oracles.backends._tolerance import StopTolerances
 from oracles.cases import BenchCase, curve
 from oracles.exceptions import BackendError
 
@@ -113,7 +114,25 @@ class JaxBackend(Backend):
 
     name = "jax"
 
-    def __init__(self, compile_budget: int | None = None) -> None:
+    def __init__(
+        self,
+        compile_budget: int | None = None,
+        tolerances: StopTolerances | None = None,
+    ) -> None:
+        """Set up jax (x64) and the compile budget; keep or replace the stopping setting.
+
+        Raises:
+            BackendError: ``tolerances`` has ftol != xtol. optimistix's
+                ``LevenbergMarquardt`` has one ``rtol``/``atol`` pair for its step and
+                residual tests and no gradient test, so ftol and xtol must agree.
+        """
+        if tolerances is not None and tolerances.ftol != tolerances.xtol:
+            msg = (
+                "optimistix LevenbergMarquardt has one rtol/atol pair for the step and "
+                f"residual tests, so ftol must equal xtol; got {tolerances}"
+            )
+            raise BackendError(msg)
+        self.tolerances = tolerances
         import jax
 
         jax.config.update("jax_enable_x64", True)  # noqa: FBT003 — jax.config.update's own signature, not ours
@@ -181,7 +200,11 @@ class JaxBackend(Backend):
         import optimistix as optx
 
         y0, x, y, layout = model
-        solver = optx.LevenbergMarquardt(rtol=1e-8, atol=1e-8)
+        if self.tolerances is None:
+            solver = optx.LevenbergMarquardt(rtol=1e-8, atol=1e-8)
+        else:
+            tol = self.tolerances.xtol  # == ftol (checked in __init__); no gradient test
+            solver = optx.LevenbergMarquardt(rtol=tol, atol=tol)
         return optx.least_squares(
             _residual_for(layout),
             solver,

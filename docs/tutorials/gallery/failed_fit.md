@@ -98,8 +98,9 @@ arbitrarily wrong and still report `success=True`.**
 
 2. **`silent` — the guard stays quiet.** From `amplitude=3.0, center=-3.9,
    sigma=0.8` the fit settled at $-0.082$, 2.7% of max |y|. It terminated
-   normally, so the message is the ordinary `converged_ftol` and `success` is
-   `True` — with the same negative $r^2$.
+   normally at an end point verified as stationary, so the message is the
+   ordinary `converged_ftol` and `success` is `True` — with the same negative
+   $r^2$.
 
 3. **`recovered` — a different solver, not a different guess.** Handing
    `silent`'s exact starting point to `FitOptions(solver="global")` recovers
@@ -109,13 +110,16 @@ arbitrarily wrong and still report `success=True`.**
 
 ## What to check on every fit
 
-- **`result.success`** — necessary, not sufficient.
+- **`result.success`** — necessary, not sufficient: it says the solver
+  stopped on a convergence test at a stationary point, not that the model or
+  the basin is the right one.
 - **`result.r_squared`** — a negative value means the model is doing worse
   than a horizontal line through the mean, whatever `success` says.
 - **`result.message`** — distinguishes `converged_ftol` from
-  `max_iterations`, `no_improvement_possible` and `degenerate_fit`. Note that
-  a fit terminating on one of the two soft conditions with $r^2 \ge 0.9$ is
-  *promoted* to `success=True` with the reason recorded in the message.
+  `max_iterations`, `no_improvement_possible` and `degenerate_fit`. No $r^2$
+  rule promotes either soft condition: `max_iterations` is never a success,
+  and `no_improvement_possible` is one only when the end point is verified as
+  stationary.
 - **The recovered parameters themselves** — a negative amplitude on a peak
   model, or a centre outside the measured range, is a wrong answer no scalar
   score will announce for you.

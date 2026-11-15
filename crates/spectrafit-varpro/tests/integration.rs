@@ -235,6 +235,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            ..Default::default()
         };
 
         let result = spectrafit_varpro::solve_varpro(&graph, &[dataset], &params, &options);

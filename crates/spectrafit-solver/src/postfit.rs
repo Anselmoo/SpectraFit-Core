@@ -8,7 +8,10 @@
 //! module inspects. [`assemble_result`] computes χ²/reduced-χ²/R²/AIC/BIC, the
 //! covariance matrix and condition number (faer-native), per-parameter standard
 //! errors, residuals, component curves and per-dataset slices, and packs them into a
-//! [`FitResultSpec`].
+//! [`FitResultSpec`]. It also decides the final `success` flag: a convergence test
+//! or a `no_improvement_possible` stop counts only at a Gauss-Newton stationary
+//! end point (#93, see `gauss_newton_decrease`), before the off-domain and
+//! degenerate-fit guards.
 
 use std::collections::HashMap;
 
@@ -83,9 +86,9 @@ pub struct PostfitInputs<'a> {
 /// - Re-evaluating the model at the final parameters fails
 ///   (`evaluate_compiled`, for `best_fit`, or `evaluate_components_compiled`,
 ///   for the per-component curves).
-/// - Building the covariance matrix fails: for a tied graph, the
-///   finite-difference weighted Jacobian (`fd_weighted_jacobian_rowmajor`);
-///   for an untied graph, the analytic Jacobian
+/// - Building the covariance matrix fails: for a tied graph or a forced
+///   finite-difference Jacobian, the finite-difference weighted Jacobian
+///   (`fd_weighted_jacobian_rowmajor`); otherwise the analytic Jacobian
 ///   (`jacobian_compiled_indexed_into`).
 pub fn assemble_result(
     mut outcome: LmSolveOutcome<'_>,
@@ -140,7 +143,7 @@ pub fn assemble_result(
     // ── 11. Covariance matrix + condition number (faer-native) ───────────────
     let _cov_t0 = std::time::Instant::now();
     let sigma_provided = datasets.iter().any(|ds| ds.sigma.is_some());
-    let (cov_opt, condition_number) = compute_covariance_and_condition(
+    let (cov_opt, condition_number, jac_weighted) = compute_covariance_and_condition(
         result_problem,
         cg,
         x_all,
@@ -200,8 +203,47 @@ pub fn assemble_result(
             .collect()
     });
 
+    // ── 14a. Stationarity gate (#93, F4g) ─────────────────────────────────────
+    // Success needs a convergence test or a `no_improvement_possible` stop AND
+    // a Gauss-Newton stationary end point (`max_iterations` never succeeds). Measured on the objective the solver minimised,
+    // Σ((ŷ − y)/σ)², with the Jacobian of step 11 at the final parameters
+    // (analytic for an untied graph, the solver's finite-difference Jacobian for
+    // a tied one). Runs before the guards below, so a soft stop the gate accepts
+    // still faces the off-domain and degenerate-fit checks.
+    // Same σ rule as the weighted Jacobian of step 11.
+    let weight = |s: f64| if s > 0.0 { 1.0 / s } else { 1.0 };
+    let r_w: Vec<f64> = best_fit
+        .iter()
+        .zip(y_all.iter())
+        .zip(result_problem.sigma.iter())
+        .map(|((pred, obs), &s)| (pred - obs) * weight(s))
+        .collect();
+    let rss_w: f64 = r_w.iter().map(|v| v * v).sum();
+    let y_w_sq: f64 = y_all
+        .iter()
+        .zip(result_problem.sigma.iter())
+        .map(|(obs, &s)| (obs * weight(s)).powi(2))
+        .sum();
+    let gn_decrease = match &jac_weighted {
+        Some(j) => {
+            let theta: Vec<f64> = free_keys
+                .iter()
+                .map(|k| final_flat.get(k).copied().unwrap_or(f64::NAN))
+                .collect();
+            gauss_newton_decrease(j.as_ref(), &r_w, &theta, &result_problem.bounds)
+        }
+        // No free parameter: there is no direction to decrease along.
+        None => 0.0,
+    };
+    let gated = stationarity_gate(
+        success_val,
+        &message_val,
+        gn_decrease,
+        at_zero_residual(rss_w, y_w_sq),
+    );
+
     // ── 14b. Success guards (off-domain runaway + degenerate peak-collapse) ───
-    let (success_val, message_val) = apply_postfit_guards(
+    let (guard_ok, message_val) = apply_postfit_guards(
         graph,
         free_keys,
         &final_flat,
@@ -209,9 +251,10 @@ pub fn assemble_result(
         y_all,
         r_squared,
         n_free,
-        success_val,
+        gated || success_val,
         message_val,
     );
+    let success_val = gated && guard_ok;
 
     // ── 14c. Output finiteness guard ────────────────────────────────────────
     let (chi2, r_squared, reduced_chi2, aic, bic, success_val) =
@@ -300,6 +343,10 @@ fn compute_scalar_diagnostics(
     (r_squared, reduced_chi2, aic, bic)
 }
 
+/// `(covariance, condition number, weighted Jacobian)` from
+/// [`compute_covariance_and_condition`].
+type CovarianceAndJacobian = (Option<faer::Mat<f64>>, Option<f64>, Option<faer::Mat<f64>>);
+
 /// Covariance matrix + condition number (faer-native).
 ///
 /// The Jacobian at the solution is computed once, directly from the solver's
@@ -314,6 +361,12 @@ fn compute_scalar_diagnostics(
 ///
 /// `chi2`/`dof` feed the no-σ scale-from-residuals covariance estimate;
 /// `sigma_provided` selects between the weighted and scale-from-residuals paths.
+///
+/// Also returns the weighted Jacobian `J_w = ∂((ŷ − y)/σ)/∂θ` in physical
+/// parameter units, for the stationarity gate in [`assemble_result`]: the
+/// analytic Jacobian with rows scaled by 1/σ for an untied graph, the solver's
+/// forward finite-difference weighted Jacobian with the `Parameter.scale`
+/// factor divided out for a tied graph. `None` when there is no free parameter.
 // Allowed: the solved problem, compiled graph, evaluation grid, and the
 // scalar diagnostics (n_free/chi2/dof/sigma_provided) needed to pick between
 // the weighted and scale-from-residuals covariance paths are each read
@@ -328,7 +381,7 @@ fn compute_covariance_and_condition(
     chi2: f64,
     dof: i64,
     sigma_provided: bool,
-) -> Result<(Option<faer::Mat<f64>>, Option<f64>), CoreError> {
+) -> Result<CovarianceAndJacobian, CoreError> {
     let scale_inv_cov = |cov: Option<faer::Mat<f64>>| -> Option<faer::Mat<f64>> {
         // No σ supplied (all σ = 1): scale-from-residuals estimate Σ·(χ²/DOF).
         cov.map(|mut inv| {
@@ -343,18 +396,19 @@ fn compute_covariance_and_condition(
         })
     };
     if n_free == 0 {
-        return Ok((None, None));
+        return Ok((None, None, None));
     }
-    if result_problem.has_tied() {
-        // Tied graphs: the analytic free-column Jacobian omits the chain-rule
-        // terms Σ_t (∂r/∂t)(∂t/∂θ), so reuse the solver's finite-difference
+    if result_problem.uses_fd_jacobian() {
+        // Tied graphs, or a forced finite-difference Jacobian (#93), the same
+        // switch the solver used: the analytic free-column Jacobian omits the
+        // chain-rule terms Σ_t (∂r/∂t)(∂t/∂θ), so reuse the solver's finite-difference
         // *weighted* Jacobian (J_w = J/σ) at the solution. The FD Jacobian
         // differentiates the *scaled* working variable θ'_c = θ_c / s_c, so its
         // columns already carry the `Parameter.scale` factor `s_c` — that is the
         // matrix whose conditioning the optimiser sees, hence κ comes from its
         // Gram directly. Covariance, however, must be in *physical* units, so the
         // scaling is divided back out of each column first (a no-op when s = 1).
-        // Cloned before the `&mut self` FD call to avoid an aliasing borrow.
+        // `scales` is copied out for the per-column un-scaling below.
         let scales = result_problem.scales.clone();
         let mut jw_buf: Vec<f64> = Vec::new();
         result_problem.fd_weighted_jacobian_rowmajor(&mut jw_buf)?;
@@ -377,7 +431,11 @@ fn compute_covariance_and_condition(
         } else {
             scale_inv_cov(faer_cov_from_gram(gram_phys.as_ref()))
         };
-        Ok((cov, faer_cond_from_gram(gram_scaled.as_ref())))
+        Ok((
+            cov,
+            faer_cond_from_gram(gram_scaled.as_ref()),
+            Some(jw_phys),
+        ))
     } else {
         let scales = &result_problem.scales;
         let mut jbuf: Vec<f64> = Vec::new();
@@ -410,12 +468,12 @@ fn compute_covariance_and_condition(
             });
             let cov = faer_cov_from_gram((j_w.as_ref().transpose() * j_w.as_ref()).as_ref());
             let cond = faer_condition_number(j_scaled.as_ref());
-            Ok((cov, cond))
+            Ok((cov, cond, Some(j_w)))
         } else {
             // No σ: covariance from the physical Gram; κ from the scaled Gram.
             let gram_phys = j_final.as_ref().transpose() * j_final.as_ref();
             let cov = scale_inv_cov(faer_cov_from_gram(gram_phys.as_ref()));
-            Ok((cov, faer_condition_number(j_scaled.as_ref())))
+            Ok((cov, faer_condition_number(j_scaled.as_ref()), Some(j_final)))
         }
     }
 }
@@ -654,6 +712,10 @@ fn detect_off_domain(
 /// possibly-downgraded `(success, message)`. Called by [`assemble_result`] (the
 /// LM-family / dogleg / newton-cg path, and IRLS/global via `lm_fit`) and by the
 /// VarPro dispatch arm, which builds its own result outside `assemble_result`.
+/// [`assemble_result`] passes `success=true` for every end point that the
+/// solver's convergence test or the stationarity gate accepted, and keeps the
+/// gate's verdict as the reported success; an end point the gate refuses
+/// therefore carries the guard's reason as its message when a guard fires.
 // Allowed: the guard fuses 9 inputs (graph, free_keys, final flat params, both
 // data axes, r², n_free, and the upstream success/message pair) into one
 // post-fit decision; splitting into a struct would just rename the bundle.
@@ -699,40 +761,17 @@ pub(crate) fn apply_postfit_guards(
             message = reason;
         }
     }
-    // r²-quality upgrade for soft failures. The `Termination::was_successful`
-    // check in spectrafit-trust-region rightly excludes `MaxEval` and
-    // `NoImprovement` from the success set — those are budget/convergence stops,
-    // not first-order optimality. But a fit that explains ≥ 90 % of variance is
-    // materially converged regardless of which exit reason fired: the gradient
-    // is small enough that no step improved (NoImprovement), or the budget
-    // expired with a high-quality fit in hand (MaxEval). Calling these
-    // "failures" hides them from the verification surface (gate badge,
-    // regression_case_ids) even though the data is well-explained.
-    //
-    // Anti-regression. OF-005 (optfn, difficulty 0.86): global DE seeds a local
-    // basin at r² = 0.9921, LM correctly reports `n_iter = 0` +
-    // `no_improvement_possible` because the gradient is small. Pre-upgrade the
-    // case was flagged regression; post-upgrade it's the converged-at-local-min
-    // result it actually is.
-    //
-    // Hard failures (`numerical_error`) stay failures — a NaN gradient or
-    // Jacobian is a real broken state, not a soft stop, regardless of r².
-    //
-    // The accuracy gate (`max |Δr²|` vs the baseline solver) is the safety net:
-    // if the upgraded fit is materially worse than the oracle, that axis still
-    // fails. The upgrade only converts "we said failure when we converged" into
-    // honest signal.
-    const SOFT_SUCCESS_R2_FLOOR: f64 = 0.9;
-    if !success && r_squared >= SOFT_SUCCESS_R2_FLOOR {
-        let soft_termination = matches!(
-            message.as_str(),
-            "no_improvement_possible" | "max_iterations"
-        );
-        if soft_termination {
-            message = format!("{message}_accepted_at_r2_{r_squared:.4}");
-            success = true;
-        }
-    }
+    // No r² rule converts a soft stop to success here. A
+    // `no_improvement_possible` stop reaches this guard as success only through
+    // the stationarity gate in `assemble_result` (a Gauss-Newton stationary end
+    // point, #93 F4g); `max_iterations` never does; r² never decides it. An
+    // earlier rule upgraded a soft stop with r² ≥ 0.9 to success
+    // (`_accepted_at_r2_<value>`); r² measures explained variance, not
+    // first-order optimality, and on the EELS cross-check (#93, E0) all five
+    // upgraded runs ended at non-stationary points (Gauss-Newton predicted
+    // decrease 0.81-0.93 of the RSS). Convergence-test convention: Moré (1978),
+    // "The Levenberg-Marquardt algorithm: implementation and theory", and
+    // MINPACK lmder, where only the ftol/xtol/gtol tests report convergence.
 
     if success && n_free > 0 && r_squared < 0.0 {
         let y_max_abs = y_all
@@ -754,6 +793,163 @@ pub(crate) fn apply_postfit_guards(
         }
     }
     (success, message)
+}
+
+// ---------------------------------------------------------------------------
+// Stationarity gate on the success flag (#93, F4g)
+// ---------------------------------------------------------------------------
+//
+// A stop is reported as success only when (a) the solver ended on a convergence
+// test or on `no_improvement_possible` (never on `max_iterations`), and (b) the end point is first-order stationary: the
+// Gauss-Newton model predicts a relative decrease of at most
+// `GN_STATIONARY_TOL` over the components not held at an active bound.
+//
+// The measure is the Gauss-Newton model decrease, the standard stationarity
+// measure for nonlinear least squares (J. E. Dennis and R. B. Schnabel,
+// "Numerical Methods for Unconstrained Optimization and Nonlinear Equations",
+// SIAM Classics in Applied Mathematics 16, 1996, ch. 10). With the Gauss-Newton
+// step δ = argmin ||J δ − r||, the predicted decrease of the RSS is ||J δ||² =
+// ||P_J r||², the squared projection of the residual onto the range of J. The
+// bound rule follows the projected-Newton active set of D. P. Bertsekas,
+// "Projected Newton methods for optimization problems with simple
+// constraints", SIAM J. Control Optim. 20(2):221-246, 1982,
+// doi:10.1137/0320018: a component on a bound whose gradient points out of
+// the box is held and does not count. The acceptance definition is
+// `stationarity()` in the EELS cross-check ledger (`crosscheck.stationarity`,
+// .superpowers/ledgers/2026-11-09-eels-solver-crosscheck/crosscheck.py);
+// this reproduces it, with the solver's own residual and Jacobian.
+
+/// Largest Gauss-Newton predicted decrease, relative to the RSS, at which an
+/// end point counts as stationary (`GN_TOL` of the #93 acceptance).
+const GN_STATIONARY_TOL: f64 = 1e-6;
+
+/// A component sits on a bound `b` when `|θ − b| ≤ ACTIVE_BOUND_REL · max(|b|, 1)`.
+const ACTIVE_BOUND_REL: f64 = 1e-12;
+
+/// Floor of the column scale `max(|θ_c|, GN_THETA_FLOOR)` applied before the
+/// rank decision (`THETA_FLOOR` of the acceptance measure).
+const GN_THETA_FLOOR: f64 = 1e-3;
+
+/// Zero-residual clause: an end point with weighted RSS ≤ ZERO_RESIDUAL_REL ·
+/// Σ(y/σ)² counts as stationary whatever its Gauss-Newton ratio. The relative
+/// measure ||P r||² / RSS is undefined at zero residual: near an exact fit
+/// r ≈ J (θ − θ*), so the round-off residual left by a converged noise-free fit
+/// lies almost entirely in range(J) and the ratio is ≈ 1 although nothing is
+/// left to gain. ε = `f64::EPSILON` (≈ 2.2e-16) marks round-off level relative
+/// to the data (#93, user decision recorded in predictions.md §11).
+const ZERO_RESIDUAL_REL: f64 = f64::EPSILON;
+
+/// Whether the weighted RSS `rss_w` is at round-off level relative to the
+/// weighted data energy `y_w_sq = Σ(y/σ)²` (see [`ZERO_RESIDUAL_REL`]).
+fn at_zero_residual(rss_w: f64, y_w_sq: f64) -> bool {
+    rss_w.is_finite() && rss_w <= ZERO_RESIDUAL_REL * y_w_sq
+}
+
+/// Termination keys of a solver soft stop that the gate may turn into success:
+/// the solver stopped without a convergence test firing because no step
+/// reduced the cost (`no_improvement_possible`). At a stationary point that is
+/// a success. A budget stop (`max_iterations`) is not in the set and never
+/// yields success, even at a stationary point (#93, user decision recorded in
+/// predictions.md §11); `numerical_error` never does either.
+const SOFT_STOP_MESSAGES: [&str; 1] = ["no_improvement_possible"];
+
+/// Whether `message` is the termination key of a soft stop the gate accepts.
+fn is_soft_stop(message: &str) -> bool {
+    SOFT_STOP_MESSAGES.contains(&message)
+}
+
+/// Whether `theta` sits on the finite bound `bound` (1e-12 relative rule).
+fn bound_active(theta: f64, bound: f64) -> bool {
+    bound.is_finite() && (theta - bound).abs() <= ACTIVE_BOUND_REL * bound.abs().max(1.0)
+}
+
+/// Gauss-Newton predicted decrease relative to the RSS, `||P r||² / ||r||²`,
+/// over the columns of `j` not held at an active bound.
+///
+/// `j` is `∂r/∂θ` (`m × n`, physical parameter units) for the residual `r`
+/// the solver minimises (`(ŷ − y)/σ`); `theta` and `bounds` are the final
+/// physical values and `(min, max)` per column. The gradient of the RSS is
+/// `g = 2 Jᵀ r` (the ledger's `−2 Jᵀ (y − ŷ)`); a column at its lower bound with
+/// `g_c > 0`, or at its upper bound with `g_c < 0`, is held. The kept columns
+/// are scaled by `max(|θ_c|, 1e-3)` and the projection is taken from a thin
+/// SVD, keeping singular values above `rcond · σ_max` with
+/// `rcond = ε · max(m, n)` (the `numpy.linalg.lstsq(rcond=None)` cut-off of the
+/// acceptance measure), so a rank-deficient or badly conditioned J
+/// (κ(JᵀJ) ≈ 1e11-1e13 at EELS end points) gives the projection onto its
+/// numerical range rather than an amplified noise component.
+///
+/// Returns 0.0 for RSS = 0 and when no column is left; `f64::INFINITY`
+/// (not stationary) for a non-finite RSS or J, a shape mismatch, or a failed
+/// SVD.
+fn gauss_newton_decrease(
+    j: faer::MatRef<'_, f64>,
+    r: &[f64],
+    theta: &[f64],
+    bounds: &[(f64, f64)],
+) -> f64 {
+    let rss: f64 = r.iter().map(|v| v * v).sum();
+    if !rss.is_finite() {
+        return f64::INFINITY;
+    }
+    if rss == 0.0 {
+        return 0.0;
+    }
+    let (m, n) = (j.nrows(), j.ncols());
+    if m != r.len() || theta.len() != n || bounds.len() != n {
+        return f64::INFINITY;
+    }
+    // Columns not held at an active bound (Bertsekas 1982).
+    let free: Vec<usize> = (0..n)
+        .filter(|&c| {
+            let g = 2.0 * (0..m).map(|i| j[(i, c)] * r[i]).sum::<f64>();
+            let (lo, hi) = bounds[c];
+            let held =
+                (bound_active(theta[c], lo) && g > 0.0) || (bound_active(theta[c], hi) && g < 0.0);
+            !held
+        })
+        .collect();
+    if free.is_empty() {
+        return 0.0;
+    }
+    let js = faer::Mat::from_fn(m, free.len(), |i, k| {
+        let c = free[k];
+        j[(i, c)] * theta[c].abs().max(GN_THETA_FLOOR)
+    });
+    if (0..js.ncols()).any(|k| (0..m).any(|i| !js[(i, k)].is_finite())) {
+        return f64::INFINITY;
+    }
+    let Ok(svd) = js.thin_svd() else {
+        return f64::INFINITY;
+    };
+    let s = svd.S().column_vector();
+    let u = svd.U();
+    let s_max = (0..s.nrows()).map(|k| s[k]).fold(0.0_f64, f64::max);
+    // rcond = ε · max(m, n), relative to σ_max: singular values at or below
+    // the cut-off are treated as zero (numerical rank), as LAPACK gelsd and
+    // `numpy.linalg.lstsq(rcond=None)` do.
+    let cutoff = f64::EPSILON * m.max(free.len()) as f64 * s_max;
+    let projected: f64 = (0..s.nrows())
+        .filter(|&k| s[k] > cutoff)
+        .map(|k| {
+            let coef: f64 = (0..m).map(|i| u[(i, k)] * r[i]).sum();
+            coef * coef
+        })
+        .sum();
+    projected / rss
+}
+
+/// The success decision under the gate: a convergence test fired
+/// (`solver_success`) or the solver stopped on `no_improvement_possible`, and
+/// the end point is stationary: `gn_decrease ≤ GN_STATIONARY_TOL` (NaN is not
+/// stationary) or the residual is at round-off level (`zero_residual`, see
+/// [`ZERO_RESIDUAL_REL`]).
+fn stationarity_gate(
+    solver_success: bool,
+    message: &str,
+    gn_decrease: f64,
+    zero_residual: bool,
+) -> bool {
+    (solver_success || is_soft_stop(message)) && (gn_decrease <= GN_STATIONARY_TOL || zero_residual)
 }
 
 // ---------------------------------------------------------------------------
@@ -1201,13 +1397,15 @@ mod tests {
         );
     }
 
-    /// OF-005 anti-regression: a soft termination (`no_improvement_possible` /
-    /// `max_iterations`) with a high-r² fit (≥ 0.9) is upgraded to
-    /// `success=true`. A numerical error stays a failure regardless of r².
-    /// A low-r² soft termination also stays a failure (the fit didn't converge
-    /// to anything useful).
+    /// #93: no r² rule in `apply_postfit_guards`. A soft stop
+    /// (`no_improvement_possible` / `max_iterations`) keeps `success=false` and
+    /// its own message here at any r², including r² ≥ 0.9, which an earlier rule
+    /// upgraded to success (`_accepted_at_r2_<value>`). On the EELS cross-check
+    /// (E0) all five upgraded runs were non-stationary endpoints. A hard failure
+    /// (`numerical_error`) stays a failure, and an already-successful result
+    /// passes through unchanged.
     #[test]
-    fn r2_quality_upgrade_promotes_soft_failure_to_success() {
+    fn soft_stop_stays_failure_at_any_r2() {
         use super::apply_postfit_guards;
         use spectrafit_types::{FitGraphSpec, ModelNodeSpec, ModelTypeStr, ParameterSpec};
         use std::collections::HashMap;
@@ -1249,99 +1447,205 @@ mod tests {
         final_flat.insert("g1.center".to_string(), 0.0);
         final_flat.insert("g1.sigma".to_string(), 0.5);
 
-        // (1) soft termination + high r² → upgraded to success.
-        let (s1, m1) = apply_postfit_guards(
-            &graph,
-            &free_keys,
-            &final_flat,
-            &x_all,
-            &y_all,
-            0.99,
-            3,
-            false,
-            "no_improvement_possible".to_string(),
-        );
-        assert!(
-            s1,
-            "high-r² soft failure must be upgraded to success (got message: {m1})"
-        );
-        assert!(
-            m1.starts_with("no_improvement_possible_accepted_at_r2_"),
-            "upgraded message must name the original termination + r², got: {m1}"
-        );
+        let guard = |r2: f64, success: bool, message: &str| {
+            apply_postfit_guards(
+                &graph,
+                &free_keys,
+                &final_flat,
+                &x_all,
+                &y_all,
+                r2,
+                3,
+                success,
+                message.to_string(),
+            )
+        };
 
-        // (2) max_iterations + high r² → upgraded.
-        let (s2, m2) = apply_postfit_guards(
-            &graph,
-            &free_keys,
-            &final_flat,
-            &x_all,
-            &y_all,
-            0.95,
-            3,
-            false,
-            "max_iterations".to_string(),
-        );
-        assert!(s2, "high-r² max_iterations must be upgraded (got: {m2})");
-        assert!(m2.starts_with("max_iterations_accepted_at_r2_"));
+        // Soft stops and the hard failure stay failures with their own message,
+        // below, at and above the former 0.9 floor.
+        for reason in [
+            "no_improvement_possible",
+            "max_iterations",
+            "numerical_error",
+        ] {
+            for r2 in [0.5, 0.9, 0.99, 1.0] {
+                let (success, message) = guard(r2, false, reason);
+                assert!(
+                    !success,
+                    "{reason} at r² = {r2} must stay success=false (got message: {message})"
+                );
+                assert_eq!(
+                    message, reason,
+                    "{reason} at r² = {r2} must keep its own message"
+                );
+            }
+        }
 
-        // (3) soft termination + low r² → NOT upgraded.
-        let (s3, m3) = apply_postfit_guards(
-            &graph,
-            &free_keys,
-            &final_flat,
-            &x_all,
-            &y_all,
-            0.50,
-            3,
-            false,
-            "no_improvement_possible".to_string(),
-        );
+        // An already-successful result passes through unchanged.
+        let (success, message) = guard(0.99, true, "converged_ftol");
+        assert!(success);
+        assert_eq!(message, "converged_ftol");
+    }
+
+    /// Boundaries of the post-fit guards in `apply_postfit_guards` (#93,
+    /// mutation follow-up): the off-domain check runs only for r² strictly
+    /// below 0.5; the degenerate-fit downgrade needs success, at least one
+    /// free parameter, r² strictly below 0 and a free amplitude strictly below
+    /// 1 % of max |y|.
+    #[test]
+    fn postfit_guard_boundaries() {
+        use super::apply_postfit_guards;
+        use spectrafit_types::{FitGraphSpec, ModelNodeSpec, ModelTypeStr, ParameterSpec};
+        use std::collections::HashMap;
+
+        let mk = |value, min, max| ParameterSpec {
+            value,
+            min,
+            max,
+            vary: true,
+            expr: None,
+            scale: None,
+        };
+        let mut params = HashMap::new();
+        params.insert("amplitude".into(), mk(1.0, 0.0, f64::INFINITY));
+        params.insert("center".into(), mk(0.0, f64::NEG_INFINITY, f64::INFINITY));
+        params.insert("sigma".into(), mk(0.5, 1e-6, f64::INFINITY));
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "g1".into(),
+                model_type: ModelTypeStr::Gaussian,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let free_keys = vec![
+            "g1.amplitude".to_string(),
+            "g1.center".to_string(),
+            "g1.sigma".to_string(),
+        ];
+        let x_all = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
+        let y_peak8 = vec![0.5, 2.0, 8.0, 2.0, 0.5]; // max |y| = 8
+        let y_peak1 = vec![0.1, 0.5, 1.0, 0.5, 0.1]; // max |y| = 1
+        let flat = |amplitude: f64| {
+            HashMap::from([
+                ("g1.amplitude".to_string(), amplitude),
+                ("g1.center".to_string(), 0.0),
+                ("g1.sigma".to_string(), 0.5),
+            ])
+        };
+        let guard =
+            |y: &[f64], amplitude: f64, r2: f64, n_free: usize, success: bool, msg: &str| {
+                apply_postfit_guards(
+                    &graph,
+                    &free_keys,
+                    &flat(amplitude),
+                    &x_all,
+                    y,
+                    r2,
+                    n_free,
+                    success,
+                    msg.to_string(),
+                )
+            };
+
+        // Collapsed amplitude (0.05 / 8 < 1e-2) at r² < 0 → degenerate_fit.
+        let (s, m) = guard(&y_peak8, 0.05, -0.5, 3, true, "converged_ftol");
+        assert!(!s, "collapsed fit must be downgraded (got {m})");
+        assert!(m.starts_with("degenerate_fit"), "got {m}");
+        // r² exactly 0 is not below 0 → unchanged.
+        let (s, m) = guard(&y_peak8, 0.05, 0.0, 3, true, "converged_ftol");
         assert!(
-            !s3,
-            "low-r² soft failure must stay a failure (got message: {m3})"
+            s && m == "converged_ftol",
+            "r² = 0 must pass (got {s}, {m})"
         );
-        assert_eq!(
-            m3, "no_improvement_possible",
-            "non-upgraded message must be unchanged"
-        );
-
-        // (4) hard failure (numerical_error) + high r² → stays a failure.
-        // Mathematically high r² + numerical_error is rare but possible: a
-        // diverging update produced a NaN/Inf gradient just after a good fit
-        // landed. The hard failure label is the right diagnostic.
-        let (s4, m4) = apply_postfit_guards(
-            &graph,
-            &free_keys,
-            &final_flat,
-            &x_all,
-            &y_all,
-            0.99,
-            3,
-            false,
-            "numerical_error".to_string(),
-        );
+        // No free parameter → unchanged.
+        let (s, m) = guard(&y_peak8, 0.05, -0.5, 0, true, "converged_ftol");
         assert!(
-            !s4,
-            "numerical_error must NEVER be upgraded regardless of r² (got: {m4})"
+            s && m == "converged_ftol",
+            "n_free = 0 must pass (got {s}, {m})"
         );
-        assert_eq!(m4, "numerical_error");
+        // An unsuccessful result keeps its own message.
+        let (s, m) = guard(&y_peak8, 0.05, -0.5, 3, false, "max_iterations");
+        assert!(!s && m == "max_iterations", "got {s}, {m}");
+        // Amplitude exactly 1 % of max |y| is not below 1 % → unchanged.
+        let (s, m) = guard(&y_peak1, 0.01, -0.5, 3, true, "converged_ftol");
+        assert!(
+            s && m == "converged_ftol",
+            "ratio = 1e-2 must pass (got {s}, {m})"
+        );
+        // Off-domain runaway amplitude: checked below r² = 0.5, not at 0.5.
+        let (s, m) = guard(&y_peak8, 74840.0, 0.49, 3, true, "converged_ftol");
+        assert!(!s && m.starts_with("diverged_off_domain"), "got {s}, {m}");
+        let (s, m) = guard(&y_peak8, 74840.0, 0.5, 3, true, "converged_ftol");
+        assert!(
+            s && m == "converged_ftol",
+            "r² = 0.5 must skip off-domain (got {s}, {m})"
+        );
+    }
 
-        // (5) already-successful inputs are pass-through (the upgrade only
-        // fires when success == false).
-        let (s5, m5) = apply_postfit_guards(
-            &graph,
-            &free_keys,
-            &final_flat,
-            &x_all,
-            &y_all,
-            0.99,
-            3,
-            true,
-            "converged_ftol".to_string(),
-        );
-        assert!(s5);
-        assert_eq!(m5, "converged_ftol");
+    /// Envelope arithmetic of `detect_off_domain` (mutation follow-up): every
+    /// data-domain parameter name is checked, a one-sided bound still checks
+    /// the open side, the envelope is one width beyond each side with the
+    /// edge itself inside, and the x span falls back to 10 for a single point.
+    #[test]
+    fn off_domain_envelope_boundaries() {
+        use super::detect_off_domain;
+        use spectrafit_types::{FitGraphSpec, ModelNodeSpec, ModelTypeStr, ParameterSpec};
+        use std::collections::HashMap;
+
+        let mk = |value, min, max| ParameterSpec {
+            value,
+            min,
+            max,
+            vary: true,
+            expr: None,
+            scale: None,
+        };
+        let mut params = HashMap::new();
+        params.insert("center".into(), mk(0.0, f64::NEG_INFINITY, f64::INFINITY));
+        params.insert("position".into(), mk(0.0, f64::NEG_INFINITY, 100.0));
+        for name in ["sigma", "gamma", "width"] {
+            params.insert(name.into(), mk(0.5, 1e-6, f64::INFINITY));
+        }
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "p".into(),
+                model_type: ModelTypeStr::Gaussian,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let x_all = vec![-2.0, -1.0, 0.0, 1.0, 2.0];
+        let y_all = vec![0.5, 2.0, 8.0, 2.0, 0.5];
+        let flagged = |key: &str, value: f64, x: &[f64], y: &[f64]| {
+            let free = vec![key.to_string()];
+            let flat = HashMap::from([(key.to_string(), value)]);
+            detect_off_domain(&graph, &free, &flat, x, y).is_some()
+        };
+
+        // Centre envelope [-2, 2], width 4 → sane range [-6, 6], edges inside.
+        assert!(!flagged("p.center", -6.0, &x_all, &y_all));
+        assert!(!flagged("p.center", 6.0, &x_all, &y_all));
+        assert!(!flagged("p.center", -3.0, &x_all, &y_all));
+        assert!(flagged("p.center", 7.0, &x_all, &y_all));
+        assert!(flagged("p.center", -7.0, &x_all, &y_all));
+        // Lower side open, upper bounded: the open side is still checked.
+        assert!(flagged("p.position", -50.0, &x_all, &y_all));
+        // Width-like names: envelope [1e-6, max(span 4, 4 * 0.5)] → sane hi ≈ 8.
+        for key in ["p.sigma", "p.gamma", "p.width"] {
+            assert!(
+                flagged(key, 9.0, &x_all, &y_all),
+                "{key} = 9 must be flagged"
+            );
+            assert!(!flagged(key, 7.0, &x_all, &y_all), "{key} = 7 must pass");
+        }
+        // A single x point has no span; the fallback span 10 gives sane hi ≈ 20.
+        assert!(!flagged("p.sigma", 9.0, &[0.0], &[1.0]));
+        assert!(flagged("p.sigma", 21.0, &[0.0], &[1.0]));
     }
 
     // ── Shared helpers for hand-built `LmProblem`s ──────────────────────────
@@ -1529,6 +1833,7 @@ mod tests {
             params,
             scales,
             sigma,
+            jacobian_mode: spectrafit_types::JacobianMode::Analytic,
             residual_buf: RefCell::new(vec![0.0; n_points]),
             jacobian_buf: RefCell::new(vec![0.0; n_points * n_free]),
             residual_count: RefCell::new(0),
@@ -1643,7 +1948,7 @@ mod tests {
         let y_all = vec![1.0_f64, 2.0, 1.0];
         let mut problem = build_lm_problem(&cg, &graph, x_all.clone(), y_all.clone(), vec![1.0; 3]);
 
-        let (cov, cond) =
+        let (cov, cond, jac) =
             compute_covariance_and_condition(&mut problem, &cg, &x_all, 0, 1.0, 1, false)
                 .expect("n_free=0 must not error");
         assert!(cov.is_none(), "zero free params must give no covariance");
@@ -1651,6 +1956,7 @@ mod tests {
             cond.is_none(),
             "zero free params must give no condition number"
         );
+        assert!(jac.is_none(), "zero free params must give no Jacobian");
     }
 
     /// Coverage gaps (lines ~369, ~376): the tied-graph covariance path
@@ -1695,7 +2001,7 @@ mod tests {
             "amplitude scale must be non-default"
         );
 
-        let (cov, cond) = compute_covariance_and_condition(
+        let (cov, cond, _jac) = compute_covariance_and_condition(
             &mut problem,
             &cg,
             &x_all,
@@ -1969,5 +2275,626 @@ mod tests {
             detect_off_domain(&graph, &free_keys, &final_flat, &x_all, &y_all).is_none(),
             "a both-sided-bounded parameter and a free key missing from final_flat must both be skipped"
         );
+    }
+
+    /// #93: with a forced finite-difference Jacobian an *untied* graph takes the
+    /// same FD covariance path as a tied one — the covariance and condition
+    /// number are those of the graph-level FD Jacobian at the solution, not of
+    /// the per-kernel analytic Jacobian (which the default mode keeps).
+    #[test]
+    fn forced_fd_jacobian_drives_the_postfit_covariance() {
+        use super::{
+            compute_covariance_and_condition, faer_cond_from_gram, faer_cov_from_gram,
+            CompiledGraph,
+        };
+        use spectrafit_types::JacobianMode;
+
+        let mut graph = tied_two_gaussian_graph_with_scale(0.5, None);
+        graph.expr_edges.clear();
+        for node in &mut graph.nodes {
+            for p in node.parameters.values_mut() {
+                p.vary = true;
+                if p.value == 0.0 {
+                    p.value = 1.5;
+                }
+            }
+        }
+        let cg = CompiledGraph::compile(&graph).expect("graph should compile");
+        assert!(cg.tied_plan.is_empty(), "test graph must be untied");
+        let n_free = cg.free_keys.len();
+
+        let n = 40usize;
+        let x_all: Vec<f64> = (0..n)
+            .map(|i| -3.0 + 6.0 * i as f64 / (n - 1) as f64)
+            .collect();
+        let y_all: Vec<f64> = x_all
+            .iter()
+            .map(|&x| {
+                4.1 * (-(x + 1.05).powi(2) / (2.0 * 0.26)).exp()
+                    + 1.4 * (-(x - 0.95).powi(2) / (2.0 * 0.24)).exp()
+            })
+            .collect();
+        let (chi2, dof) = (0.37, (n - n_free) as i64);
+
+        let mut fd = build_lm_problem(&cg, &graph, x_all.clone(), y_all.clone(), vec![1.0; n]);
+        fd.jacobian_mode = JacobianMode::FiniteDifference;
+        let (cov_fd, cond_fd, _) =
+            compute_covariance_and_condition(&mut fd, &cg, &x_all, n_free, chi2, dof, false)
+                .expect("fd covariance");
+
+        // Reference: the FD-branch arithmetic on the problem's own FD Jacobian.
+        let mut jw = Vec::new();
+        fd.fd_weighted_jacobian_rowmajor(&mut jw)
+            .expect("fd jacobian");
+        let j = faer::Mat::from_fn(n, n_free, |i, c| jw[i * n_free + c]);
+        let gram = j.as_ref().transpose() * j.as_ref();
+        let mut cov_ref = faer_cov_from_gram(gram.as_ref()).expect("invertible");
+        let s = chi2 / dof as f64;
+        for a in 0..n_free {
+            for b in 0..n_free {
+                cov_ref[(a, b)] *= s;
+            }
+        }
+        let cov_fd = cov_fd.expect("fd covariance present");
+        for a in 0..n_free {
+            for b in 0..n_free {
+                assert_eq!(cov_fd[(a, b)], cov_ref[(a, b)], "cov[{a},{b}]");
+            }
+        }
+        assert_eq!(cond_fd, faer_cond_from_gram(gram.as_ref()));
+
+        // The default mode keeps the analytic covariance, which differs from
+        // the FD one in the low digits but agrees to FD accuracy.
+        let mut an = build_lm_problem(&cg, &graph, x_all.clone(), y_all, vec![1.0; n]);
+        let (cov_an, _, _) =
+            compute_covariance_and_condition(&mut an, &cg, &x_all, n_free, chi2, dof, false)
+                .expect("analytic covariance");
+        let cov_an = cov_an.expect("analytic covariance present");
+        let mut differs = false;
+        for a in 0..n_free {
+            for b in 0..n_free {
+                let (f, g) = (cov_fd[(a, b)], cov_an[(a, b)]);
+                differs |= f != g;
+                assert!(
+                    (f - g).abs() <= 1e-4 * f.abs().max(g.abs()).max(1e-12),
+                    "cov[{a},{b}]: fd {f:e} vs analytic {g:e}"
+                );
+            }
+        }
+        assert!(
+            differs,
+            "the forced FD covariance must not be the analytic one"
+        );
+    }
+    // ── #93 F4g: stationarity gate on the success flag ──────────────────────
+    //
+    // Fixture: five points, two orthogonal columns c1 = 1, c2 = (−2, −1, 0, 1, 2)
+    // and a residual direction d = (1, −2, 1, 0, 0) orthogonal to both, so the
+    // Gauss-Newton decrease of r = a·c1 + d is exactly 5a² / (5a² + 6).
+
+    const C1: [f64; 5] = [1.0, 1.0, 1.0, 1.0, 1.0];
+    const C2: [f64; 5] = [-2.0, -1.0, 0.0, 1.0, 2.0];
+    const D: [f64; 5] = [1.0, -2.0, 1.0, 0.0, 0.0];
+    const FREE: (f64, f64) = (f64::NEG_INFINITY, f64::INFINITY);
+
+    fn jac_from_cols(cols: &[&[f64]]) -> faer::Mat<f64> {
+        faer::Mat::from_fn(cols[0].len(), cols.len(), |i, c| cols[c][i])
+    }
+
+    /// `a·c1 + b·c2 + d`.
+    fn residual(a: f64, b: f64) -> Vec<f64> {
+        (0..5).map(|i| a * C1[i] + b * C2[i] + D[i]).collect()
+    }
+
+    fn gn(j: &faer::Mat<f64>, r: &[f64], theta: &[f64], bounds: &[(f64, f64)]) -> f64 {
+        super::gauss_newton_decrease(j.as_ref(), r, theta, bounds)
+    }
+
+    /// (i) A convergence test that fires at a non-stationary point no longer
+    /// reports success.
+    #[test]
+    fn gate_converged_stop_at_non_stationary_point_is_failure() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        let r = residual(0.5, 0.0);
+        let g = gn(&j, &r, &[1.0, 1.0], &[FREE, FREE]);
+        let expected = 1.25 / 7.25;
+        assert!(
+            (g - expected).abs() <= 1e-12 * expected,
+            "GN decrease must be ||P r||² / RSS = {expected}, got {g}"
+        );
+        for msg in ["converged_xtol", "converged_ftol", "converged_gtol"] {
+            assert!(
+                !stationarity_gate(true, msg, g, false),
+                "{msg} at GN = {g} must give success=false"
+            );
+        }
+    }
+
+    /// (ii) A `no_improvement_possible` stop at a stationary point is a
+    /// success (the Misra1a/b case at the certified optimum); a
+    /// `max_iterations` stop is not, at any GN.
+    #[test]
+    fn gate_soft_stop_at_stationary_point_is_success() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        let r = residual(0.0, 0.0);
+        let g = gn(&j, &r, &[1.0, 1.0], &[FREE, FREE]);
+        assert!(g <= 1e-28, "r ⟂ range(J) must give GN ≈ 0, got {g}");
+        assert!(stationarity_gate(
+            false,
+            "no_improvement_possible",
+            g,
+            false
+        ));
+        assert!(stationarity_gate(true, "converged_ftol", g, false));
+        // A budget stop never becomes a success, even at a stationary point.
+        assert!(!stationarity_gate(false, "max_iterations", g, false));
+        assert!(!stationarity_gate(false, "max_iterations", 0.0, false));
+        // Neither a hard failure nor an unknown key becomes a success.
+        assert!(!stationarity_gate(false, "numerical_error", g, false));
+        assert!(!stationarity_gate(
+            false,
+            "diverged_off_domain (x)",
+            g,
+            false
+        ));
+        // Not stationary: a soft stop stays a failure.
+        assert!(!stationarity_gate(
+            false,
+            "no_improvement_possible",
+            0.5,
+            false
+        ));
+        assert!(!stationarity_gate(false, "max_iterations", 0.5, false));
+        // NaN is not stationary.
+        assert!(!stationarity_gate(true, "converged_ftol", f64::NAN, false));
+    }
+
+    /// (iii) An optimum on a bound with the gradient pointing out of the box:
+    /// the component is held, the rest is stationary, success. g = 2 Jᵀ r with
+    /// the solver's residual ŷ − y, so at the lower bound g > 0 is outward and
+    /// at the upper bound g < 0 is outward.
+    #[test]
+    fn gate_held_component_on_bound_with_outward_gradient_is_success() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        // Lower bound 0, θ₁ = 0, g₁ = 2·c1ᵀr = 2·(0.5·5) > 0 → outward → held.
+        let r_lo = residual(0.5, 0.0);
+        let g_lo = gn(&j, &r_lo, &[0.0, 1.0], &[(0.0, f64::INFINITY), FREE]);
+        assert!(g_lo <= 1e-28, "held column must not count, got {g_lo}");
+        assert!(stationarity_gate(true, "converged_xtol", g_lo, false));
+        assert!(stationarity_gate(
+            false,
+            "no_improvement_possible",
+            g_lo,
+            false
+        ));
+        // Upper bound 2, θ₁ = 2, g₁ < 0 → outward → held.
+        let r_hi = residual(-0.5, 0.0);
+        let g_hi = gn(&j, &r_hi, &[2.0, 1.0], &[(f64::NEG_INFINITY, 2.0), FREE]);
+        assert!(g_hi <= 1e-28, "held column must not count, got {g_hi}");
+        assert!(stationarity_gate(true, "converged_xtol", g_hi, false));
+        // Every column held → nothing left to decrease.
+        let r_both = residual(0.5, 0.5);
+        let g_both = gn(
+            &j,
+            &r_both,
+            &[0.0, 0.0],
+            &[(0.0, f64::INFINITY), (0.0, f64::INFINITY)],
+        );
+        assert_eq!(g_both, 0.0);
+    }
+
+    /// (iv) The same point when the bound is not active: the gradient points
+    /// into the box, or θ is off the bound by more than 1e-12 relative. The
+    /// component counts and GN > 1e-6 gives success=false.
+    #[test]
+    fn gate_inactive_bound_counts_the_component() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        let expected = 1.25 / 7.25;
+        // On the lower bound, gradient inward (g₁ < 0).
+        let g_in_lo = gn(
+            &j,
+            &residual(-0.5, 0.0),
+            &[0.0, 1.0],
+            &[(0.0, f64::INFINITY), FREE],
+        );
+        // On the upper bound, gradient inward (g₁ > 0).
+        let g_in_hi = gn(
+            &j,
+            &residual(0.5, 0.0),
+            &[2.0, 1.0],
+            &[(f64::NEG_INFINITY, 2.0), FREE],
+        );
+        // Outward gradient but θ₁ off the bound.
+        let g_off = gn(
+            &j,
+            &residual(0.5, 0.0),
+            &[1e-3, 1.0],
+            &[(0.0, f64::INFINITY), FREE],
+        );
+        for g in [g_in_lo, g_in_hi, g_off] {
+            assert!(
+                (g - expected).abs() <= 1e-12 * expected,
+                "an inactive bound must not hold the column: GN = {g}"
+            );
+            assert!(!stationarity_gate(true, "converged_xtol", g, false));
+            assert!(!stationarity_gate(
+                false,
+                "no_improvement_possible",
+                g,
+                false
+            ));
+        }
+        // The 1e-12 relative rule: |θ − b| ≤ 1e-12 · max(|b|, 1), here 5e-12.
+        let bounds = [(5.0, f64::INFINITY), FREE];
+        let r = residual(0.5, 0.0);
+        let g_inside_tol = gn(&j, &r, &[5.0 + 4e-12, 1.0], &bounds);
+        let g_outside_tol = gn(&j, &r, &[5.0 + 6e-12, 1.0], &bounds);
+        assert!(g_inside_tol <= 1e-28, "4e-12 from b = 5 is active");
+        assert!(
+            (g_outside_tol - expected).abs() <= 1e-12 * expected,
+            "6e-12 from b = 5 is not active"
+        );
+        // Below 1 the rule is absolute: 1e-12 around b = 0.
+        let bounds0 = [(0.0, f64::INFINITY), FREE];
+        assert!(gn(&j, &r, &[0.9e-12, 1.0], &bounds0) <= 1e-28);
+        assert!(gn(&j, &r, &[1.1e-12, 1.0], &bounds0) > 0.1);
+    }
+
+    /// (v) The threshold: GN ≤ 1e-6 is stationary. r = b·c2 + d with
+    /// 10 b² / (10 b² + 6) = t.
+    #[test]
+    fn gate_threshold_is_one_in_a_million() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        for (t, pass) in [(0.999e-6_f64, true), (1.001e-6, false)] {
+            let b = (0.6 * t / (1.0 - t)).sqrt();
+            let g = gn(&j, &residual(0.0, b), &[1.0, 1.0], &[FREE, FREE]);
+            assert!(
+                (g - t).abs() <= 1e-9 * t,
+                "GN decrease must equal {t}, got {g}"
+            );
+            assert_eq!(
+                stationarity_gate(true, "converged_ftol", g, false),
+                pass,
+                "converged at GN = {g}"
+            );
+            assert_eq!(
+                stationarity_gate(false, "no_improvement_possible", g, false),
+                pass,
+                "soft stop at GN = {g}"
+            );
+        }
+    }
+
+    /// (vi) Rank-deficient J: duplicate columns give the projection onto the
+    /// range, and a column below rcond · σ_max (rcond = ε · max(m, n)) is
+    /// dropped, as `numpy.linalg.lstsq(rcond=None)` does.
+    #[test]
+    fn gate_rank_deficient_jacobian() {
+        let j_dup = jac_from_cols(&[&C1, &C1, &C2]);
+        let theta = [1.0, 1.0, 1.0];
+        let bounds = [FREE, FREE, FREE];
+        let expected = 1.25 / 7.25;
+        let g = gn(&j_dup, &residual(0.5, 0.0), &theta, &bounds);
+        assert!(
+            (g - expected).abs() <= 1e-10 * expected,
+            "duplicate columns: GN = {g}, expected {expected}"
+        );
+        let g0 = gn(&j_dup, &residual(0.0, 0.0), &theta, &bounds);
+        assert!(g0 <= 1e-20, "duplicate columns, r ⟂ range: GN = {g0}");
+        // A column along d at 1e-20 of the others is numerically zero.
+        let tiny: Vec<f64> = D.iter().map(|v| v * 1e-20).collect();
+        let j_tiny = jac_from_cols(&[&C1, &C2, &tiny]);
+        let g_tiny = gn(&j_tiny, &D, &theta, &bounds);
+        assert!(
+            g_tiny <= 1e-20,
+            "a column below rcond must be dropped, GN = {g_tiny}"
+        );
+        // The same column at full scale is in the range: GN = 1.
+        let j_full = jac_from_cols(&[&C1, &C2, &D]);
+        let g_full = gn(&j_full, &D, &theta, &bounds);
+        assert!((g_full - 1.0).abs() <= 1e-12, "GN = {g_full}");
+    }
+
+    /// (vii) RSS = 0 counts as stationary; a non-finite or malformed input
+    /// does not.
+    #[test]
+    fn gate_zero_rss_is_stationary_and_bad_input_is_not() {
+        use super::stationarity_gate;
+        let j = jac_from_cols(&[&C1, &C2]);
+        let g = gn(&j, &[0.0; 5], &[1.0, 1.0], &[FREE, FREE]);
+        assert_eq!(g, 0.0);
+        assert!(stationarity_gate(true, "residuals_zero", g, false));
+        assert!(stationarity_gate(
+            false,
+            "no_improvement_possible",
+            g,
+            false
+        ));
+        // Zero-residual clause: RSS ≤ ε·Σ(y/σ)² is stationary at any GN, for a
+        // convergence test or `no_improvement_possible`, never `max_iterations`.
+        let y_sq = 100.0;
+        assert!(super::at_zero_residual(0.0, y_sq));
+        assert!(super::at_zero_residual(0.99 * f64::EPSILON * y_sq, y_sq));
+        assert!(!super::at_zero_residual(1.01 * f64::EPSILON * y_sq, y_sq));
+        assert!(!super::at_zero_residual(f64::NAN, y_sq));
+        assert!(!super::at_zero_residual(f64::INFINITY, f64::INFINITY));
+        assert!(stationarity_gate(true, "converged_gtol", 1.0, true));
+        assert!(stationarity_gate(
+            false,
+            "no_improvement_possible",
+            1.0,
+            true
+        ));
+        assert!(!stationarity_gate(false, "max_iterations", 1.0, true));
+        assert!(!stationarity_gate(false, "numerical_error", 1.0, true));
+        assert!(!stationarity_gate(true, "converged_gtol", 1.0, false));
+        // No free column: nothing to decrease.
+        let j_empty = faer::Mat::<f64>::zeros(5, 0);
+        assert_eq!(gn(&j_empty, &residual(0.5, 0.0), &[], &[]), 0.0);
+        // Non-finite residual or Jacobian, or a row-count mismatch → ∞.
+        let mut r_nan = residual(0.0, 0.0);
+        r_nan[2] = f64::NAN;
+        assert_eq!(gn(&j, &r_nan, &[1.0, 1.0], &[FREE, FREE]), f64::INFINITY);
+        let mut j_nan = jac_from_cols(&[&C1, &C2]);
+        j_nan[(1, 1)] = f64::NAN;
+        assert_eq!(
+            gn(&j_nan, &residual(0.0, 0.0), &[1.0, 1.0], &[FREE, FREE]),
+            f64::INFINITY
+        );
+        assert_eq!(
+            gn(&j, &[1.0, 2.0, 3.0], &[1.0, 1.0], &[FREE, FREE]),
+            f64::INFINITY
+        );
+    }
+
+    /// The gate through `assemble_result`: a one-parameter constant fit with
+    /// the solver's weighted residual and analytic Jacobian. Run the stop
+    /// through post-fit assembly at `c`, with `min` as the lower bound on `c`.
+    fn assemble_constant(
+        c: f64,
+        min: f64,
+        sigma: Option<Vec<f64>>,
+        success: bool,
+        message: &str,
+    ) -> spectrafit_types::FitResultSpec {
+        use super::{assemble_result, CompiledGraph, LmSolveOutcome, PostfitInputs};
+        use spectrafit_types::{
+            FitGraphSpec, MeasurementSpec, ModelNodeSpec, ModelTypeStr, ParameterSpec,
+        };
+        use std::collections::HashMap;
+
+        let mut params = HashMap::new();
+        params.insert(
+            "c".to_string(),
+            ParameterSpec {
+                value: c,
+                min,
+                max: f64::INFINITY,
+                vary: true,
+                expr: None,
+                scale: None,
+            },
+        );
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "k".into(),
+                model_type: ModelTypeStr::Constant,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let cg = CompiledGraph::compile(&graph).expect("graph should compile");
+        let x_all = vec![0.0, 1.0, 2.0, 3.0];
+        let y_all = vec![1.0, 2.0, 3.0, 4.0];
+        let sigma_vec = sigma.clone().unwrap_or_else(|| vec![1.0; 4]);
+        let problem = build_lm_problem(&cg, &graph, x_all.clone(), y_all.clone(), sigma_vec);
+        let outcome = LmSolveOutcome {
+            result_problem: problem,
+            n_iter_val: 3,
+            success_val: success,
+            message_val: message.to_string(),
+            solve_ns: 0,
+            cost_history: vec![],
+            gradient_norm_history: vec![],
+            params_history: vec![],
+        };
+        let dataset = MeasurementSpec {
+            schema_version: None,
+            x: vec![x_all.clone()],
+            y: y_all.clone(),
+            sigma,
+            label: None,
+        };
+        assemble_result(
+            outcome,
+            PostfitInputs {
+                cg: &cg,
+                graph: &graph,
+                datasets: &[dataset],
+                x_all: &x_all,
+                y_all: &y_all,
+            },
+            vec![0.0; 4],
+        )
+        .expect("assembly should succeed")
+    }
+
+    #[test]
+    fn assemble_result_applies_the_stationarity_gate() {
+        let ninf = f64::NEG_INFINITY;
+        // Soft stop at the optimum c = mean(y) = 2.5 → success, message kept.
+        let r = assemble_constant(2.5, ninf, None, false, "no_improvement_possible");
+        assert!(r.success, "soft stop at the optimum must be a success");
+        assert_eq!(r.message, "no_improvement_possible");
+        // Convergence test at c = 3: GN = n·mean(r)²/RSS = 1/6 → failure.
+        let r = assemble_constant(3.0, ninf, None, true, "converged_xtol");
+        assert!(!r.success, "converged_xtol at GN = 1/6 must be a failure");
+        assert_eq!(r.message, "converged_xtol");
+        // c = 3 on its lower bound, gradient 2·Σ(c − y) = 4 > 0 outward → held.
+        let r = assemble_constant(3.0, 3.0, None, true, "converged_xtol");
+        assert!(r.success, "held at an active bound must be a success");
+        // Hard failure stays a failure at the optimum.
+        let r = assemble_constant(2.5, ninf, None, false, "numerical_error");
+        assert!(!r.success);
+        assert_eq!(r.message, "numerical_error");
+    }
+
+    /// Zero-residual clause: at RSS ≤ ε·Σ(y/σ)² the relative GN measure is
+    /// undefined (the round-off residual lies in range(J), GN ≈ 1), so the
+    /// stop counts as stationary. Constant data y = 2.5 and c = 2.5 + offset:
+    /// offset 1e-9 gives RSS/Σy² = 1e-18 ≤ ε, offset 1e-6 gives 1e-12 > ε.
+    #[test]
+    fn assemble_result_zero_residual_clause() {
+        use super::{assemble_result, CompiledGraph, LmSolveOutcome, PostfitInputs};
+        use spectrafit_types::{
+            FitGraphSpec, MeasurementSpec, ModelNodeSpec, ModelTypeStr, ParameterSpec,
+        };
+        use std::collections::HashMap;
+
+        let run = |offset: f64, message: &str, success: bool| {
+            let mut params = HashMap::new();
+            params.insert(
+                "c".to_string(),
+                ParameterSpec {
+                    value: 2.5 + offset,
+                    min: f64::NEG_INFINITY,
+                    max: f64::INFINITY,
+                    vary: true,
+                    expr: None,
+                    scale: None,
+                },
+            );
+            let graph = FitGraphSpec {
+                schema_version: "0.1".into(),
+                nodes: vec![ModelNodeSpec {
+                    id: "k".into(),
+                    model_type: ModelTypeStr::Constant,
+                    dataset_index: None,
+                    parameters: params,
+                }],
+                expr_edges: vec![],
+            };
+            let cg = CompiledGraph::compile(&graph).expect("graph should compile");
+            let x_all = vec![0.0, 1.0, 2.0, 3.0];
+            let y_all = vec![2.5; 4];
+            let problem = build_lm_problem(&cg, &graph, x_all.clone(), y_all.clone(), vec![1.0; 4]);
+            let outcome = LmSolveOutcome {
+                result_problem: problem,
+                n_iter_val: 3,
+                success_val: success,
+                message_val: message.to_string(),
+                solve_ns: 0,
+                cost_history: vec![],
+                gradient_norm_history: vec![],
+                params_history: vec![],
+            };
+            let dataset = MeasurementSpec {
+                schema_version: None,
+                x: vec![x_all.clone()],
+                y: y_all.clone(),
+                sigma: None,
+                label: None,
+            };
+            assemble_result(
+                outcome,
+                PostfitInputs {
+                    cg: &cg,
+                    graph: &graph,
+                    datasets: &[dataset],
+                    x_all: &x_all,
+                    y_all: &y_all,
+                },
+                vec![0.0; 4],
+            )
+            .expect("assembly should succeed")
+        };
+        let r = run(1e-9, "converged_gtol", true);
+        assert!(r.chi2 > 0.0, "RSS must be above 0 for this test");
+        assert!(r.success, "RSS at round-off level counts as stationary");
+        assert_eq!(r.message, "converged_gtol");
+        assert!(run(1e-9, "no_improvement_possible", false).success);
+        // A budget stop never succeeds, even at zero residual.
+        assert!(!run(1e-9, "max_iterations", false).success);
+        // Above the floor the relative GN measure decides: GN = 1 → failure.
+        assert!(!run(1e-6, "converged_gtol", true).success);
+    }
+
+    /// The gate measures the objective the solver minimises, Σ((ŷ − y)/σ)²:
+    /// with σ = (1, 1, 1, 0.1) the unweighted optimum 2.5 is not stationary,
+    /// the weighted optimum Σ(y/σ²)/Σ(1/σ²) = 406/103 is.
+    #[test]
+    fn assemble_result_gate_uses_the_weighted_residual() {
+        let ninf = f64::NEG_INFINITY;
+        let sigma = Some(vec![1.0, 1.0, 1.0, 0.1]);
+        let r = assemble_constant(2.5, ninf, sigma.clone(), false, "no_improvement_possible");
+        assert!(!r.success, "unweighted optimum is not stationary under σ");
+        let r = assemble_constant(406.0 / 103.0, ninf, sigma, false, "no_improvement_possible");
+        assert!(r.success, "weighted optimum is stationary under σ");
+    }
+
+    /// Tied graphs use the solver's finite-difference weighted Jacobian. A
+    /// constant offset of 0.3 on two-Gaussian data is not in the range of
+    /// the Gaussian columns, so a converged stop there is not stationary; at
+    /// RSS = 0 it is.
+    #[test]
+    fn assemble_result_gate_on_tied_graph_uses_fd_jacobian() {
+        use super::{assemble_result, CompiledGraph, LmSolveOutcome, PostfitInputs};
+        use spectrafit_graph::evaluate_compiled;
+        use spectrafit_types::MeasurementSpec;
+
+        for (offset, expect_success) in [(0.3, false), (0.0, true)] {
+            let graph = tied_two_gaussian_graph_with_scale(0.5, Some(2.0));
+            let cg = CompiledGraph::compile(&graph).expect("graph should compile");
+            let x_all: Vec<f64> = (0..40).map(|i| -3.0 + 6.0 * i as f64 / 39.0).collect();
+            let mut problem =
+                build_lm_problem(&cg, &graph, x_all.clone(), vec![0.0; 40], vec![1.0; 40]);
+            let p0: Vec<f64> = problem.params.iter().copied().collect();
+            problem.set_free_and_tied(&p0);
+            let model = evaluate_compiled(&cg, &problem.to_flat(), &x_all).expect("eval");
+            let y_all: Vec<f64> = model.iter().map(|v| v + offset).collect();
+            problem.y_concat = y_all.clone();
+            let outcome = LmSolveOutcome {
+                result_problem: problem,
+                n_iter_val: 3,
+                success_val: true,
+                message_val: "converged_xtol".to_string(),
+                solve_ns: 0,
+                cost_history: vec![],
+                gradient_norm_history: vec![],
+                params_history: vec![],
+            };
+            let dataset = MeasurementSpec {
+                schema_version: None,
+                x: vec![x_all.clone()],
+                y: y_all.clone(),
+                sigma: None,
+                label: None,
+            };
+            let r = assemble_result(
+                outcome,
+                PostfitInputs {
+                    cg: &cg,
+                    graph: &graph,
+                    datasets: &[dataset],
+                    x_all: &x_all,
+                    y_all: &y_all,
+                },
+                vec![0.0; 40],
+            )
+            .expect("assembly should succeed");
+            assert_eq!(
+                r.success, expect_success,
+                "tied graph, offset {offset}: message {}",
+                r.message
+            );
+            assert_eq!(r.message, "converged_xtol");
+        }
     }
 }

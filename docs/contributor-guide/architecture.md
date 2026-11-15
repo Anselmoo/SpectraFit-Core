@@ -138,6 +138,7 @@ independent of this page's filtering.
 |   `-- spectrafit_core/
 |-- reproducibility/
 |   |-- figures/
+|   |-- interop/
 |   |-- ladder/
 |   |-- nist_unimplemented/
 |   |-- seed-sweep/
@@ -159,6 +160,7 @@ independent of this page's filtering.
 |   |-- check_stale_github_branches.py
 |   |-- check_vendored_assets.py
 |   |-- coverage_atlas.py
+|   |-- export_graph_schema.py
 |   |-- fair.py
 |   |-- fast_lane_gate.py
 |   |-- generate_rustdoc_index.py
@@ -170,6 +172,9 @@ independent of this page's filtering.
 |   |-- publish_snapshot.sh
 |   |-- publish_sync.py
 |   |-- purge_github_actions_runs.py
+|   |-- rc_wheel_install_smoke.sh
+|   |-- rc_wheel_manifest.py
+|   |-- rc_wheel_publish.sh
 |   |-- remote_bench.sh
 |   |-- remote_bench_worker.sh
 |   |-- render_architecture_tree.py
@@ -183,6 +188,7 @@ independent of this page's filtering.
 |   |-- integration/
 |   |-- meta/
 |   |-- parity/
+|   |-- regression/
 |   |-- scenario/
 |   |-- unit/
 |   `-- conftest.py
@@ -333,12 +339,21 @@ None`, `spectrafit-graph::compiler`):
 | Fixed   | False | None | Constant; never updated                      |
 | Expr    | any   | set  | Derived from expression every iteration (Rust `TiedPlan`) — `vary` is ignored |
 
-Bounds (min, max) are enforced by reflective projection, not clamping: a step
-that overshoots a bound is mirrored back into range (`p < lo` → `2*lo - p`,
-and symmetrically at `hi`), with an extreme overshoot parked at the violated
-bound instead of reflecting past the opposite one. This runs in
-`LmProblem::apply_free_params` (`crates/spectrafit-solver/src/lm_problem.rs`),
-called from both solver front-ends' `set_params`, not inside `residuals()`.
+How bounds (min, max) are enforced depends on the solver. The faer
+Levenberg–Marquardt family (`lm`, `trf`, `geodesic`, `auto` when it does not
+route to VarPro, and the LM refinement inside `global` and `irls`) projects
+every trial point onto the box: a step that overshoots a bound is clamped onto
+it. A parameter on a bound whose descent direction points out of the box is
+then held there by the active-set step, which solves the damped step for the
+other parameters (module doc of
+`crates/spectrafit-levenberg-marquardt/src/driver.rs`). `lm-legacy`, `dogleg`
+and `newton-cg` instead reflect an overshooting step back into range
+(`p < lo` → `2*lo - p`, and symmetrically at `hi`), with an extreme overshoot
+parked at the violated bound instead of reflecting past the opposite one. The
+reflection runs in `LmProblem::apply_free_params`
+(`crates/spectrafit-solver/src/lm_problem.rs`), called from both solver
+front-ends' `set_params`, not inside `residuals()`; on the faer LM path the
+point already lies in the box, so it changes nothing there.
 `scale` is applied as an internal change-of-variables preconditioning: the
 solver works on `theta' = theta / scale` (`LmProblem::scales`,
 `apply_free_params`/`scale_columns_rowmajor` in

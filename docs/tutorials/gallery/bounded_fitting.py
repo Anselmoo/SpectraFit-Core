@@ -1,16 +1,14 @@
-"""Bounded fitting with an active-bounds solver (``"trf"``).
+"""Bounded fitting with ``"lm"`` and ``"trf"``.
 
 A physical bound like "amplitude cannot be negative" is only interesting
 when it is likely to be *active* — a small, noisy peak whose unconstrained
 least-squares optimum would otherwise land slightly negative. Plain
-``"lm"`` is the fastest general-purpose solver, but [Choosing a
-Solver](../../how-to/choosing-a-solver.md) recommends ``"trf"`` (Trust
-Region Reflective) whenever "bounds are frequently active": ``"trf"`` adds
-Coleman–Li bound scaling that shrinks trust-region steps as a parameter
-approaches an active bound, on top of the reflective-bounds projection that
-every LM-family solver in this codebase already shares (so ``"lm"`` alone
-is never bound-*violating* — reflection alone keeps every LM-family result
-inside ``[min, max]``, ``"trf"`` just approaches the wall differently).
+``"lm"`` is the fastest general-purpose solver; [Choosing a
+Solver](../../how-to/choosing-a-solver.md) describes ``"trf"``, which runs the
+``"lm"`` core and adds Coleman–Li bound-distance scaling: the steps of a
+parameter with two finite bounds shrink as it approaches the bound it moves
+toward. A one-sided bound like ``amplitude >= 0`` is not scaled. Both solvers project
+trial points onto ``[min, max]``, so neither is bound-*violating*.
 
 This is a different question from :doc:`varpro_vs_lm`, which compares
 solvers on an *unconstrained* separable problem. This example is solver
@@ -111,16 +109,12 @@ def compare(
 
     The unbounded fit's amplitude going negative is exactly the physically
     implausible result the ``min=0`` bound rules out. Both bounded solvers
-    are asserted to respect that bound: on this small problem they in fact
-    converge to numerically identical iterates (``n_iter`` and the final
-    amplitude match) — this codebase's reflective-bounds projection
-    (``crates/spectrafit-solver/src/lm_problem.rs``) is shared by every
-    LM-family solver, so ``"trf"``'s Coleman–Li step scaling changes *how*
-    the optimizer approaches an active bound rather than *whether* it ends
-    up inside it. The scaling matters more on problems where a bound stays
-    persistently and severely active across many iterations than it does on
-    this small demo — this script reports what is actually measured here,
-    not a general performance claim.
+    are asserted to respect that bound, and they converge to numerically
+    identical iterates (``n_iter`` and the final amplitude match): the only
+    bound is one-sided, where ``"trf"``'s Coleman–Li bound-distance scaling
+    does not act, so both solvers take the same steps and both project trial
+    points onto the bound. This script reports what is measured here, not a
+    general performance claim.
     """
     unbounded_amp = unbounded_result.parameters["peak.amplitude"].value
     print(f"unconstrained amplitude estimate: {unbounded_amp:.4f} (no min=0 bound)")

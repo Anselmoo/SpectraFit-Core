@@ -23,7 +23,8 @@ use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
 use spectrafit_graph::{evaluate_compiled, CompiledGraph};
 use spectrafit_types::{
-    CoreError, FitGraphSpec, FitOptionsSpec, FitResultSpec, MeasurementSpec, TerminationReason,
+    CoreError, FitGraphSpec, FitOptionsSpec, FitResultSpec, JacobianMode, MeasurementSpec,
+    TerminationReason,
 };
 
 use crate::error::SolverError;
@@ -64,8 +65,9 @@ pub(crate) fn point_major_x(ds: &MeasurementSpec) -> Vec<f64> {
 /// * [`Lm`](Solver::Lm) / [`Trf`](Solver::Trf) / [`Geodesic`](Solver::Geodesic) /
 ///   [`LmLegacy`](Solver::LmLegacy) — the Levenberg–Marquardt family. All run the
 ///   shared pre-solve + solve below: the first three on the faer
-///   `spectrafit-levenberg-marquardt` core (TRF = Coleman–Li bound scaling,
-///   geodesic = Transtrum acceleration), `LmLegacy` on the nalgebra oracle.
+///   `spectrafit-levenberg-marquardt` core (TRF = Coleman–Li bound-distance
+///   scaling of parameters with two finite bounds, geodesic = Transtrum
+///   acceleration), `LmLegacy` on the nalgebra oracle.
 /// * [`Irls`](Solver::Irls) / [`Global`](Solver::Global) / [`Varpro`](Solver::Varpro)
 ///   — distinct algorithms that dispatch early to their own module/crate.
 /// * [`Auto`](Solver::Auto) — VarPro when the graph is separable, unconstrained
@@ -76,7 +78,8 @@ enum Solver {
     Lm,
     /// nalgebra `levenberg-marquardt` parity oracle.
     LmLegacy,
-    /// Trust-Region-Reflective (Coleman–Li bound scaling on the faer LM core).
+    /// The faer LM core with Coleman–Li bound-distance scaling of parameters with
+    /// two finite bounds; trial points are projected onto the box as in [`Lm`](Solver::Lm).
     Trf,
     /// Geodesic acceleration on the faer LM core.
     Geodesic,
@@ -274,6 +277,7 @@ pub fn fit(
         params: init_params,
         scales: scales.clone(),
         sigma,
+        jacobian_mode: options.jacobian,
         residual_buf: RefCell::new(vec![0.0; y_all.len()]),
         // One Jacobian row per data point (residual), not per coordinate: size by
         // the point count (y_all.len()), which equals x_all.len() only in 1-D.
@@ -370,12 +374,25 @@ fn dispatch_solver(
                     Err(SolverError::VarproDatasetScopingUnsupported.into()),
                 );
             }
+            // VarPro differentiates its basis functions through the kernels; it has
+            // no graph-level residual Jacobian the forced finite-difference mode
+            // could replace (#93). Reject rather than run analytic derivatives.
+            if options.jacobian == JacobianMode::FiniteDifference {
+                return ControlFlow::Break(Err(
+                    SolverError::VarproFiniteDifferenceUnsupported.into()
+                ));
+            }
             // Falls through to the shared VarPro tail below, which applies the
             // post-fit success guards. Do not call `solve_varpro_path` directly
             // here — see the note on that tail.
             ControlFlow::Break(run_varpro_guarded(graph, &datasets, options))
         }
-        Solver::Auto if graph_prefers_varpro(graph) => {
+        // With a forced finite-difference Jacobian `auto` never routes to VarPro
+        // (it cannot honour that mode, see the explicit arm above); it falls
+        // through to TRF like any non-VarPro graph.
+        Solver::Auto
+            if options.jacobian == JacobianMode::Analytic && graph_prefers_varpro(graph) =>
+        {
             // MUST use the same guarded tail as the explicit `Solver::Varpro`
             // arm above. This arm previously called `solve_varpro_path` raw,
             // skipping `finalize_varpro_result` — so on a graph where automatic
@@ -673,8 +690,9 @@ fn run_lm_solve<'a>(
                 // `solver="geodesic"` (Transtrum acceleration) — faster on sloppy /
                 // degenerate multi-peak surfaces; otherwise plain faer LM.
                 geodesic: solver == Solver::Geodesic,
-                // `solver="trf"` (Trust-Region-Reflective) — Coleman–Li bound scaling
-                // so steps shrink near active bounds. `solver="auto"` that did not
+                // `solver="trf"` — Coleman–Li bound-distance scaling, so steps of a
+                // parameter with two finite bounds shrink near the bound it moves
+                // toward. `solver="auto"` that did not
                 // route to VarPro also lands here as TRF: across a representative
                 // case per scenario family, TRF is the fastest LM-family strategy at
                 // top accuracy in most problem classes. The TRF-over-VarPro speed
@@ -972,6 +990,7 @@ mod tests {
             delta0: None,
             max_delta: None,
             eta: None,
+            jacobian: JacobianMode::Analytic,
         }
     }
 
@@ -1777,6 +1796,64 @@ mod tests {
         );
     }
 
+    /// A collapsed-peak end point that the solver's convergence test accepts and
+    /// the stationarity gate refuses reports `success=false` with the
+    /// degenerate-fit reason as its message, not the bare convergence test.
+    #[test]
+    fn gate_refused_peak_collapse_keeps_degenerate_fit_message() {
+        let n = 120usize;
+        let x: Vec<f64> = (0..n)
+            .map(|i| -4.0 + 8.0 * i as f64 / (n - 1) as f64)
+            .collect();
+        let y: Vec<f64> = x
+            .iter()
+            .map(|&xi| gaussian(xi, 3.0, 0.3, 0.8) + 0.05 * (13.7 * xi).sin())
+            .collect();
+        let mut params: HashMap<String, ParameterSpec> = HashMap::new();
+        params.insert("amplitude".into(), make_param(50.0, true));
+        params.insert("center".into(), make_param(-3.9, true));
+        params.insert(
+            "sigma".into(),
+            ParameterSpec {
+                value: 0.05,
+                min: 1e-3,
+                max: f64::INFINITY,
+                vary: true,
+                expr: None,
+                scale: None,
+            },
+        );
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "peak".into(),
+                model_type: ModelTypeStr::Gaussian,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let data = MeasurementSpec {
+            schema_version: None,
+            x: vec![x],
+            y,
+            sigma: None,
+            label: None,
+        };
+        let r = fit(&graph, vec![data], &default_options()).expect("fit runs");
+        assert!(
+            !r.success,
+            "collapsed peak reported success, r2={}",
+            r.r_squared
+        );
+        assert!(r.r_squared < 0.0, "r2={}", r.r_squared);
+        assert!(
+            r.message.starts_with("degenerate_fit"),
+            "expected the degenerate_fit reason, got {:?}",
+            r.message
+        );
+    }
+
     // ── VarPro rejects dataset_index scoping (it is not scope-aware) ──────────
 
     #[test]
@@ -2341,5 +2418,320 @@ mod tests {
                 "map_termination({input:?}) should map to {expected:?}, got {mapped:?}"
             );
         }
+    }
+
+    // ── #93: FitOptionsSpec.jacobian = "finite_difference" ──────────────────
+
+    /// A single Gaussian with deterministic, non-zero residuals so the
+    /// covariance (and hence `stderr`) is not degenerate.
+    fn fd_mode_gaussian_inputs() -> (FitGraphSpec, MeasurementSpec) {
+        let n = 60usize;
+        let x: Vec<f64> = (0..n)
+            .map(|i| -1.0 + 6.0 * i as f64 / (n - 1) as f64)
+            .collect();
+        let y: Vec<f64> = x
+            .iter()
+            .map(|&xi| gaussian(xi, 5.0, 2.0, 0.5) + 0.02 * (7.0 * xi).sin())
+            .collect();
+        let mut params: HashMap<String, ParameterSpec> = HashMap::new();
+        params.insert("amplitude".into(), make_param(4.0, true));
+        params.insert("center".into(), make_param(1.8, true));
+        params.insert("sigma".into(), make_param(0.6, true));
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "g1".into(),
+                model_type: ModelTypeStr::Gaussian,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let dataset = MeasurementSpec {
+            schema_version: None,
+            x: vec![x],
+            y,
+            sigma: None,
+            label: None,
+        };
+        (graph, dataset)
+    }
+
+    /// Every solver path that consumes a Jacobian runs with the forced FD
+    /// Jacobian: the fit converges to the analytic-mode optimum (to FD
+    /// accuracy) and its post-fit `stderr` comes from the FD Jacobian (so it
+    /// is not bit-identical to the analytic one). `irls` and `global` reach the
+    /// LM core through `..options.clone()`, so the option must survive that.
+    #[test]
+    fn forced_fd_jacobian_runs_on_every_jacobian_consuming_solver() {
+        let (graph, dataset) = fd_mode_gaussian_inputs();
+        for solver in [
+            "lm",
+            "lm-legacy",
+            "trf",
+            "geodesic",
+            "dogleg",
+            "newton-cg",
+            "irls",
+            "global",
+        ] {
+            let opts = |jacobian| FitOptionsSpec {
+                solver: solver.into(),
+                jacobian,
+                ..default_options()
+            };
+            let an = fit(&graph, vec![dataset.clone()], &opts(JacobianMode::Analytic))
+                .expect("analytic fit");
+            let fd = fit(
+                &graph,
+                vec![dataset.clone()],
+                &opts(JacobianMode::FiniteDifference),
+            )
+            .expect("fd fit");
+            assert!(an.success, "{solver}: analytic fit must converge");
+            assert!(fd.success, "{solver}: fd fit must converge: {}", fd.message);
+            let mut stderr_differs = false;
+            for (k, pa) in &an.parameters {
+                let pf = &fd.parameters[k];
+                assert!(
+                    (pa.value - pf.value).abs() <= 1e-5 * pa.value.abs().max(1.0),
+                    "{solver} {k}: analytic {} vs fd {}",
+                    pa.value,
+                    pf.value
+                );
+                stderr_differs |= pa.stderr != pf.stderr;
+            }
+            assert!(
+                stderr_differs,
+                "{solver}: the fd-mode stderr must come from the FD Jacobian"
+            );
+        }
+    }
+
+    /// The default stays analytic: omitting the option and passing
+    /// `JacobianMode::Analytic` explicitly give bit-identical results.
+    #[test]
+    fn default_jacobian_mode_is_bit_identical_to_explicit_analytic() {
+        let (graph, dataset) = fd_mode_gaussian_inputs();
+        let implicit = fit(&graph, vec![dataset.clone()], &FitOptionsSpec::default()).unwrap();
+        let explicit = fit(
+            &graph,
+            vec![dataset],
+            &FitOptionsSpec {
+                jacobian: JacobianMode::Analytic,
+                ..FitOptionsSpec::default()
+            },
+        )
+        .unwrap();
+        for (k, p) in &implicit.parameters {
+            let q = &explicit.parameters[k];
+            assert_eq!(p.value.to_bits(), q.value.to_bits(), "{k} value");
+            assert_eq!(
+                p.stderr.map(f64::to_bits),
+                q.stderr.map(f64::to_bits),
+                "{k} stderr"
+            );
+        }
+        assert_eq!(implicit.chi2.to_bits(), explicit.chi2.to_bits());
+    }
+
+    /// `auto` on a VarPro-eligible graph runs TRF under the forced FD mode:
+    /// bit-identical to an explicit `trf` + FD fit.
+    #[test]
+    fn auto_with_forced_fd_jacobian_runs_trf_instead_of_varpro() {
+        let (graph, dataset) = make_varpro_inputs();
+        assert!(
+            graph_prefers_varpro(&graph),
+            "fixture must be VarPro-eligible"
+        );
+        let opts = |solver: &str| FitOptionsSpec {
+            solver: solver.into(),
+            jacobian: JacobianMode::FiniteDifference,
+            ..default_options()
+        };
+        let auto = fit(&graph, vec![dataset.clone()], &opts("auto")).expect("auto fd");
+        let trf = fit(&graph, vec![dataset], &opts("trf")).expect("trf fd");
+        for (k, p) in &auto.parameters {
+            assert_eq!(p.value.to_bits(), trf.parameters[k].value.to_bits(), "{k}");
+        }
+        assert_eq!(auto.chi2.to_bits(), trf.chi2.to_bits());
+        assert_eq!(auto.n_iter, trf.n_iter);
+    }
+
+    /// Explicit VarPro cannot honour the forced FD mode and says so.
+    #[test]
+    fn varpro_rejects_forced_fd_jacobian() {
+        let (graph, dataset) = make_varpro_inputs();
+        let opts = FitOptionsSpec {
+            solver: "varpro".into(),
+            jacobian: JacobianMode::FiniteDifference,
+            ..default_options()
+        };
+        let err = fit(&graph, vec![dataset], &opts).expect_err("varpro + fd must error");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("finite_difference") && msg.contains("varpro"),
+            "unexpected message: {msg}"
+        );
+    }
+
+    // ── #93 F4g: the stationarity gate on whole fits ─────────────────────────
+    //
+    // NIST StRD Misra1a/Misra1b (https://www.itl.nist.gov/div898/strd/nls/),
+    // the same data and options as `tests/scenario/nist_strd/test_misra1{a,b}.py`
+    // (lm, tolerance 1e-12, max_iterations 10000, both parameters min = 0). The
+    // fit reaches the certified optimum and may stop on
+    // `no_improvement_possible`; at a stationary end point that is a success.
+
+    const MISRA_X: [f64; 14] = [
+        77.6, 114.9, 141.1, 190.8, 239.9, 289.0, 332.8, 378.4, 434.8, 477.3, 536.8, 593.1, 689.1,
+        760.0,
+    ];
+    const MISRA_Y: [f64; 14] = [
+        10.07, 14.73, 17.94, 23.93, 29.61, 35.18, 40.02, 44.82, 50.76, 55.05, 61.01, 66.40, 75.47,
+        81.78,
+    ];
+
+    fn misra_fit(model: ModelTypeStr, b1: f64, b2: f64) -> FitResultSpec {
+        let lower0 = |value: f64| ParameterSpec {
+            value,
+            min: 0.0,
+            max: f64::INFINITY,
+            vary: true,
+            expr: None,
+            scale: None,
+        };
+        let mut params: HashMap<String, ParameterSpec> = HashMap::new();
+        params.insert("amplitude".into(), lower0(b1));
+        params.insert("rate".into(), lower0(b2));
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "m".into(),
+                model_type: model,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let dataset = MeasurementSpec {
+            schema_version: None,
+            x: vec![MISRA_X.to_vec()],
+            y: MISRA_Y.to_vec(),
+            sigma: None,
+            label: None,
+        };
+        let options = FitOptionsSpec {
+            max_iterations: 10_000,
+            tolerance: 1e-12,
+            ..default_options()
+        };
+        fit(&graph, vec![dataset], &options).expect("Misra fit should not error")
+    }
+
+    #[test]
+    fn misra_fits_at_the_certified_optimum_report_success() {
+        // (model, start b1, start b2, certified b1, certified b2, certified RSS)
+        let cases = [
+            (
+                ModelTypeStr::SaturatingExponential,
+                500.0,
+                1.0e-4,
+                2.389_421_291_8e2,
+                5.501_564_318_1e-4,
+                1.245_513_889_4e-1,
+            ),
+            (
+                ModelTypeStr::SaturatingExponential,
+                250.0,
+                5.0e-4,
+                2.389_421_291_8e2,
+                5.501_564_318_1e-4,
+                1.245_513_889_4e-1,
+            ),
+            (
+                ModelTypeStr::PowerSaturation,
+                500.0,
+                1.0e-4,
+                3.379_974_616_3e2,
+                3.903_909_128_7e-4,
+                7.546_468_153_3e-2,
+            ),
+            (
+                ModelTypeStr::PowerSaturation,
+                300.0,
+                2.0e-4,
+                3.379_974_616_3e2,
+                3.903_909_128_7e-4,
+                7.546_468_153_3e-2,
+            ),
+        ];
+        for (model, s1, s2, b1, b2, rss) in cases {
+            let r = misra_fit(model.clone(), s1, s2);
+            let got_b1 = r.parameters["m.amplitude"].value;
+            let got_b2 = r.parameters["m.rate"].value;
+            assert!(
+                ((got_b1 - b1) / b1).abs() < 1e-6 && ((got_b2 - b2) / b2).abs() < 1e-6,
+                "{model:?} from ({s1}, {s2}): ({got_b1}, {got_b2}) is not the certified optimum"
+            );
+            assert!(((r.chi2 - rss) / rss).abs() < 1e-8, "RSS {}", r.chi2);
+            assert!(
+                r.success,
+                "{model:?} from ({s1}, {s2}) at the certified optimum must be a success \
+                 (message: {})",
+                r.message
+            );
+        }
+    }
+
+    /// The fit of `test_fit_json_boundary_success_path_serialises_result`
+    /// (`tests/unit/spectrafit_core/test_binding_edge_paths.py`): a Gaussian
+    /// (`sigma` min = 0, the rest unbounded) on three points of y = 2^(−x), lm,
+    /// max_iterations 50, tolerance 1e-8. ln y is linear in x and a Gaussian's
+    /// log is a concave parabola, so the RSS has no finite minimiser: it only
+    /// tends to 0 as σ grows. With three points and three parameters J is square,
+    /// so at any full-rank point with RSS > 0 the Gauss-Newton step removes the
+    /// whole residual (predicted decrease = RSS). The budget stop is therefore
+    /// not stationary and stays `success=false` under the gate.
+    #[test]
+    fn three_point_gaussian_without_finite_minimiser_is_not_success() {
+        let mut params: HashMap<String, ParameterSpec> = HashMap::new();
+        params.insert("amplitude".into(), make_param(1.0, true));
+        params.insert("center".into(), make_param(0.0, true));
+        params.insert(
+            "sigma".into(),
+            ParameterSpec {
+                min: 0.0,
+                ..make_param(1.0, true)
+            },
+        );
+        let graph = FitGraphSpec {
+            schema_version: "0.1".into(),
+            nodes: vec![ModelNodeSpec {
+                id: "g".into(),
+                model_type: ModelTypeStr::Gaussian,
+                dataset_index: None,
+                parameters: params,
+            }],
+            expr_edges: vec![],
+        };
+        let dataset = MeasurementSpec {
+            schema_version: None,
+            x: vec![vec![0.0, 1.0, 2.0]],
+            y: vec![1.0, 0.5, 0.25],
+            sigma: None,
+            label: None,
+        };
+        let options = FitOptionsSpec {
+            max_iterations: 50,
+            ..default_options()
+        };
+        let r = fit(&graph, vec![dataset], &options).expect("fit should not error");
+        assert_eq!(r.message, "max_iterations");
+        assert!(r.chi2 > 0.0);
+        assert!(
+            !r.success,
+            "a non-stationary budget stop must not be a success"
+        );
     }
 }

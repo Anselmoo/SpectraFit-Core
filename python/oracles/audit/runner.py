@@ -390,7 +390,12 @@ def _inline_trust_block(
 
     Written under the contract's camelCase alias `trustBlock` (BenchReport
     uses a to_camel _Base with extra="forbid"; a snake_case `trust_block`
-    sibling would be rejected as an extra key and 500 the API).
+    sibling would be rejected as an extra key and 500 the API). The block's
+    own fields are dumped by alias too (`wireId`, `nClaimsAudited`,
+    `nistValidation`, ...), so the written file is the canonical
+    `BenchReport.model_dump_json(by_alias=True)` form that wire W3 and the
+    offline report bundle expect. The `trust.json` sidecar keeps the
+    snake_case field names.
 
     Note:
         The trust block is sanitized before inlining: ``WireResult.details``
@@ -405,7 +410,7 @@ def _inline_trust_block(
         return
     results = json.loads(results_path.read_text())
     results.pop("trust_block", None)  # drop any stale snake_case sibling
-    results["trustBlock"] = _nullify_non_finite(block.model_dump(mode="json"))
+    results["trustBlock"] = _nullify_non_finite(block.model_dump(mode="json", by_alias=True))
     # Runtime L3: prove every audited claim's evidence resolves before the
     # write — a severed claim⇒evidence link halts emission rather than
     # publishing an inconsistent report.

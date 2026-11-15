@@ -3,6 +3,8 @@
 
 /// Error variants for the spectrafit engine.
 pub mod error;
+/// Finite-difference step sizes shared by every numerical Jacobian.
+pub mod numdiff;
 /// Core type definitions for graphs, parameters, measurements, and results.
 pub mod types;
 
@@ -14,8 +16,9 @@ pub mod types;
 // hand-assembled list silently drops the single source of truth for the serde
 // wire string. Regenerate with `cargo doc -p spectrafit-types --no-deps`.
 pub use error::CoreError;
+pub use numdiff::{fd_step, FdScheme};
 pub use types::{
-    DatasetSliceSpec, ExprEdge, FitGraphSpec, FitOptionsSpec, FitResultSpec, MeasurementInput,
-    MeasurementSpec, ModelNodeSpec, ModelTypeStr, ParameterResultSpec, ParameterSpec,
-    TerminationReason,
+    DatasetSliceSpec, ExprEdge, FitGraphSpec, FitOptionsSpec, FitResultSpec, JacobianMode,
+    MeasurementInput, MeasurementSpec, ModelNodeSpec, ModelTypeStr, ParameterResultSpec,
+    ParameterSpec, TerminationReason,
 };

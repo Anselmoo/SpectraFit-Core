@@ -18,8 +18,10 @@ use spectrafit_types::CoreError;
 ///   factor, so the driver minimises `½‖r‖²` directly.
 /// * `n_params` is the number of **free** parameters (tied/fixed excluded).
 /// * Bounds reflection and tied-parameter application live in
-///   [`set_params`](TrustRegionProblem::set_params);
-///   the driver never sees them, it only proposes raw steps.
+///   [`set_params`](TrustRegionProblem::set_params). A driver that reads
+///   [`bounds`](TrustRegionProblem::bounds) (the LM driver) projects its trial
+///   points onto that box before calling `set_params`; the Δ-radius drivers
+///   only propose raw steps.
 pub trait TrustRegionProblem {
     /// Number of residual rows `m` (total points across datasets).
     fn n_residuals(&self) -> usize;
@@ -120,9 +122,22 @@ pub trait TrustRegionProblem {
     /// Coleman–Li trust-region scaling `v ∈ (0, 1]` per free parameter for the
     /// current point and gradient `grad`, or `None` when the problem is
     /// unbounded. `v_i → 0` as parameter `i` approaches the active bound; the
-    /// driver folds `D_i ← D_i / √v_i`, so the trust region shrinks near bounds
-    /// (the "reflective" part of Trust-Region-Reflective). Default: `None`.
+    /// driver folds `D_i ← D_i / √v_i`, so the trust region shrinks near bounds.
+    /// Default: `None`.
     fn trust_scaling(&self, _grad: &[f64]) -> Option<Vec<f64>> {
+        None
+    }
+
+    /// Box bounds `(lo, hi)` per free parameter (length `p`), in the same
+    /// working units as [`params`](Self::params) / [`set_params`](Self::set_params),
+    /// or `None` when no free parameter has a finite bound. Infinite entries
+    /// mean "unbounded on that side".
+    ///
+    /// Read by drivers that handle bounds in the step itself (the LM driver's
+    /// active-set projected step) instead of relying only on the projection
+    /// inside [`set_params`](Self::set_params). Default: `None`, which leaves
+    /// such a driver on its unbounded code path.
+    fn bounds(&self) -> Option<Vec<(f64, f64)>> {
         None
     }
 }

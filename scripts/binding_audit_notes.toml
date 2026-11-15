@@ -23,7 +23,7 @@ model_type_wire_strings = "Canonical model-type wire strings generated from the 
 [solver_variants]
 Lm = "Default faer Levenberg-Marquardt."
 LmLegacy = "nalgebra levenberg-marquardt parity oracle, retained for regression comparison."
-Trf = "Trust-Region-Reflective (Coleman-Li bound scaling on the faer LM core)."
+Trf = "The faer LM core with Coleman-Li bound-distance scaling of parameters with two finite bounds."
 Geodesic = "Geodesic acceleration on the faer LM core."
 Dogleg = "Powell's dogleg trust-region method."
 NewtonCg = "Matrix-free Newton-CG (Steihaug-Toint) trust-region method."

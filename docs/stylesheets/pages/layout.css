@@ -88,3 +88,16 @@
 .md-typeset > .sf-card-grid {
   max-width: 100%;
 }
+
+/* Scoped exception for the theme's table scroll wrapper. It sits on
+ * `margin: 1em -.8rem` and pads the table back in by `.8rem` on each side
+ * (`.md-typeset__table`), so its box is 1.6rem wider than the column it
+ * lines up with. Capped to `100%` by the rule above, it ended up 1.6rem
+ * narrow: every wide table stopped .8rem + .8rem before the right edge of
+ * the paragraphs around it and started scrolling that much early. Give
+ * back exactly the width the negative margins consume; the cap itself is
+ * unchanged. Only direct children of `.md-typeset` are capped, so the
+ * admonition/details variant (`-.6rem`) is unaffected. */
+.md-typeset > .md-typeset__scrollwrap {
+  max-width: calc(min(51.75rem, 100%) + 1.6rem);
+}

@@ -19,6 +19,7 @@ from oracles.backends._base import (
     r2_score,
     reconstruct_history,
 )
+from oracles.backends._tolerance import StopTolerances
 from oracles.cases import BenchCase
 from oracles.models import SHAPE_BOUNDS, get_model
 
@@ -28,8 +29,11 @@ class LmfitBackend(Backend):
 
     name = "lmfit"
 
-    def __init__(self) -> None:
+    def __init__(self, tolerances: StopTolerances | None = None) -> None:
+        """Keep lmfit's defaults (``None``) or pass a common stopping setting to leastsq."""
         import lmfit  # noqa: F401  (import-time availability check)
+
+        self.tolerances = tolerances
 
     @override
     def build(self, case: BenchCase) -> Any:
@@ -112,10 +116,17 @@ class LmfitBackend(Backend):
 
     @override
     def run(self, model: Any, case: BenchCase) -> Any:
-        """Run the timed lmfit solve (DE for the multimodal optfn cases)."""
+        """Run the timed lmfit solve (DE for the multimodal optfn cases).
+
+        Note:
+            With a common stopping setting, ``leastsq`` gets ``ftol``/``xtol``/``gtol``
+            through ``fit_kws`` (lmfit hands them to ``scipy.optimize.leastsq``; its own
+            defaults are 1.5e-8, 1.5e-8 and 0, i.e. no gradient test). Differential
+            evolution has none of the three tests and keeps its own stop.
+        """
         composite, params, x, y = model
-        match case.solver_hint:
-            case "global":
+        match (case.solver_hint, self.tolerances):
+            case ("global", _):
                 # Seed DE so the multimodal optfn results/timings are reproducible.
                 return composite.fit(
                     y,
@@ -124,8 +135,15 @@ class LmfitBackend(Backend):
                     method="differential_evolution",
                     fit_kws={"seed": 0},
                 )
-            case _:
+            case (_, None):
                 return composite.fit(y, params, x=x)
+            case (_, tol):
+                return composite.fit(
+                    y,
+                    params,
+                    x=x,
+                    fit_kws={"ftol": tol.ftol, "xtol": tol.xtol, "gtol": tol.gtol},
+                )
 
     @override
     def extract(self, raw: Any, case: BenchCase) -> BackendOutcome:

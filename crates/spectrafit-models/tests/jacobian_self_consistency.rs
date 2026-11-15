@@ -59,13 +59,6 @@ const NEAR_ZERO_FLOOR: f64 = 1e-9;
 /// Closed-form analytic Jacobians must agree with central differences tightly.
 const RTOL_ANALYTIC: f64 = 1e-5;
 
-/// Faddeeva-based `true_voigt` relaxation: the HAW approximation has ≈1e-6
-/// accuracy, so the Jacobian inherits that floor. RTOL_ANALYTIC (1e-5) is used
-/// for `true_voigt` (10× the standard budget) — justified by the approximation,
-/// not a correctness gap. To reach 1e-6 a higher-accuracy Faddeeva would be needed.
-#[allow(dead_code)]
-const RTOL_FADDEEVA: f64 = 1e-5;
-
 /// Model's own central-FD (h≈1e-7) vs this harness's central-FD (h=1e-6):
 /// step-size mismatch dominates, ~1e-2.
 const RTOL_NUMERIC: f64 = 5e-2;
@@ -301,10 +294,8 @@ fn recipe(model_type: &str) -> Option<Recipe> {
         // These four kernels previously fell through to the trait-default
         // forward-FD. Track 4 adds exact closed-form Jacobian overrides.
         //
-        // true_voigt: uses the Faddeeva derivative identity dw/dz = −2z·w + 2i/√π.
-        //   The HAW approximation is accurate to ~1e-6, so the Jacobian inherits
-        //   that floor; RTOL_ANALYTIC (1e-5) is used instead of the default 1e-6
-        //   budget.  This is a justified relaxation, not a correctness gap.
+        // true_voigt: Faddeeva value and derivative w'(z) at full double
+        //   precision, so the standard RTOL_ANALYTIC budget applies.
         "true_voigt" => Recipe {
             // [amplitude, center, sigma, gamma]; keep near the core
             params: vec![1.5, 0.0, 0.8, 0.6],

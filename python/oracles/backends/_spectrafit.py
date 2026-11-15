@@ -9,12 +9,14 @@ the faer drivers now record. Model dispatch goes through the shared registry
 from __future__ import annotations
 
 import math
-from typing import Any, override
+from typing import Any, Literal, override
 
 import numpy as np
 
 from oracles.backends._base import Backend, BackendOutcome
+from oracles.backends._tolerance import StopTolerances
 from oracles.cases import BenchCase
+from oracles.exceptions import BackendError
 from oracles.models import get_model
 
 _KAPPA_CAP = 1e16
@@ -54,9 +56,43 @@ def _param(value: float, name: str) -> Any:
 
 
 class SpectraFitBackend(Backend):
-    """Fit a case with the spectrafit Rust kernel."""
+    """Fit a case with the spectrafit Rust kernel.
+
+    ``jacobian="finite_difference"`` is the Jacobian-ablation variant
+    ``spectrafit_fd`` (#93): the same solver, options and timing path, with every
+    kernel's analytic Jacobian replaced by the forward difference of the residual
+    vector (``FitOptions.jacobian``). Comparing it with ``spectrafit`` and the
+    comparators splits the measured speed-up into the share of the analytic
+    Jacobians and the share of everything else. It is opt-in (see
+    :func:`oracles.backends.get_backends`), so default runs are unchanged.
+    """
 
     name = "spectrafit"
+
+    def __init__(
+        self,
+        jacobian: Literal["analytic", "finite_difference"] = "analytic",
+        tolerances: StopTolerances | None = None,
+    ) -> None:
+        """Choose the Jacobian mode and keep the library defaults (``None``) or a common stopping setting.
+
+        Raises:
+            BackendError: ``tolerances`` has unequal ftol/xtol/gtol; spectrafit-core
+                sets all three tests from the one ``FitOptions.tolerance``.
+        """
+        self._jacobian: Literal["analytic", "finite_difference"] = jacobian
+        match jacobian:
+            case "analytic":
+                self.name = "spectrafit"
+            case "finite_difference":
+                self.name = "spectrafit_fd"
+        if tolerances is not None and len({tolerances.ftol, tolerances.xtol, tolerances.gtol}) > 1:
+            msg = (
+                "spectrafit-core sets ftol = xtol = gtol from one tolerance "
+                f"(FitOptions.tolerance); got {tolerances}"
+            )
+            raise BackendError(msg)
+        self.tolerances = tolerances
 
     @override
     def build(self, case: BenchCase) -> Any:
@@ -112,7 +148,12 @@ class SpectraFitBackend(Backend):
                 max_iter = 500
             case _:
                 max_iter = 2000
-        options = FitOptions(solver=case.solver_hint, max_iterations=max_iter)
+        settings: dict[str, Any] = {"solver": case.solver_hint, "max_iterations": max_iter}
+        if self._jacobian != "analytic":
+            settings["jacobian"] = self._jacobian
+        if self.tolerances is not None:
+            settings["tolerance"] = self.tolerances.ftol
+        options = FitOptions(**settings)
         return graph, data, options
 
     @override

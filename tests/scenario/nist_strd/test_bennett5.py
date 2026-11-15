@@ -18,6 +18,15 @@ certified minimum with a plain gradient-based LM solver.  Start2 tests are marke
 ``xfail(strict=False)`` — convergence to the certified values is welcome (XPASS)
 but not guaranteed (XFAIL confirms the "Higher" difficulty label).
 
+**Convergence tracking.** A start test passes (XPASS) when the fit stopped on
+a convergence test, i.e. the termination reason ``result.message`` is one of
+``_CONVERGENCE_TERMINATIONS`` (the keys of the gtol, ftol, xtol and
+zero-residual tests of the ``solver="lm"`` path), and recovered the certified
+values. It does not read ``result.success``: since #93 that flag also requires
+a Gauss-Newton stationary end point and admits a ``no_improvement_possible``
+stop, so it is no convergence signal. ``tests/meta/test_nist_convergence_tracking.py``
+fails if the tracking reads it again.
+
 Source: https://www.itl.nist.gov/div898/strd/nls/data/bennett5.shtml
 """
 
@@ -50,6 +59,9 @@ from spectrafit_core import (
 # ---------------------------------------------------------------------------
 
 _LM_OPTS = FitOptions(solver="lm", max_iterations=10000, tolerance=1e-12)
+_CONVERGENCE_TERMINATIONS: frozenset[str] = frozenset(
+    {"converged_ftol", "converged_gtol", "converged_xtol", "residuals_zero"},
+)
 
 
 def _build_bennett5_graph(start: dict[str, float]) -> FitGraph:
@@ -153,13 +165,17 @@ def test_bennett5_numpy_oracle_at_certified() -> None:
     ),
 )
 def test_bennett5_recovers_nist_certified_parameters_start2() -> None:
-    """From NIST start2, spectrafit recovers certified b1/b2/b3 within 1e-3 relative.
+    """From NIST start2 the LM fit stops on a convergence test at the certified values.
 
-    Start 2 = (b1=−1500, b2=45, b3=0.85) is the closer of the two published
-    starting guesses.
+    Start 2 is $(b_1, b_2, b_3) = (-1500, 45, 0.85)$, the closer of the two
+    published starting guesses. The test passes when the termination reason is
+    one of ``_CONVERGENCE_TERMINATIONS`` and $b_1$, $b_2$, $b_3$ each agree with
+    their certified values to a relative error below $10^{-3}$.
     """
     result = fit(_build_bennett5_graph(START2), _measurement(), _LM_OPTS)
-    assert result.success is True, f"Bennett5 (start2) did not converge: {result.message}"
+    assert result.message in _CONVERGENCE_TERMINATIONS, (
+        f"Bennett5 (start2) stopped without a convergence test: {result.message}"
+    )
 
     b1_rec = result.params["b5.amplitude"].value
     b2_rec = result.params["b5.offset"].value
@@ -194,13 +210,18 @@ def test_bennett5_recovers_nist_certified_parameters_start2() -> None:
     ),
 )
 def test_bennett5_recovers_nist_certified_parameters_start1() -> None:
-    """From NIST start1, spectrafit recovers certified b1/b2/b3 within 1e-3 relative.
+    """From NIST start1 the LM fit stops on a convergence test at the certified values.
 
-    Marked xfail: start1 = (b1=−2000, b2=50, b3=0.8) is the more distant
-    starting guess, documented as problematic for gradient-based solvers.
+    Start 1 is $(b_1, b_2, b_3) = (-2000, 50, 0.8)$, the more distant starting
+    guess, documented as problematic for gradient-based solvers. The test passes
+    when the termination reason is one of ``_CONVERGENCE_TERMINATIONS`` and
+    $b_1$, $b_2$, $b_3$ each agree with their certified values to a relative
+    error below $10^{-3}$.
     """
     result = fit(_build_bennett5_graph(START1), _measurement(), _LM_OPTS)
-    assert result.success is True, f"Bennett5 (start1) did not converge: {result.message}"
+    assert result.message in _CONVERGENCE_TERMINATIONS, (
+        f"Bennett5 (start1) stopped without a convergence test: {result.message}"
+    )
 
     b1_rec = result.params["b5.amplitude"].value
     b2_rec = result.params["b5.offset"].value

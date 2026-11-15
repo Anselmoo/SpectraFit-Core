@@ -1,6 +1,6 @@
 # Known Limitations
 
-`spectrafit-core` is **beta** software (`0.1.2`, promoted from alpha 2026-06-23). In the spirit of good scientific
+`spectrafit-core` is **beta** software (`0.1.3`, promoted from alpha 2026-06-23). In the spirit of good scientific
 practice, the benchmark discloses its own credibility ceiling rather than hiding
 it. The dashboard's render-truth credibility rung and claim ledger surface these
 in-app; this file is the prose summary.
@@ -120,9 +120,9 @@ in-app; this file is the prose summary.
   `crates/spectrafit-solver/src/postfit.rs` demotes `success` only when
   $r^2 < 0$ **and** a free `.amplitude`/`.height` parameter has collapsed below
   1% of the data scale (`v.abs() / y_max_abs < 1e-2`). Both conditions must
-  hold. A fit that converged to something worse than a flat line, but whose
-  amplitude stays above that 1% line, keeps `success=True` and the ordinary
-  `converged_ftol` message. The guard is narrow deliberately — a blanket
+  hold. A fit that converged, at a stationary end point, to something worse
+  than a flat line, but whose amplitude stays above that 1% line, keeps
+  `success=True` and the ordinary `converged_ftol` message. The guard is narrow deliberately — a blanket
   "$r^2 < 0$ means failure" rule would misreport legitimate fits of data whose
   baseline the model was never asked to describe — but the consequence is that
   `success` is necessary and not sufficient. Read `r_squared` and the recovered

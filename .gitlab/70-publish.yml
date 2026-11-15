@@ -11,7 +11,8 @@
 #
 # - publish:github — the full-pipeline lane. Keeps default stage-ordering (no
 #   `needs:` override), so it only STARTS after every earlier stage
-#   (setup/lint/test/coverage/build/pages) has succeeded. Runs automatically
+#   (setup/lint/test/coverage/build/pages) has succeeded. When opted in
+#   (PUBLISH_GITHUB=true, see "Opt-in switch" below) it runs automatically
 #   (`when: on_success`, GitLab's default — no explicit `when:` needed) on
 #   every pipeline on `main` (merges, direct pushes, schedules, and manual
 #   "Run pipeline" all count — not merges exclusively): a green full pipeline
@@ -79,6 +80,21 @@
 # parsing; `publish:github:reset` keeps `purge_github_actions_runs.py`'s
 # stdlib-only `urllib` REST calls (via scripts/publish_snapshot.sh).
 #
+# Opt-in switch — PUBLISH_GITHUB (default: off). The first rule of every
+# `publish:github*` job is `if: '$PUBLISH_GITHUB != "true"'` + `when: never`,
+# so unless the variable is set to exactly `true` (an unset variable compares
+# unequal) none of the three jobs is created in any pipeline, on `main` or
+# elsewhere, and nothing is published to GitHub. To enable it:
+#   - permanently: add PUBLISH_GITHUB=true as a project CI/CD variable
+#     (Settings > CI/CD > Variables); `publish:github` then runs automatically
+#     on `main` again and the other two jobs are offered as manual jobs;
+#   - for one run only: pass PUBLISH_GITHUB=true as a pipeline variable when
+#     running a pipeline for `main` (Build > Pipelines > Run pipeline; the
+#     project currently allows pipeline variables from the Developer role up).
+# Removing the variable (or setting any other value) turns publishing off
+# again. The switch changes nothing else: with it on, the rules below it apply
+# exactly as described above.
+#
 # Requires two CI/CD variables:
 #   GITHUB_TOKEN (masked + protected + hidden) — a GitHub fine-grained PAT
 #     scoped to the mirror repository only: "Contents: Read" (fetch of a
@@ -145,6 +161,10 @@ publish:github:
     GIT_DEPTH: "0"
   dependencies: []
   rules:
+    # Opt-in switch: no publish job exists in any pipeline unless
+    # PUBLISH_GITHUB is exactly "true" (see the header comment).
+    - if: '$PUBLISH_GITHUB != "true"'
+      when: never
     # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
     # build:ci-image runs; everything else stays out of that pipeline.
     - if: '$CI_IMAGE_REBUILD == "true"'
@@ -195,6 +215,10 @@ publish:github:fast:
   needs: []
   dependencies: []
   rules:
+    # Opt-in switch: no publish job exists in any pipeline unless
+    # PUBLISH_GITHUB is exactly "true" (see the header comment).
+    - if: '$PUBLISH_GITHUB != "true"'
+      when: never
     # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
     # build:ci-image runs; everything else stays out of that pipeline.
     - if: '$CI_IMAGE_REBUILD == "true"'
@@ -249,6 +273,10 @@ publish:github:reset:
   needs: []
   dependencies: []
   rules:
+    # Opt-in switch: no publish job exists in any pipeline unless
+    # PUBLISH_GITHUB is exactly "true" (see the header comment).
+    - if: '$PUBLISH_GITHUB != "true"'
+      when: never
     # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
     # build:ci-image runs; everything else stays out of that pipeline.
     - if: '$CI_IMAGE_REBUILD == "true"'

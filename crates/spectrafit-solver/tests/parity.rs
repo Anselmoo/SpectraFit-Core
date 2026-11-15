@@ -53,6 +53,7 @@ fn options(solver: &str) -> FitOptionsSpec {
         delta0: None,
         max_delta: None,
         eta: None,
+        ..Default::default()
     }
 }
 
@@ -324,7 +325,8 @@ fn parity_bounded() {
     let y: Vec<f64> = x.iter().map(|&xi| gaussian(xi, 5.0, 2.0, 0.5)).collect();
 
     let mut params = HashMap::new();
-    // amplitude bounded in [0, 10]; sigma bounded in [0.1, 3] — active reflection.
+    // amplitude bounded in [0, 10]; sigma bounded in [0.1, 3] — bounds active
+    // (lm-legacy reflects at a bound, the faer lm projects onto it).
     params.insert("amplitude".into(), bounded(4.0, 0.0, 10.0));
     params.insert("center".into(), param(1.8, true));
     params.insert("sigma".into(), bounded(0.6, 0.1, 3.0));
@@ -401,8 +403,8 @@ fn varpro_rejects_tied_graph() {
 
 #[test]
 fn trf_converges_within_bounds() {
-    // Bounded Gaussian recovery via the real Trust-Region-Reflective solver
-    // (Coleman–Li bound scaling). True params sit inside the box.
+    // Bounded Gaussian recovery via `solver="trf"` (the LM core with Coleman–Li
+    // bound-distance scaling). True params sit inside the box.
     let x = grid(80, -1.0, 5.0);
     let y: Vec<f64> = x.iter().map(|&xi| gaussian(xi, 5.0, 2.0, 0.5)).collect();
 

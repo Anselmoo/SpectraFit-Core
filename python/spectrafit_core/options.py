@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -31,10 +33,15 @@ class FitOptions(BaseModel):
                 use only to cross-check results.
 
             ``"trf"``
-                Trust Region Reflective.  Levenberg-Marquardt with Coleman–Li
-                bound scaling so steps shrink as a parameter approaches an
-                active bound.  Use when bounds are active constraints
-                (e.g. widths > 0).
+                The ``"lm"`` core with bound-distance scaling: the damping
+                scale of every parameter with two finite bounds is divided by
+                $\sqrt{v_i}$, where $v_i \in [10^{-9}, 1]$ is the distance to
+                the bound the descent direction points toward over the bound
+                span (Coleman–Li), so its steps shrink near that bound.
+                Parameters with one or no finite bound have $v_i = 1$; with
+                only such bounds ``"trf"`` takes the same steps as ``"lm"``.
+                Trial points are projected onto the bounds as in ``"lm"``; it
+                is not a trust-region-reflective method.
 
             ``"geodesic"`` (alias ``"lm-geodesic"``)
                 Levenberg-Marquardt with geodesic acceleration (Transtrum).
@@ -81,7 +88,7 @@ class FitOptions(BaseModel):
                 Structure-based routing.  Picks ``"varpro"`` when the graph is
                 separable with no tied parameters and all nonlinear parameters
                 unconstrained (VarPro's preconditions); otherwise uses ``"trf"``
-                (Coleman–Li bound-scaled LM).  Across a representative case per
+                (the ``"lm"`` core with bound-distance scaling).  Across a representative case per
                 scenario family, TRF is the fastest LM-family strategy at top
                 accuracy in most problem classes, though the TRF-over-VarPro
                 speed result may invert for very large separable
@@ -132,6 +139,21 @@ class FitOptions(BaseModel):
             only on the ``"dogleg"`` / ``"newton-cg"`` dispatch arm; setting
             it alongside any other ``solver`` (including ``"trf"``) is
             silently ignored rather than raising an error.
+        jacobian (str): Jacobian source for the Levenberg-Marquardt family
+            (``"analytic"`` (default) or ``"finite_difference"``).
+            ``"analytic"`` uses each kernel's own Jacobian.
+            ``"finite_difference"`` replaces it, for every kernel, with the
+            forward difference of the weighted residual vector $r$,
+            $J_{ik} \approx (r_i(\theta + h_k e_k) - r_i(\theta)) / h_k$ with
+            $h_k = 10^{-7} \max(|\theta_k|, 10^{-7})$ (one residual evaluation
+            per free parameter; MINPACK ``lmdif`` uses the same forward
+            difference with its own step). It exists to measure
+            how much of the solver's speed comes from the analytic Jacobians
+            (benchmark backend ``spectrafit_fd``). Honoured by ``"lm"``,
+            ``"lm-legacy"``, ``"trf"``, ``"geodesic"``, ``"dogleg"``,
+            ``"newton-cg"``, ``"irls"`` and the LM refinement of ``"global"``;
+            ``"varpro"`` rejects it, and ``"auto"`` does not route to VarPro
+            when it is set.
 
     """
 
@@ -142,5 +164,6 @@ class FitOptions(BaseModel):
     delta0: float | None = Field(default=None, gt=0.0)
     max_delta: float | None = Field(default=None, gt=0.0)
     eta: float | None = Field(default=None, ge=0.0, lt=0.25)
+    jacobian: Literal["analytic", "finite_difference"] = "analytic"
 
     model_config = ConfigDict(extra="forbid")

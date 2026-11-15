@@ -1,0 +1,64 @@
+# Release-candidate wheels for the project's own PyPI package registry (#93).
+# Internal only: official manylinux/macOS/Windows wheels are built on GitHub
+# Actions. Both jobs are manual and exist only in branch pipelines of `develop`
+# and `release/*`; nothing here runs without a click. Logic and its rationale
+# live in the scripts' headers: scripts/rc_wheel_publish.sh and
+# scripts/rc_wheel_install_smoke.sh.
+#
+# Trigger: run a pipeline for develop or release/* with RC_VERSION set (PEP 440
+# pre-release, e.g. 0.1.3rc1; default below), play `rc-wheel:publish`, then
+# `rc-wheel:install-smoke`. A version already in the registry fails the publish
+# job; pick the next rcN instead. Authentication is CI_JOB_TOKEN only.
+
+.rc_wheel:
+  stage: publish
+  when: manual
+  variables:
+    RC_VERSION: "0.1.3rc1"
+  rules:
+    # Weekly CI-image rebuild schedule (CI_IMAGE_REBUILD=true): only
+    # build:ci-image runs; everything else stays out of that pipeline.
+    - if: '$CI_IMAGE_REBUILD == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^release\//'
+
+rc-wheel:publish:
+  extends: .rc_wheel
+  # ci-job-timeout-declaration: cold `maturin build --release` of the workspace
+  # (no target/ cache); same 2h headroom as build:ext:release.
+  timeout: 2h
+  needs:
+    - job: setup
+      artifacts: true
+  cache:
+    - key: "rust-$CI_COMMIT_REF_SLUG"
+      fallback_keys:
+        - "rust-$CI_DEFAULT_BRANCH"
+      paths:
+        - .cargo/
+      policy: pull
+  script:
+    - |
+      scripts/rc_wheel_publish.sh
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - rc-wheel/
+
+rc-wheel:install-smoke:
+  extends: .rc_wheel
+  # ci-job-timeout-declaration: venv + pip installs + two pytest files; no
+  # compile.
+  timeout: 1h
+  needs:
+    - job: rc-wheel:publish
+      artifacts: true
+  script:
+    - |
+      scripts/rc_wheel_install_smoke.sh
+  artifacts:
+    when: always
+    expire_in: 90 days
+    paths:
+      - rc-wheel-smoke/

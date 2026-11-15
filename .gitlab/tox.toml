@@ -1,0 +1,248 @@
+# Local mirror of the GitLab merge-request pipeline: one tox env per CI job of
+# .gitlab-ci.yml and .gitlab/*.yml, running the same commands with uv-managed
+# environments (tox-uv, lock runner on uv.lock, CPython 3.13, extras benchmark
+# and jax, group dev). Python code runs against the in-tree extension
+# (PYTHONPATH=python), as the CI jobs do after build:ext.
+#
+#   uv tool install tox --with tox-uv
+#   tox -c .gitlab/tox.toml --root . -p 3                  # every env
+#   tox -c .gitlab/tox.toml --root . -m lint test          # by stage label
+#
+# Differences from the runners, by design: cargo clippy/test run per crate
+# (-p <crate>, the union is the workspace) to bound peak memory; LANG/LC_ALL are
+# C.UTF-8 as on the runners; test-web removes the synthetic report run it writes,
+# because the local checkout shares .spectrafit_reports with report-html.
+# test-python-rust-cov replaces the in-tree extension with an instrumented build,
+# so it runs after every env that loads the extension and restores the release
+# build at the end; docs builds rustdoc in the default target/ directory, where
+# scripts/generate_rustdoc_index.py reads it; lint-web removes a web/dist left by
+# an earlier build-web, which a fresh CI checkout does not have. Jobs
+# that only publish or download CI artifacts (pages, preview-artifacts,
+# coverage:atlas, the manifest download of build:docs) have no env.
+requires = ["tox>=4.26", "tox-uv>=1.25"]
+env_list = [
+  "fingerprint-python-static", "fingerprint-rust-fmt",
+  "lint-python", "lint-rust", "lint-ci", "lint-web",
+  "ext", "test-rust", "test-python", "test-web", "audit-trust", "test-python-rust-cov",
+  "build-web", "report-html", "report-html-solo", "report-html-bundle", "docs",
+]
+skip_missing_interpreters = false
+
+[env_run_base]
+runner = "uv-venv-lock-runner"
+base_python = ["3.13"]
+package = "skip"
+extras = ["benchmark", "jax"]
+dependency_groups = ["dev"]
+uv_sync_flags = ["--inexact"]
+change_dir = "{tox_root}"
+allowlist_externals = ["bash", "cargo", "git", "npm", "npx", "lychee", "test"]
+pass_env = ["HOME", "CARGO_*", "RUSTUP_*", "NVM_*", "PLAYWRIGHT_*", "TERM"]
+set_env = { LANG = "C.UTF-8", LC_ALL = "C.UTF-8", PYTHONPATH = "{tox_root}{/}python", RAYON_NUM_THREADS = "1", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1", NUMEXPR_NUM_THREADS = "1" }
+
+
+# ── stage: fingerprint ──────────────────────────────────────────────────────
+[env.fingerprint-python-static]
+labels = ["fingerprint"]
+extras = []
+commands = [
+  ["ruff", "format", "--check", "."],
+  ["ruff", "check", "."],
+  ["python", "scripts/audit_latex.py"],
+  ["python", "scripts/audit_bindings.py"],
+  ["bash", ".claude/hooks/pre-merge-pyO3.sh"],
+  ["bash", ".claude/hooks/pre-merge-schema-sync.sh"],
+]
+
+[env.fingerprint-rust-fmt]
+labels = ["fingerprint"]
+runner = "uv-venv-runner"
+extras = []
+dependency_groups = []
+commands = [["cargo", "fmt", "--all", "--check"]]
+
+# ── stage: lint ─────────────────────────────────────────────────────────────
+[env.lint-python]
+labels = ["lint"]
+commands = [
+  ["ruff", "format", "--check", "."],
+  ["ruff", "check", "."],
+  ["ty", "check", "python/oracles", "python/spectrafit_core"],
+  ["python", "scripts/check_vendored_assets.py"],
+  ["python", "scripts/audit_latex.py"],
+  ["python", "scripts/fair.py", "checksums", "--check"],
+  ["python", "scripts/fair.py", "asset"],
+  ["python", "scripts/fair.py", "bundle", "--verify"],
+  ["rrt", "tree", "--root", ".", "--max-depth", "2", "--snapshot"],
+  ["python", "scripts/render_architecture_tree.py"],
+  ["git", "diff", "--exit-code", "docs/contributor-guide/architecture.md"],
+]
+
+[env.lint-rust]
+labels = ["lint"]
+depends = ["fingerprint-rust-fmt"]
+extras = []
+commands = [
+  ["cargo", "fmt", "--all", "--", "--check"],
+  ["bash", "-ec", "for c in $(cargo metadata --no-deps --format-version 1 | python -c 'import json,sys; print(\" \".join(p[\"name\"] for p in json.load(sys.stdin)[\"packages\"]))'); do echo \"clippy -p $c\"; cargo clippy -p \"$c\" --all-targets -- -D warnings; done"],
+  ["python", "scripts/check_crate_conventions.py"],
+]
+
+[env.lint-ci]
+labels = ["lint"]
+extras = []
+commands = [["python", "scripts/shellcheck_ci.py"]]
+
+[env.lint-web]
+labels = ["lint"]
+extras = []
+dependency_groups = []
+commands = [
+  ["bash", "-ec", "cd web && rm -rf dist && { test -d node_modules || npm ci; } && npm run typecheck && npm run lint"],
+]
+
+# ── stage: ext (build:ext:release; the .so lands in python/spectrafit_core/) ─
+[env.ext]
+labels = ["ext"]
+depends = ["lint-rust"]
+deps = ["maturin>=1.9"]
+commands = [
+  ["maturin", "develop", "--release"],
+  ["bash", "-ec", "ls python/spectrafit_core/_core*.so"],
+]
+
+# ── stage: test ─────────────────────────────────────────────────────────────
+[env.test-rust]
+labels = ["test"]
+depends = ["lint-rust"]
+extras = []
+commands = [
+  ["bash", "-ec", "for c in $(cargo metadata --no-deps --format-version 1 | python -c 'import json,sys; print(\" \".join(p[\"name\"] for p in json.load(sys.stdin)[\"packages\"]))'); do echo \"test -p $c\"; cargo test -p \"$c\" --quiet; done"],
+]
+
+[env.test-python]
+labels = ["test"]
+depends = ["ext"]
+commands = [
+  ["bash", "-ec", "ls python/spectrafit_core/_core*.so"],
+  ["pytest", "-q", "-n", "{env:PYTEST_WORKERS:4}", "-p", "no:cacheprovider",
+   "--cov=python/spectrafit_core", "--cov=python/oracles", "--cov-report=term", "--cov-report=xml",
+   "--cov-fail-under=94"],
+  ["coverage", "report", "--include=python/oracles/engine.py", "--fail-under=85"],
+  ["coverage", "report", "--include=python/spectrafit_core/fit.py", "--fail-under=90"],
+  ["coverage", "report", "--include=python/spectrafit_core/evaluate.py", "--fail-under=90"],
+  ["coverage", "report", "--include=python/spectrafit_core/graph.py", "--fail-under=80"],
+  ["python", "scripts/audit_bindings.py"],
+]
+
+[env.test-python-rust-cov]
+labels = ["test", "needs-cargo-llvm-cov"]
+depends = [
+  "test-rust", "ext", "test-python", "test-web", "audit-trust", "report-html",
+  "report-html-solo", "report-html-bundle", "docs",
+]
+deps = ["maturin>=1.9"]
+commands = [
+  ["bash", "-ec", """
+    command -v cargo-llvm-cov >/dev/null || { echo 'cargo-llvm-cov not installed'; exit 1; }
+    (
+    cargo llvm-cov clean --workspace
+    source <(cargo llvm-cov show-env --sh)
+    export CARGO_TARGET_DIR="$CARGO_LLVM_COV_TARGET_DIR" CARGO_INCREMENTAL=0
+    maturin develop
+    for c in $(cargo metadata --no-deps --format-version 1 | python -c 'import json,sys; print(" ".join(p["name"] for p in json.load(sys.stdin)["packages"] if p["name"] != "spectrafit-core"))'); do cargo test -p "$c" --quiet; done
+    pytest tests/unit/spectrafit_core -q -n 4 -p no:cacheprovider
+    mkdir -p target/llvm-cov
+    cargo llvm-cov report --lcov --output-path target/llvm-cov/lcov.info
+    cargo llvm-cov report --fail-under-lines 85
+    cargo llvm-cov report --package spectrafit-solver --fail-under-lines 75
+    cargo llvm-cov report --package spectrafit-core --fail-under-lines 75
+    )
+    maturin develop --release
+  """],
+]
+
+[env.test-web]
+labels = ["test"]
+depends = ["lint-web"]
+commands = [
+  ["bash", "-ec", """
+    RUN=$(python -c 'from oracles.synth import build_report; from oracles.reports import write_run; print(write_run(build_report()))' | tail -1); RUN=$(realpath "$RUN")
+    python -m uvicorn oracles.api:app --port 8000 >/dev/null 2>&1 & UVPID=$!
+    trap 'kill $UVPID; rm -rf "$RUN"' EXIT
+    for i in $(seq 1 60); do curl -sf http://localhost:8000/api/report >/dev/null && break; sleep 1; done
+    curl -sf http://localhost:8000/api/report >/dev/null
+    cd web && npm run contract && git diff --exit-code src/openapi.gen.ts && npx vitest run --coverage
+  """],
+]
+
+[env.audit-trust]
+labels = ["test"]
+depends = ["ext"]
+commands = [["pytest", "tests/audit/", "-v", "-p", "no:cacheprovider"]]
+
+# ── stage: build ────────────────────────────────────────────────────────────
+[env.build-web]
+labels = ["build"]
+depends = ["lint-web"]
+extras = []
+dependency_groups = []
+commands = [["bash", "-ec", "cd web && npm run build"]]
+
+[env.report-html]
+labels = ["build"]
+depends = ["ext"]
+commands = [
+  ["python", "-m", "oracles.cli", "run", "--reps", "1", "--mc", "4"],
+  ["python", "-m", "oracles.cli", "gate"],
+]
+
+[env.report-html-solo]
+labels = ["build"]
+depends = ["ext"]
+commands = [
+  ["python", "-m", "oracles.cli", "run", "--backends", "spectrafit", "--reps", "1", "--mc", "4", "--category", "spectrafit_solo"],
+  ["python", "-m", "oracles.cli", "gate", "--category", "spectrafit_solo"],
+]
+
+[env.report-html-bundle]
+labels = ["build"]
+depends = ["report-html", "lint-web"]
+commands = [
+  ["test", "-d", ".spectrafit_reports/benchmark"],
+  ["bash", "-ec", """
+    RESULTS=$(python -c 'from oracles.reports import latest_results; p = latest_results("benchmark"); print(p.resolve() if p else "")')
+    test -n "$RESULTS"
+    RESULTS=$(python -c "from oracles.migrate import migrate_to_current; print(migrate_to_current('$RESULTS'))")
+    DEST="$(dirname "$RESULTS")/report.html"
+    (cd web && { test -d node_modules || npm ci; } && npm run typecheck && BENCH_JSON="$RESULTS" npm run build:html)
+    cp web/dist-html/index.html "$DEST"
+    (cd web && { npx playwright install chromium >/dev/null 2>&1 || true; } && REPORT_HTML_PATH="$DEST" npx playwright test tests/e2e/report-ux.spec.ts)
+  """],
+]
+
+[env.docs]
+labels = ["docs"]
+depends = ["ext"]
+extras = []
+dependency_groups = ["docs"]
+commands = [
+  ["bash", "-ec", """
+    ls python/spectrafit_core/_core*.so
+    export CARGO_TARGET_DIR="$PWD/target"
+    cargo doc --workspace --no-deps 2>&1 | tee "{env_tmp_dir}/cargo-doc.log"
+    ! grep -qi missing_docs "{env_tmp_dir}/cargo-doc.log"
+    python scripts/generate_rustdoc_index.py
+    python docs/tutorials/gallery/_render.py
+    python docs/_render_benchmark_summary.py
+    python docs/_render_nist_tables.py
+    python docs/_render_model_formulas.py
+    python docs/_render_tags.py
+    python docs/_render_abbr_map.py
+    python docs/_render_references.py
+    zensical build --clean
+    grep -rl doc-contents site/reference/python/ >/dev/null
+    lychee --offline --no-progress --root-dir "$(pwd)/site" --exclude '^file:.*/site/rust-api(/|$)' --exclude '^file:.*/site/reports(/|$)' --exclude '^file:.*/site/web(/|$)' --exclude '^file:.*/site/report\\.html$' site/
+    pytest tests/audit/test_audit_built_site_links.py -q -p no:cacheprovider
+  """],
+]

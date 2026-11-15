@@ -63,7 +63,7 @@ converged, how good it is, and the recovered parameters with uncertainty.
 3. **Fit execution** — `fit(graph, data)` invokes the Levenberg-Marquardt solver (default), which iteratively adjusts parameters to minimize the residuals until convergence.
 
 4. **Result inspection** — we read:
-    - **`success`** — True if the solver converged.
+    - **`success`** — True if the solver stopped on a convergence test and the end point was verified as a stationary point; a `max_iterations` stop is never a success.
     - **`r_squared`** — the coefficient of determination (aim for > 0.99 on good data).
     - **`chi2`** — the sum of squared residuals.
     - **`parameters`** — dict of fitted parameters with `value` (point estimate) and `stderr` (estimated standard error, $1\sigma$ — the square root of the covariance diagonal, not a confidence-interval half-width).

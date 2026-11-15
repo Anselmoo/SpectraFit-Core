@@ -105,6 +105,17 @@ pub enum SolverError {
     /// `FitOptions` validator).
     #[error("eta must be finite and in [0.0, 0.25); got {0}")]
     InvalidEta(f64),
+
+    /// `solver="varpro"` was requested with `FitOptionsSpec.jacobian =
+    /// "finite_difference"`. VarPro differentiates its basis functions through
+    /// the kernels and has no graph-level residual Jacobian to replace, so it
+    /// cannot honour the forced finite-difference mode; rejecting it keeps that
+    /// mode from silently running analytic derivatives.
+    #[error(
+        "solver='varpro' does not support jacobian='finite_difference'; \
+         use solver='lm', 'trf', or 'geodesic'"
+    )]
+    VarproFiniteDifferenceUnsupported,
 }
 
 /// Map [`SolverError`] to the workspace-wide [`CoreError`].
@@ -130,6 +141,7 @@ impl From<SolverError> for CoreError {
             | SolverError::VarproNotSeparable
             | SolverError::VarproExprEdgesUnsupported
             | SolverError::VarproDatasetScopingUnsupported
+            | SolverError::VarproFiniteDifferenceUnsupported
             | SolverError::MalformedTiedTarget(_)
             | SolverError::TiedTargetNodeMissing(_)
             | SolverError::TiedTargetParamMissing(_)

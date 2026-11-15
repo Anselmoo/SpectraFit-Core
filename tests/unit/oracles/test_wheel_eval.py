@@ -12,9 +12,8 @@ These tests pin three properties:
    to "unavailable" — proving the graceful-degradation contract.
 3. Every (wheel_key, model) pair from ``wheel_parity_pairs()`` agrees between
    the Rust wheel kernel and the numpy ``evaluate`` body, at the same
-   per-model bounds as ``tests/parity/test_kernel_parity.py`` — machine
-   epsilon for everything except ``true_voigt`` (Hui–Armstrong–Wray vs
-   scipy.special.wofz, ~1e-4).
+   bounds as ``tests/parity/test_kernel_parity.py`` (machine epsilon for
+   every kernel, ``true_voigt`` included).
 """
 
 from __future__ import annotations
@@ -119,14 +118,9 @@ def test_wheel_eval_raises_when_unavailable(monkeypatch: pytest.MonkeyPatch) -> 
 # test compared two wheel-routed call paths against each other, which became
 # meaningless once the two paths genuinely differ (wheel vs numpy).
 # --------------------------------------------------------------------------- #
-# Per-model tolerance for wheel-vs-numpy parity. Most kernels agree to
-# machine eps; ``true_voigt`` is the one structural outlier — the Rust
-# kernel uses the Hui–Armstrong–Wray rational approximation of the Faddeeva
-# function while the numpy oracle uses ``scipy.special.wofz``, so parity is
-# bounded at ~1e-4 (matched by ``tests/parity/test_kernel_parity.py``).
-_PER_MODEL_TOLS: dict[str, tuple[float, float]] = {
-    "true_voigt": (2e-4, 1e-6),
-}
+# Tolerance for wheel-vs-numpy parity: every kernel agrees to machine eps.
+# ``true_voigt`` included — the Rust kernel ports the Faddeeva Package that
+# ``scipy.special.wofz`` wraps (matched by ``tests/parity/test_kernel_parity.py``).
 _DEFAULT_TOL: tuple[float, float] = (1e-9, 1e-12)
 
 
@@ -149,7 +143,7 @@ def test_wheel_matches_numpy_per_model(wheel_key: str, model: PeakModel) -> None
     wheel_y = _wheel_eval(wheel_key, _X, params)
     numpy_y = model.one(_X, params)
 
-    rtol, atol = _PER_MODEL_TOLS.get(model.key, _DEFAULT_TOL)
+    rtol, atol = _DEFAULT_TOL
     np.testing.assert_allclose(
         wheel_y,
         numpy_y,

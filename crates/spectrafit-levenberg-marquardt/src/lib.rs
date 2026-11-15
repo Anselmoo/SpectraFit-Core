@@ -7,7 +7,7 @@
 //! (normal-equations + Cholesky, or thin-SVD secular), and layers two opt-in
 //! variants on the same loop:
 //!
-//! * **TRF** — Coleman–Li bound scaling folded into the damping
+//! * **`trf`** — Coleman–Li bound-distance scaling folded into the damping
 //!   ([`StrategyConfig::bound_scaling`]).
 //! * **geodesic** — Transtrum/Sethna second-order acceleration
 //!   ([`StrategyConfig::geodesic`]).

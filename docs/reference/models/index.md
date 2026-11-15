@@ -37,7 +37,7 @@ widths, asymptotic amplitudes) are called out per section.
 | `lorentzian` | <!-- formula:lorentzian -->$\dfrac{A}{1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}}$<!-- /formula --> — $\sigma$ is the **HWHM** | amplitude, center, sigma | `LORENTZIAN` |
 | `pseudo_voigt`[^wertheim-1974][^ida-2000] | <!-- formula:pseudo_voigt -->$A\!\left[\mathrm{fraction}\cdot\frac{1}{1+\!\left(\frac{x-c}{\sigma}\right)^{\!2}}+(1-\mathrm{fraction})\cdot e^{-\frac{(x-c)^2}{2\sigma^2}}\right]$<!-- /formula --> | amplitude, center, sigma, **fraction** | `PSEUDO_VOIGT` |
 | `voigt`[^wertheim-1974][^ida-2000] | <!-- formula:voigt -->$A\!\left[\mathrm{fraction}\cdot\frac{1}{1+\!\left(\frac{x-c}{\sigma}\right)^{\!2}}+(1-\mathrm{fraction})\cdot e^{-\frac{(x-c)^2}{2\sigma^2}}\right]$<!-- /formula --> — alias, same formula as Pseudo-Voigt (frozen copy on the Python side; dedicated Rust kernel cross-checked in the parity test). **Not the literature's Voigt profile** (the true Gaussian⊗Lorentzian convolution, below as `true_voigt`) — this kernel exists for a fixed, pinned wire string and does not switch meaning if `true_voigt`'s formula ever changes | amplitude, center, sigma, **fraction** | `VOIGT` |
-| `true_voigt` | <!-- formula:true_voigt -->$A \cdot \mathrm{Re}\!\left[W\!\left(\dfrac{x-c+i\gamma}{\sigma\sqrt{2}}\right)\right]\,/\,\mathrm{Re}\!\left[W\!\left(\dfrac{i\gamma}{\sigma\sqrt{2}}\right)\right]$<!-- /formula -->, $z=((x-c)+i\gamma)/(\sigma\sqrt{2})$, $z_0=i\gamma/(\sigma\sqrt{2})$ — true Gaussian $\otimes$ Lorentzian via the Faddeeva function (Rust: Hui–Armstrong–Wray[^hui-1978] numerical evaluation, ~1e-6; numpy: `scipy.special.wofz` $\to$ wheel-vs-numpy parity ~1e-4) | amplitude, center, sigma, gamma | `TRUE_VOIGT` |
+| `true_voigt` | <!-- formula:true_voigt -->$A \cdot \mathrm{Re}\!\left[W\!\left(\dfrac{x-c+i\gamma}{\sigma\sqrt{2}}\right)\right]\,/\,\mathrm{Re}\!\left[W\!\left(\dfrac{i\gamma}{\sigma\sqrt{2}}\right)\right]$<!-- /formula -->, $z=((x-c)+i\gamma)/(\sigma\sqrt{2})$, $z_0=i\gamma/(\sigma\sqrt{2})$ — true Gaussian $\otimes$ Lorentzian via the Faddeeva function (Rust: a port of S. G. Johnson's Faddeeva Package[^johnson-faddeeva], the algorithm behind `scipy.special.wofz`, at full double precision; numpy: `scipy.special.wofz` $\to$ wheel-vs-numpy parity at machine precision) | amplitude, center, sigma, gamma | `TRUE_VOIGT` |
 | `pearson7`[^pearson-1916][^hall-1977] | <!-- formula:pearson7 -->$A \cdot \left(1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}\left(2^{1/m}-1\right)\right)^{\!-m}$<!-- /formula --> — $\sigma$ is the **HWHM**; $m\to 1$ Lorentzian, $m\to\infty$ Gaussian | amplitude, center, sigma, m | `PEARSON7` |
 | `moffat` | <!-- formula:moffat -->$A \cdot \left(1 + \left(\dfrac{x-c}{\sigma}\right)^{\!2}\right)^{\!-\beta}$<!-- /formula --> — $\sigma$ is a Lorentzian-family scale (the HWHM at $\beta=1$), not a standard deviation | amplitude, center, sigma, beta | `MOFFAT` |
 | `students_t`[^student-1908] | <!-- formula:students_t -->$A \cdot \left(1 + \dfrac{(x-c)^2}{\nu\,\sigma^2}\right)^{\!-(\nu+1)/2}$<!-- /formula --> — $\sigma$ is a Lorentzian-family scale (the HWHM at $\nu=1$), not a standard deviation | amplitude, center, sigma, nu | `STUDENTS_T` |
@@ -270,9 +270,11 @@ The mixing fraction has had three names across the codebase. The canonical name 
 [^ida-2000]: Ida, T., Ando, M. & Toraya, H. (2000). "Extended pseudo-Voigt function for
     approximating the Voigt profile." *Journal of Applied Crystallography* 33(6),
     1311–1316. https://doi.org/10.1107/s0021889800010219
-[^hui-1978]: Hui, A. K., Armstrong, B. H. & Wray, A. A. (1978). "Rapid computation of the
-    Voigt and complex error functions." *JQSRT* 19(5), 509–516.
-    https://doi.org/10.1016/0022-4073(78)90019-5 — cited here for the numerical method
+[^johnson-faddeeva]: Johnson, S. G. (2012). *Faddeeva Package* (MIT licence).
+    http://ab-initio.mit.edu/Faddeeva — combines the continued fraction of Gautschi
+    (1970) and Poppe & Wijers (1990) for large $|z|$ with Algorithm 916 of
+    Zaghloul, M. R. & Ali, A. N. (2011), *ACM Trans. Math. Softw.* 38(2), 15
+    (https://doi.org/10.1145/2049673.2049679). Cited here for the numerical method
     `true_voigt` implements (the Faddeeva-function evaluation), not as the Voigt
     profile's own origin.
 [^box-hunter-1978]: Box, G. P., Hunter, W. G. & Hunter, J. S. (1978). *Statistics for

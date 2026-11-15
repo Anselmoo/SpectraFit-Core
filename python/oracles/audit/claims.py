@@ -281,7 +281,7 @@ class _InferenceEquivalence(Claim):
 class _NistGauss1(Claim):
     claim_id = "nist.gauss1"
     wire_id = "W8"
-    source_field = "trustBlock.nist_validation.datasets[Gauss1]"
+    source_field = "trustBlock.nistValidation.datasets[Gauss1]"
     description = "Gauss1 recovers NIST certified values to ≥ threshold sig figs"
 
 
@@ -289,7 +289,7 @@ class _NistGauss1(Claim):
 class _NistGauss2(Claim):
     claim_id = "nist.gauss2"
     wire_id = "W8"
-    source_field = "trustBlock.nist_validation.datasets[Gauss2]"
+    source_field = "trustBlock.nistValidation.datasets[Gauss2]"
     description = "Gauss2 recovers NIST certified values to ≥ threshold sig figs"
 
 
@@ -297,7 +297,7 @@ class _NistGauss2(Claim):
 class _NistGauss3(Claim):
     claim_id = "nist.gauss3"
     wire_id = "W8"
-    source_field = "trustBlock.nist_validation.datasets[Gauss3]"
+    source_field = "trustBlock.nistValidation.datasets[Gauss3]"
     description = "Gauss3 recovers NIST certified values to ≥ threshold sig figs"
 
 
@@ -305,5 +305,5 @@ class _NistGauss3(Claim):
 class _NistLanczos1(Claim):
     claim_id = "nist.lanczos1"
     wire_id = "W8"
-    source_field = "trustBlock.nist_validation.datasets[Lanczos1]"
+    source_field = "trustBlock.nistValidation.datasets[Lanczos1]"
     description = "Lanczos1 recovers NIST certified values to ≥ threshold sig figs"

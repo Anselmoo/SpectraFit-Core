@@ -151,10 +151,7 @@ def test_rust_kernel_matches_numpy(key: str) -> None:
 
     got = np.asarray(evaluate(graph, flat, data), dtype=float)
     expected = model.one(_X, params)
-    # true_voigt uses the Hui–Armstrong–Wray Faddeeva approximation in Rust (~1e-6)
-    # vs scipy.special.wofz in numpy, so it parity-checks to ~1e-4, not machine eps.
-    rtol, atol = (2e-4, 1e-6) if key == "true_voigt" else (1e-9, 1e-12)
-    np.testing.assert_allclose(got, expected, rtol=rtol, atol=atol)
+    np.testing.assert_allclose(got, expected, rtol=1e-9, atol=1e-12)
 
 
 # --------------------------------------------------------------------------- #

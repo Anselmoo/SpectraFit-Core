@@ -491,16 +491,20 @@ fn jacobian_parity_erfc_step() {
 fn jacobian_parity_true_voigt() {
     let model = spectrafit_models::model_from_str("true_voigt").expect("true_voigt model exists");
     // Parameters: [amplitude, center, sigma, gamma]
-    // Keep sigma ~ gamma so neither width dominates and Faddeeva is well-conditioned.
-    let params = vec![1.5, 0.0, 0.8, 0.6];
-    // Sweep x near the core (±1.5) — the Hui–Armstrong–Wray rational approximation
-    // (~1e-6 accuracy) loses precision in the deep wings where Re[w] is tiny.
-    let xs: Vec<f64> = (0..21).map(|i| -1.5 + (i as f64) * 0.15).collect();
-    // NOTE: `true_voigt` has NO analytical Jacobian — falls through to the trait-default
-    // forward-FD (h=1e-7). This test compares forward-FD (kernel) against central-FD
-    // (harness): it verifies FD self-consistency, NOT analytical parity. Adding an
-    // analytical Jacobian remains a follow-up, not yet done. Tolerance reflects FD scheme mismatch.
-    assert_jacobian_parity(model.as_ref(), &xs, &params, 1.5e-1);
+    // Keep sigma ~ gamma so neither width dominates the profile.
+    let params = vec![1.5, 0.41, 0.8, 0.6];
+    // Sweep the core and the wings (±4): the Faddeeva function is evaluated at
+    // full double precision, so there is no accuracy limit in the wings.
+    // Points within 0.25 of the center are skipped: f(center) = amplitude for
+    // every sigma and gamma, so ∂/∂center, ∂/∂sigma and ∂/∂gamma all vanish
+    // there and the relative check would measure the harness's FD rounding.
+    let xs: Vec<f64> = (0..41)
+        .map(|i| -4.0 + (i as f64) * 0.2)
+        .filter(|x| (x - 0.41).abs() > 0.25)
+        .collect();
+    // `true_voigt` has an analytical Jacobian (Faddeeva derivative identity):
+    // DEFAULT_REL_TOL applies.
+    assert_jacobian_parity(model.as_ref(), &xs, &params, DEFAULT_REL_TOL);
 }
 
 #[test]

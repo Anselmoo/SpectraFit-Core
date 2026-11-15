@@ -1,12 +1,12 @@
 ---
 icon: lucide/square
-description: A likely-active physical bound (amplitude >= 0) where trf adds Coleman-Li step scaling near the boundary that plain lm lacks, though both remain bound-compliant here.
+description: A likely-active one-sided physical bound (amplitude >= 0). trf scales steps only for parameters with two finite bounds, so here lm and trf take the same steps and both stay bound-compliant.
 tags:
   - Solvers
   - Models
 ---
 
-# Bounded Fitting with an Active-Bounds Solver
+# Bounded Fitting with `lm` and `trf`
 
 !!! warning "Synthetic example"
     The fixture below is a single seeded, deliberately noise-floor-adjacent
@@ -54,13 +54,14 @@ the bound matters; both bounded solvers are then checked against
 
 ## Why this works
 
-[Choosing a Solver](../../how-to/choosing-a-solver.md) recommends `"trf"`
-(Trust Region Reflective) whenever "bounds are frequently active": it adds
-Coleman–Li bound scaling that shrinks trust-region steps as a parameter
-approaches an active bound. Every LM-family solver in this codebase
-(including plain `"lm"`) already shares a reflective-bounds projection, so
-`"lm"` alone never *violates* `[min, max]` — `"trf"` changes *how* the
-optimizer approaches the wall, not whether the final result respects it.
+[Choosing a Solver](../../how-to/choosing-a-solver.md) describes `"trf"`:
+it runs the `"lm"` core and adds Coleman–Li bound-distance scaling, which
+shrinks the steps of a parameter with two finite bounds as it approaches the
+bound it moves toward. A
+parameter with one finite bound, like `amplitude >= 0` here, is not scaled.
+`"lm"` and `"trf"` both project trial points onto `[min, max]`, so neither
+*violates* the bound; the scaling changes *how* the optimizer approaches a
+two-sided wall, not whether the final result respects it.
 
 **Distinct from `varpro_vs_lm.md`**: that comparison is on an *unconstrained*
 separable problem. This is solver choice under *active* bound constraints.
@@ -79,13 +80,12 @@ separable problem. This is solver choice under *active* bound constraints.
    is exactly what `min=0` rules out; both bounded solvers are asserted to
    land inside `[0, inf)`.
 
-4. **On this small problem, `"lm"` and `"trf"` converge identically** — same
-   `n_iter`, same final amplitude, measured directly rather than assumed.
-   This codebase's reflective-bounds projection is shared by every LM-family
-   solver; Coleman–Li scaling changes the per-iteration step shape near an
-   active bound, which matters more on problems where a bound stays
-   persistently and severely active across many iterations than it does
-   here. This script reports what is actually measured on this fixture, not
+4. **`"lm"` and `"trf"` converge identically** — same `n_iter`, same final
+   amplitude, measured directly. The only bound is one-sided
+   (`amplitude >= 0`), where `"trf"`'s bound-distance scaling does not act,
+   so both solvers take the same steps; both project trial points onto the
+   bound. The scaling changes the step shape only for parameters with two
+   finite bounds. This script reports what is measured on this fixture, not
    a general performance claim.
 
 ## See also

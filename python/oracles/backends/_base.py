@@ -17,6 +17,7 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from oracles.backends._tolerance import StopTolerances
 from oracles.cases import RECOVERABLE_PARAMS, BenchCase
 from oracles.models import Array
 
@@ -146,6 +147,8 @@ class Backend(ABC):
     """Template-method backend: build (untimed) → run (timed) → extract."""
 
     name: str
+    tolerances: StopTolerances | None = None
+    """Stopping thresholds of ``--tolerance-mode common``; ``None`` = library defaults."""
 
     def is_supported(self, case: BenchCase) -> bool:
         """Whether this backend can fit *case* (default: yes)."""

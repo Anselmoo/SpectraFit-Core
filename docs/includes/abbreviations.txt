@@ -14,15 +14,15 @@ not edit glossary.md to keep the two in sync manually.
 *[AIC]: Akaike Information Criterion, derived from a proper Gaussian deviance term rather than raw chi2.
 *[BIC]: Bayesian Information Criterion, derived from a proper Gaussian deviance term rather than raw chi2.
 *[ExprEdge]: A graph-level parameter tie added to a fit graph's edge list — one of two equivalent ways to constrain a parameter to another's value or a formula, the other being Parameter.expr.
-*[trust-region]: A family of solver strategies (trf, dogleg, newton-cg) that bound each optimization step within an explicit radius rather than taking an unconstrained Gauss-Newton step.
+*[trust-region]: A family of solver strategies (dogleg, newton-cg) that bound each optimization step within an explicit radius rather than taking an unconstrained Gauss-Newton step.
 *[PyO3]: The Rust-to-Python FFI framework spectrafit-core uses to expose its Rust kernel as Python functions.
 *[Wire string]: The canonical, serialized name for a model type (e.g. gaussian, pseudo_voigt), generated from the Rust model manifest — the source of truth Python's ModelType enum is pinned against.
 *[oracle]: An independent reference implementation (lmfit, jax/optimistix, or hand-written numpy formulas) that spectrafit's Rust kernel is cross-verified against.
 *[Parameter.expr]: A per-parameter tie set directly on a Parameter's `expr` field — equivalent to an ExprEdge.
 *[tied parameters]: Parameters whose value is derived from another parameter or expression on every solver iteration, via ExprEdge or Parameter.expr, rather than being independently optimized.
 *[win rate]: The fraction of benchmark cases won by spectrafit, where the winner is the backend maximising the composite score r2 * speedup — accuracy and speed together, not a count of faster fits.
-*[LM]: Levenberg-Marquardt — the default damped Gauss-Newton solver family (`lm`, `lm-legacy`, geodesic), which bounds its step via the damping term $\lambda I$ rather than an explicit trust-region radius.
-*[TRF]: Trust Region Reflective — a bounds-aware solver strategy that scales its step by Coleman-Li reflection as it nears a parameter's bound.
+*[LM]: Levenberg-Marquardt — the default damped Gauss-Newton solver family (`lm`, `lm-legacy`, `trf`, geodesic), which bounds its step via the damping term $\lambda I$ rather than an explicit trust-region radius.
+*[TRF]: Trust Region Reflective, the method of scipy least_squares(method="trf"). SpectraFit-Core's "trf" solver is instead the Levenberg-Marquardt core with Coleman-Li bound-distance scaling of parameters with two finite bounds.
 *[DE]: Differential Evolution — the stochastic population search phase of the `global` solver, run before a post-search LM refinement pass; not guaranteed to reach the global optimum on hard multimodal landscapes.
 *[IRLS]: Iteratively Reweighted Least Squares — solver variants that down-weight outlier residuals each iteration instead of assuming Gaussian errors, for data with outliers.
 *[Jacobian]: The matrix of each residual's partial derivatives with respect to every free parameter; spectrafit-core ships hand-derived closed-form Jacobians for nearly every model rather than finite differences.

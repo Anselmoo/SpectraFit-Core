@@ -346,6 +346,29 @@ impl MeasurementInput {
 }
 
 // ---------------------------------------------------------------------------
+// JacobianMode
+// ---------------------------------------------------------------------------
+
+/// Which Jacobian the LM-family solvers use (`FitOptionsSpec.jacobian`, #93).
+///
+/// `Analytic` (the default) uses each kernel's own Jacobian through the graph
+/// executor. `FiniteDifference` replaces it, for every kernel, with the
+/// graph-level forward difference of the weighted residual vector (one full
+/// residual evaluation per free parameter, step `1e-7 · max(|θ|, 1e-7)`);
+/// the forward-difference formula is Nocedal & Wright, *Numerical
+/// Optimization*, 2nd ed., §8.1, eq. (8.1). It exists to measure how much of
+/// the solver's speed comes from the analytic Jacobians.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum JacobianMode {
+    /// Per-kernel Jacobians (the default).
+    #[default]
+    Analytic,
+    /// Graph-level forward-difference Jacobian for every kernel.
+    FiniteDifference,
+}
+
+// ---------------------------------------------------------------------------
 // FitOptionsSpec
 // ---------------------------------------------------------------------------
 
@@ -388,11 +411,19 @@ pub struct FitOptionsSpec {
     /// is not itself the enforcement.
     #[serde(default)]
     pub eta: Option<f64>,
+    /// Jacobian source for the LM-family solvers (`"analytic"` default,
+    /// `"finite_difference"` to force the graph-level forward difference for
+    /// every kernel). `serde(default)` so payloads predating this field still
+    /// deserialize as analytic. VarPro cannot honour the forced mode and
+    /// rejects it; `solver="auto"` then does not route to VarPro.
+    #[serde(default)]
+    pub jacobian: JacobianMode,
 }
 
 impl Default for FitOptionsSpec {
     /// Matches the Python `FitOptions()` defaults — `solver="lm"`,
-    /// `max_iterations=200`, `tolerance=1e-8`, and `None` for every optional knob.
+    /// `max_iterations=200`, `tolerance=1e-8`, `jacobian="analytic"`, and
+    /// `None` for every optional knob.
     /// Future struct literals should use `..Default::default()` so a new field
     /// doesn't ripple through every test fixture and call site.
     fn default() -> Self {
@@ -404,6 +435,7 @@ impl Default for FitOptionsSpec {
             delta0: None,
             max_delta: None,
             eta: None,
+            jacobian: JacobianMode::Analytic,
         }
     }
 }
@@ -562,7 +594,18 @@ pub struct FitResultSpec {
     /// Number of Jacobian calls (None if not tracked by this solver).
     #[serde(default)]
     pub n_jac_evals: Option<u64>,
-    /// Whether the solver reported a successful termination.
+    /// Whether the fit ended successfully. For the LM-family path (`lm`,
+    /// `lm-legacy`, `trf`, `geodesic`, `dogleg`, `newton-cg`, `auto` when it
+    /// does not route to VarPro, and the LM refinement of `global` and of each
+    /// `irls` pass) this needs both a convergence test or a
+    /// `no_improvement_possible` stop and a stationary end point (a
+    /// `max_iterations` stop is never a success): the Gauss-Newton predicted decrease of the weighted RSS, over the
+    /// parameters not held at an active bound, is at most 1e-6 of the RSS
+    /// (#93; `stationarity_gate` in `spectrafit-solver::postfit`). A weighted
+    /// RSS at round-off level, ≤ ε·Σ(y/σ)² with ε = `f64::EPSILON`, also
+    /// counts as stationary: the relative measure is undefined at zero
+    /// residual. The off-domain, degenerate-fit and finiteness guards can still
+    /// set it to false. VarPro reports its own flag and is not gated.
     pub success: bool,
     /// Stable termination-reason key, not free text — one of the strings
     /// produced by `TerminationReason::as_str` / `faer_termination_str`
@@ -570,7 +613,7 @@ pub struct FitResultSpec {
     /// `converged` for lm-legacy, `max_iterations`,
     /// `no_improvement_possible`, `residuals_zero`, `numerical_error`).
     ///
-    /// Three post-fit forms replace or extend the key vocabulary, all
+    /// Two post-fit forms replace the key, both
     /// applied by `apply_postfit_guards` in `spectrafit-solver::postfit`:
     /// - An originally-unbounded free parameter that escaped the
     ///   data-derived domain replaces the key entirely with
@@ -582,14 +625,16 @@ pub struct FitResultSpec {
     ///   near-zero amplitude/height) replaces the key with a
     ///   `degenerate_fit (…)` string carrying the guard's reason, e.g.
     ///   `degenerate_fit (r2=-1.234e0 < 0, peak amplitude collapsed)`.
-    /// - A soft-stop termination (`no_improvement_possible` or
-    ///   `max_iterations`) upgraded to success because r² ≥ 0.9 instead keeps
-    ///   the original key and appends an `_accepted_at_r2_<value>` suffix,
-    ///   e.g. `no_improvement_possible_accepted_at_r2_0.9921`.
     ///
-    /// Match on the `diverged_off_domain` / `degenerate_fit` prefix or the
-    /// original key prefix respectively, rather than the whole string — the
-    /// bracketed/appended part is diagnostic text, not a stable key.
+    /// The stationarity gate keeps the key: a `no_improvement_possible` stop at
+    /// a stationary end point reports `success=true` with its own key (e.g.
+    /// `no_improvement_possible`), and a convergence test at a non-stationary
+    /// end point reports `success=false` with its own key (e.g.
+    /// `converged_xtol`). r² never decides `success` (#93).
+    ///
+    /// Match on the `diverged_off_domain` / `degenerate_fit` prefix rather
+    /// than the whole string — the bracketed part is diagnostic text, not a
+    /// stable key.
     pub message: String,
     /// Best-fit model values at each data point.
     pub best_fit: Vec<f64>,
@@ -851,5 +896,51 @@ mod tests {
         );
         let back: FitResultSpec = serde_json::from_str(&json).unwrap();
         assert_eq!(back.covariance_param_order, vec!["g.amplitude", "g.sigma"]);
+    }
+
+    // ── FitOptionsSpec.jacobian (#93, package 06) ─────────────────────────────
+
+    /// A payload written before the `jacobian` field existed still
+    /// deserializes, and the missing field means the analytic Jacobian.
+    #[test]
+    fn fit_options_without_jacobian_field_defaults_to_analytic() {
+        let json = r#"{"solver":"lm","max_iterations":200,"tolerance":1e-8}"#;
+        let opts: FitOptionsSpec = serde_json::from_str(json).unwrap();
+        assert_eq!(opts.jacobian, JacobianMode::Analytic);
+    }
+
+    /// `FitOptionsSpec::default()` (the Rust mirror of `FitOptions()`) is analytic.
+    #[test]
+    fn fit_options_default_is_analytic() {
+        assert_eq!(FitOptionsSpec::default().jacobian, JacobianMode::Analytic);
+        assert_eq!(JacobianMode::default(), JacobianMode::Analytic);
+    }
+
+    /// Both modes serialise to their snake_case wire strings and round-trip.
+    #[test]
+    fn fit_options_jacobian_round_trips_both_modes() {
+        for (mode, wire) in [
+            (JacobianMode::Analytic, "analytic"),
+            (JacobianMode::FiniteDifference, "finite_difference"),
+        ] {
+            let opts = FitOptionsSpec {
+                jacobian: mode,
+                ..FitOptionsSpec::default()
+            };
+            let json = serde_json::to_string(&opts).unwrap();
+            assert!(
+                json.contains(&format!("\"jacobian\":\"{wire}\"")),
+                "jacobian must serialise as {wire}: {json}"
+            );
+            let back: FitOptionsSpec = serde_json::from_str(&json).unwrap();
+            assert_eq!(back.jacobian, mode);
+        }
+    }
+
+    /// An unknown mode string is rejected instead of silently meaning analytic.
+    #[test]
+    fn fit_options_unknown_jacobian_mode_is_rejected() {
+        let json = r#"{"solver":"lm","max_iterations":200,"tolerance":1e-8,"jacobian":"numeric"}"#;
+        assert!(serde_json::from_str::<FitOptionsSpec>(json).is_err());
     }
 }

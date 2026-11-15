@@ -22,6 +22,7 @@ def test_defaults_construct_cleanly() -> None:
     assert opts.delta0 is None
     assert opts.max_delta is None
     assert opts.eta is None
+    assert opts.jacobian == "analytic"
 
 
 def test_valid_explicit_construction() -> None:
@@ -105,3 +106,27 @@ def test_model_dump_round_trip() -> None:
     dumped = original.model_dump()
     restored = FitOptions.model_validate(dumped)
     assert restored == original
+
+
+def test_jacobian_accepts_both_modes() -> None:
+    """`jacobian` is the Rust `JacobianMode` wire string (#93)."""
+    assert FitOptions(jacobian="analytic").jacobian == "analytic"
+    assert FitOptions(jacobian="finite_difference").jacobian == "finite_difference"
+
+
+def test_jacobian_rejects_unknown_mode() -> None:
+    with pytest.raises(ValidationError):
+        FitOptions(jacobian="numeric")  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+
+
+def test_jacobian_serialises_to_the_rust_wire_string() -> None:
+    """The JSON handed to the Rust core carries the snake_case mode string."""
+    dumped = FitOptions(jacobian="finite_difference").model_dump_json()
+    assert '"jacobian":"finite_difference"' in dumped
+    assert '"jacobian":"analytic"' in FitOptions().model_dump_json()
+
+
+def test_payload_without_jacobian_validates_as_analytic() -> None:
+    """A payload written before the field existed still validates (default)."""
+    restored = FitOptions.model_validate({"solver": "lm", "max_iterations": 50})
+    assert restored.jacobian == "analytic"

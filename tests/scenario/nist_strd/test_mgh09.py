@@ -17,6 +17,15 @@ provided; Start1 = (25, 39, 41.5, 39) is very far from the certified values
 solver.  Start2 = (0.25, 0.39, 0.415, 0.39) is closer and is the primary test.
 Both convergence tests are marked ``xfail(strict=False)``.
 
+**Convergence tracking.** A start test passes (XPASS) when the fit stopped on
+a convergence test, i.e. the termination reason ``result.message`` is one of
+``_CONVERGENCE_TERMINATIONS`` (the keys of the gtol, ftol, xtol and
+zero-residual tests of the ``solver="lm"`` path), and recovered the certified
+values. It does not read ``result.success``: since #93 that flag also requires
+a Gauss-Newton stationary end point and admits a ``no_improvement_possible``
+stop, so it is no convergence signal. ``tests/meta/test_nist_convergence_tracking.py``
+fails if the tracking reads it again.
+
 Source: https://www.itl.nist.gov/div898/strd/nls/data/mgh09.shtml
 """
 
@@ -49,6 +58,9 @@ from spectrafit_core import (
 # ---------------------------------------------------------------------------
 
 _LM_OPTS = FitOptions(solver="lm", max_iterations=10000, tolerance=1e-12)
+_CONVERGENCE_TERMINATIONS: frozenset[str] = frozenset(
+    {"converged_ftol", "converged_gtol", "converged_xtol", "residuals_zero"},
+)
 
 
 def _build_mgh09_graph(start: dict[str, float]) -> FitGraph:
@@ -155,17 +167,23 @@ def test_mgh09_numpy_oracle_at_certified() -> None:
     ),
 )
 def test_mgh09_recovers_nist_certified_parameters_start2() -> None:
-    """From NIST start2, spectrafit recovers certified b1..b4 within 5e-2 relative.
+    r"""From NIST start2 the LM fit stops on a convergence test at the certified values.
 
-    Start 2 = (b1=0.25, b2=0.39, b3=0.415, b4=0.39) is the closer of the two
-    published starting guesses (scaled-down version of Start1).
+    Start 2 is $(b_1, b_2, b_3, b_4) = (0.25, 0.39, 0.415, 0.39)$, the closer of
+    the two published starting guesses (Start 1 scaled down by 100). The test
+    passes when the termination reason is one of ``_CONVERGENCE_TERMINATIONS``
+    and $b_1, \ldots, b_4$ each agree with their certified values to a relative
+    error below $5 \times 10^{-2}$.
 
-    Tolerance is 5e-2 relative (looser than the default 1e-3) because b2 has a
-    large certified σ (1.9633e-01 ≈ 102% of b2 itself), indicating a flat basin
-    in the b2 direction where sub-percent recovery is not expected.
+    The tolerance is looser than the default $10^{-3}$ because $b_2$ has a large
+    certified standard deviation ($\sigma_{b_2} = 1.9633 \times 10^{-1}
+    \approx 1.02\,b_2$), a flat basin in the $b_2$ direction where sub-percent
+    recovery is not expected.
     """
     result = fit(_build_mgh09_graph(START2), _measurement(), _LM_OPTS)
-    assert result.success is True, f"MGH09 (start2) did not converge: {result.message}"
+    assert result.message in _CONVERGENCE_TERMINATIONS, (
+        f"MGH09 (start2) stopped without a convergence test: {result.message}"
+    )
 
     b1_rec = result.params["mgh09.amplitude"].value
     b2_rec = result.params["mgh09.num_lin"].value
@@ -177,7 +195,6 @@ def test_mgh09_recovers_nist_certified_parameters_start2() -> None:
     b3_cert, _ = CERTIFIED["b3"]
     b4_cert, _ = CERTIFIED["b4"]
 
-    # Use a 5e-2 relative tolerance; b2/b3/b4 are poorly determined (large certified σ).
     tol = 5e-2
     rel_b1 = abs(b1_rec - b1_cert) / abs(b1_cert)
     rel_b2 = abs(b2_rec - b2_cert) / abs(b2_cert)
@@ -209,13 +226,18 @@ def test_mgh09_recovers_nist_certified_parameters_start2() -> None:
     ),
 )
 def test_mgh09_recovers_nist_certified_parameters_start1() -> None:
-    """From NIST start1, spectrafit recovers certified b1..b4 within 5e-2 relative.
+    r"""From NIST start1 the LM fit stops on a convergence test at the certified values.
 
-    Marked xfail: start1 = (b1=25, b2=39, b3=41.5, b4=39) is far from the
-    certified values and documented as extremely difficult for gradient-based solvers.
+    Start 1 is $(b_1, b_2, b_3, b_4) = (25, 39, 41.5, 39)$, far from the
+    certified values and documented as extremely difficult for gradient-based
+    solvers. The test passes when the termination reason is one of
+    ``_CONVERGENCE_TERMINATIONS`` and $b_1, \ldots, b_4$ each agree with their
+    certified values to a relative error below $5 \times 10^{-2}$.
     """
     result = fit(_build_mgh09_graph(START1), _measurement(), _LM_OPTS)
-    assert result.success is True, f"MGH09 (start1) did not converge: {result.message}"
+    assert result.message in _CONVERGENCE_TERMINATIONS, (
+        f"MGH09 (start1) stopped without a convergence test: {result.message}"
+    )
 
     b1_rec = result.params["mgh09.amplitude"].value
     b2_rec = result.params["mgh09.num_lin"].value

@@ -127,18 +127,18 @@ than taking an unconstrained Gauss-Newton step — none of them ever solves
 `(JᵀJ)p = -Jᵀr` unregularised. They differ in how the bound is set, not in
 whether one exists:
 
-* **Explicit radius** — `"trf"`, `"dogleg"` and `"newton-cg"` expose a
-  tunable radius via `delta0`, `max_delta` and `eta`. `"trf"` additionally
-  scales its step by Coleman–Li bound-reflection; `"dogleg"` / `"newton-cg"`
-  do not, so those three knobs are read **only** on the `"dogleg"` /
-  `"newton-cg"` dispatch arm, and setting them alongside `solver="trf"` is
-  silently inert rather than an error.
-* **Implicit radius** — `"lm"` and its geodesic-accelerated variant bound the
-  step through the Levenberg–Marquardt damping term `λI` in
+* **Explicit radius** — `"dogleg"` and `"newton-cg"` expose a tunable
+  radius via `delta0`, `max_delta` and `eta`. Those three knobs are read
+  **only** on the `"dogleg"` / `"newton-cg"` dispatch arm, and setting them
+  alongside any other solver (including `solver="trf"`) is silently inert
+  rather than an error.
+* **Implicit radius** — `"lm"`, `"trf"` and the geodesic-accelerated variant
+  bound the step through the Levenberg–Marquardt damping term `λI` in
   `(JᵀJ + λI)p = -Jᵀr` instead of a named radius; for every `λ` there is an
   equivalent explicit trust-region radius (Moré, 1978), so this is the same
   family of methods under a different parameterisation, not an unconstrained
-  one.
+  one. `"trf"` additionally scales the damping of each parameter with two
+  finite bounds by its Coleman–Li bound distance.
 
 See [Choosing a Solver](how-to/choosing-a-solver.md#tuning-trust-region-behavior).
 

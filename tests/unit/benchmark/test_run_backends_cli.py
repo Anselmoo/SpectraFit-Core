@@ -82,3 +82,25 @@ def test_run_cli_rejects_unknown_backend_before_running_the_engine(
     monkeypatch.setattr(bench_cli, "build_report", _fail_if_called)
     result = runner.invoke(bench_cli.app, ["run", "--backends", "not-a-real-backend"])
     assert result.exit_code == 2, result.output
+
+
+# --------------------------------------------------------------------------- #
+# Jacobian ablation variant `spectrafit_fd` (#93)
+# --------------------------------------------------------------------------- #
+def test_default_roster_excludes_the_ablation_variant() -> None:
+    """Default runs (and hence the benchmark gate) never include spectrafit_fd."""
+    resolved, _ = _resolve_run_backends(None, None)
+    assert "spectrafit_fd" not in {b.name for b in resolved}
+
+
+def test_ablation_variant_resolves_when_named() -> None:
+    resolved, baseline_id = _resolve_run_backends("spectrafit,spectrafit_fd", None)
+    assert [b.name for b in resolved] == ["spectrafit", "spectrafit_fd"]
+    assert baseline_id == "spectrafit"
+
+
+def test_ablation_variant_with_lmfit_keeps_lmfit_baseline() -> None:
+    pytest.importorskip("lmfit")
+    resolved, baseline_id = _resolve_run_backends("spectrafit,spectrafit_fd,lmfit", None)
+    assert [b.name for b in resolved] == ["spectrafit", "spectrafit_fd", "lmfit"]
+    assert baseline_id == "lmfit"

@@ -71,15 +71,26 @@ class FitResult(BaseModel):
             if unavailable).
         n_jac_evals (int | None): Number of Jacobian evaluations (``None`` if
             unavailable).
-        success (bool): ``True`` if the solver converged within
-            ``max_iterations``.
+        success (bool): For the Levenberg-Marquardt family (``"lm"``,
+            ``"lm-legacy"``, ``"trf"``, ``"geodesic"``, ``"dogleg"``,
+            ``"newton-cg"``, ``"auto"`` when it does not route to VarPro, and
+            the LM refinement of ``"global"`` and ``"irls"``), ``True`` only
+            when the solver stopped on a convergence test or on
+            ``"no_improvement_possible"`` and the end point is verified as
+            stationary: the Gauss-Newton predicted decrease of the weighted
+            RSS, over the parameters not held at an active bound, is at most
+            $10^{-6}$ of the RSS, or the RSS is at round-off level. A
+            ``"max_iterations"`` stop is never a success, and $r^2$ plays no
+            part. The off-domain, degenerate-fit and finiteness guards can
+            still set it to ``False``. VarPro reports its own flag and is not
+            gated (#93).
         message (str): Stable termination-reason key, not free text — one of
             the strings produced by ``TerminationReason::as_str`` /
             ``faer_termination_str`` (e.g. ``"converged_ftol"``,
             ``"converged_xtol"``, ``"converged_gtol"``, ``"converged"`` for
             lm-legacy, ``"max_iterations"``, ``"no_improvement_possible"``,
             ``"residuals_zero"``, ``"numerical_error"``).
-            Three post-fit forms replace or extend the key vocabulary, all
+            Two post-fit forms replace the key, both
             applied by ``apply_postfit_guards`` in
             ``spectrafit-solver::postfit``:
 
@@ -94,16 +105,15 @@ class FitResult(BaseModel):
               ``"degenerate_fit (…)"`` string carrying the guard's reason,
               e.g. ``"degenerate_fit (r2=-1.234e0 < 0, peak amplitude
               collapsed)"``.
-            - A soft-stop termination (``"no_improvement_possible"`` or
-              ``"max_iterations"``) upgraded to success because
-              $r^2 \ge 0.9$ instead keeps the original key and appends an
-              ``"_accepted_at_r2_<value>"`` suffix, e.g.
-              ``"no_improvement_possible_accepted_at_r2_0.9921"``.
+
+            No $r^2$ rule changes ``success`` or the key: a
+            ``"max_iterations"`` stop keeps ``success=False`` at any $r^2$,
+            and a ``"no_improvement_possible"`` stop is a success only at a
+            stationary end point (see ``success``; #93).
 
             Match on the ``"diverged_off_domain"`` / ``"degenerate_fit"``
-            prefix or the original key prefix respectively, rather than the
-            whole string — the bracketed/appended part is diagnostic text,
-            not a stable key.
+            prefix rather than the whole string — the bracketed part is
+            diagnostic text, not a stable key.
         best_fit (list[float]): Model values at the fitted parameters, one
             per data point.
         residuals (list[float]): Signed residuals ``(y_observed - y_fit)``.

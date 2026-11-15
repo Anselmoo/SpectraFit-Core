@@ -4,9 +4,12 @@
 //! update differ. The loop is classic Levenberg–Marquardt with a Nielsen `λ/ν`
 //! schedule and a gain-ratio accept/reject test, with stopping criteria matched
 //! to `scipy.optimize.least_squares` / `lmfit` defaults (`ftol`, `xtol`,
-//! `gtol`). Bounds reflection and tied-parameter application live inside the
-//! problem's [`set_params`](TrustRegionProblem::set_params); the driver only
-//! proposes raw steps and reads back the applied parameters.
+//! `gtol`). When the problem exposes a box ([`TrustRegionProblem::bounds`]) the
+//! driver projects every trial point onto it (see "Projection onto the box"
+//! below); any further parameterisation (tied parameters, bounds handling of
+//! problems without `bounds()`) lives in the problem's
+//! [`set_params`](TrustRegionProblem::set_params), and the driver reads back
+//! the applied parameters.
 //!
 //! # Known divergence from scipy: the `ftol` stop
 //!
@@ -20,6 +23,36 @@
 //! wrong answer: the reported point is still an accepted, cost-reducing
 //! iterate. Documented rather than changed so the existing accuracy gates keep
 //! measuring the solver as shipped.
+//!
+//! # Active-set projected step at bounds
+//!
+//! When the problem exposes a box ([`TrustRegionProblem::bounds`]) and a
+//! component sits on a bound with its descent direction `−g_i` pointing out of
+//! the box, that component is *held*: the damped step is solved on the free
+//! subspace only, the trial point is projected (clamped) onto the box, and a
+//! step that the projection reduces to zero is a stationary point, not a
+//! rejected trial. Held set: D. P. Bertsekas, "Projected Newton methods for
+//! optimization problems with simple constraints", SIAM J. Control Optim.
+//! 20(2):221–246, 1982, doi:10.1137/0320018. Projected LM step onto the box:
+//! C. Kanzow, N. Yamashita, M. Fukushima, "Levenberg–Marquardt methods with
+//! strong local convergence properties for solving nonlinear equations with
+//! convex constraints", J. Comput. Appl. Math. 172:375–397, 2004 (erratum
+//! 2005). With nothing held the iteration runs the unchanged unbounded code
+//! path, bit for bit (see `held_components`).
+//!
+//! # Projection onto the box
+//!
+//! A trial point `p + δ` that crosses a bound is projected (componentwise
+//! clamped) onto the box, not reflected back into it: the projected LM step of
+//! C. Kanzow, N. Yamashita, M. Fukushima, J. Comput. Appl. Math. 172:375–397,
+//! 2004 (erratum 2005), whose iterate is `P_X(x + d)`. An iterate can then land
+//! exactly on a bound, where the active-set entry rule (`AT_BOUND_REL`) holds
+//! it; a reflected iterate (`2b − t`) only landed on a bound on a two-sided
+//! double bounce and otherwise parked a small distance off a one-sided bound,
+//! so the active set never engaged from interior starts (#93). The geodesic
+//! probe point is projected the same way. A point inside the box is passed on
+//! unchanged, so a box that is never crossed leaves every iterate bit-identical.
+//! The gain ratio is still judged on the step the problem applied.
 //!
 //! # Global state
 //!
@@ -57,9 +90,11 @@ pub struct StrategyConfig {
     /// Acceptance threshold for the acceleration: accept `δ + ½a` only when
     /// `‖Da‖ / ‖Dδ‖ ≤ α` (mild curvature).
     pub geodesic_alpha: f64,
-    /// Enable Coleman–Li bound scaling (Trust-Region-Reflective): fold the
+    /// Enable Coleman–Li bound-distance scaling (`solver="trf"`): fold the
     /// problem's [`trust_scaling`](TrustRegionProblem::trust_scaling) into the
-    /// per-iteration damping so steps shrink as parameters approach active bounds.
+    /// per-iteration damping so steps shrink as parameters approach a bound for
+    /// which the problem reports `v_i < 1` (in `spectrafit-solver`, parameters
+    /// with two finite bounds). Trial points are projected onto the box either way.
     pub bound_scaling: bool,
 }
 
@@ -122,6 +157,7 @@ fn geodesic_augment<P: TrustRegionProblem>(
     r: MatRef<'_, f64>,
     g: MatRef<'_, f64>,
     p_cur: &[f64],
+    bounds: Option<&[(f64, f64)]>,
     velocity: Mat<f64>,
     diag: &[f64],
     lambda: f64,
@@ -139,9 +175,11 @@ fn geodesic_augment<P: TrustRegionProblem>(
 
     let jv = j * velocity.as_ref(); // m×1
 
-    // Probe r(p + h·δ); restore to p_cur afterwards.
+    // Probe r(p + h·δ), projected onto the box like every trial point (module
+    // doc, "Projection onto the box"); restore to p_cur afterwards.
     let p_probe: Vec<f64> = (0..p).map(|i| p_cur[i] + h * velocity[(i, 0)]).collect();
-    problem.set_params(&p_probe);
+    let p_probe_proj = project_point(&p_probe, bounds);
+    problem.set_params(p_probe_proj.as_deref().unwrap_or(&p_probe));
     let mut r_plus = Mat::<f64>::zeros(m, 1);
     let probe_ok = problem.residuals_into(r_plus.as_mut()).is_ok();
     problem.set_params(p_cur);
@@ -242,9 +280,10 @@ fn compute_gradient_and_optimality<P: TrustRegionProblem>(
 }
 
 /// Per-iteration step scaling: the monotone Moré `diag`, optionally folded
-/// with Coleman–Li bound scaling (TRF) `D_i ← D_i / √v_i` so steps shrink
-/// near active bounds. `diag` itself is never modified — this returns a
-/// derived copy for the current factorization only.
+/// with Coleman–Li bound-distance scaling (`solver="trf"`) `D_i ← D_i / √v_i`
+/// so steps shrink near the bound a parameter moves toward when `v_i < 1`.
+/// `diag` itself is never modified — this returns a derived copy for the
+/// current factorization only.
 fn compute_step_diag(diag: &[f64], bound_scaling: bool, trust_v: Option<Vec<f64>>) -> Vec<f64> {
     if bound_scaling {
         match trust_v {
@@ -257,6 +296,65 @@ fn compute_step_diag(diag: &[f64], bound_scaling: bool, trust_v: Option<Vec<f64>
         }
     } else {
         diag.to_vec()
+    }
+}
+
+/// Relative tolerance that defines "at a bound" for the active-set step:
+/// component `i` is at bound `b` when `|x_i − b| ≤ AT_BOUND_REL · max(|b|, 1)`.
+/// The same 1e-12-relative convention as the F4g stationarity check (#93); the
+/// codebase had no bound tolerance to reuse. Measured in the driver's working
+/// units (after `Parameter.scale`), i.e. on [`TrustRegionProblem::params`] and
+/// [`TrustRegionProblem::bounds`].
+const AT_BOUND_REL: f64 = 1e-12;
+
+/// Whether `x` is at the finite bound `b` within [`AT_BOUND_REL`].
+#[inline]
+fn at_bound(x: f64, b: f64) -> bool {
+    b.is_finite() && (x - b).abs() <= AT_BOUND_REL * b.abs().max(1.0)
+}
+
+/// Projection of `t` onto `[lo, hi]` (one component of `P_X`, Kanzow,
+/// Yamashita, Fukushima 2004). A value inside the box is returned unchanged,
+/// bit for bit; a NaN passes through (it is not mapped onto a bound).
+#[inline]
+fn project_onto_box(t: f64, lo: f64, hi: f64) -> f64 {
+    if t < lo {
+        lo
+    } else if t > hi {
+        hi
+    } else {
+        t
+    }
+}
+
+/// `p` projected componentwise onto `bounds`, or `None` when there is no box.
+fn project_point(p: &[f64], bounds: Option<&[(f64, f64)]>) -> Option<Vec<f64>> {
+    bounds.map(|bx| {
+        p.iter()
+            .zip(bx)
+            .map(|(&t, &(lo, hi))| project_onto_box(t, lo, hi))
+            .collect()
+    })
+}
+
+/// Indices of the free (not held) components for the active-set step, or
+/// `None` when no component is held.
+///
+/// A component is held when it is at a bound and the descent direction `−g_i`
+/// leaves the box: at the lower bound with `g_i > 0`, at the upper bound with
+/// `g_i < 0` (Bertsekas 1982, the set `I⁺`). `None` — nothing held — sends the
+/// iteration down the unchanged unbounded code path, so a problem whose bounds
+/// are never active iterates bit-identically to the driver without this step.
+fn held_components(x: &[f64], g: MatRef<'_, f64>, bounds: &[(f64, f64)]) -> Option<Vec<usize>> {
+    let held = |i: usize| {
+        let (lo, hi) = bounds[i];
+        let gi = g[(i, 0)];
+        (gi > 0.0 && at_bound(x[i], lo)) || (gi < 0.0 && at_bound(x[i], hi))
+    };
+    if (0..x.len()).any(held) {
+        Some((0..x.len()).filter(|&i| !held(i)).collect())
+    } else {
+        None
     }
 }
 
@@ -339,6 +437,10 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
     let mut lambda = cfg.initial_lambda;
     let mut nu = 2.0_f64;
 
+    // Box for the active-set projected step; ignored unless it has one entry
+    // per free parameter.
+    let bounds: Option<Vec<(f64, f64)>> = problem.bounds().filter(|b| b.len() == p);
+
     loop {
         // Jacobian at the current point.
         if problem.jacobian_into(j.as_mut()).is_err() {
@@ -366,15 +468,6 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
 
         // Per-iteration step scaling — see `compute_step_diag`'s doc comment.
         let step_diag = compute_step_diag(&diag, cfg.bound_scaling, trust_v);
-
-        // Factor the step operator ONCE for this outer iteration (the O(m·p²)
-        // work: forming JᵀJ, or the thin SVD of J̃). `J` and `step_diag` are
-        // fixed across the inner λ search — only λ changes — so every λ trial and
-        // the geodesic acceleration solve reuse this factorization.
-        let factor: StepFactor = match factorize(cfg.kind, j.as_ref(), &step_diag) {
-            Ok(f) => f,
-            Err(_) => report!(Termination::NumericalError, cost, gnorm),
-        };
 
         // Inner λ search: shrink the trust region (raise λ) until a step is
         // accepted or the budget runs out. `p_cur` is invariant across trials —
@@ -409,6 +502,162 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
             }};
         }
 
+        // Active-set projected step (#93; module doc for the sources). Taken
+        // only when some component is held; otherwise fall through to the
+        // unchanged unbounded step below.
+        if let Some((bx, free)) = bounds
+            .as_deref()
+            .and_then(|bx| held_components(&p_cur, g.as_ref(), bx).map(|free| (bx, free)))
+        {
+            // Every component held: the projected gradient is zero — a
+            // stationary point of the box-constrained problem. Stop as a
+            // first-order success; no trial, so no λ growth.
+            if free.is_empty() {
+                report!(Termination::Gtol, cost, gnorm);
+            }
+            let nf = free.len();
+            // Damped step on the free subspace: the same factorization path,
+            // with the held columns of J, entries of g and of the step scaling
+            // removed (Moré `diag`, Coleman–Li fold and the Nielsen λ are
+            // unchanged for the free components).
+            let j_free = Mat::from_fn(m, nf, |i, c| j[(i, free[c])]);
+            let g_free = Mat::from_fn(nf, 1, |c, _| g[(free[c], 0)]);
+            let diag_free: Vec<f64> = free.iter().map(|&i| step_diag[i]).collect();
+            let factor_free: StepFactor = match factorize(cfg.kind, j_free.as_ref(), &diag_free) {
+                Ok(f) => f,
+                Err(_) => report!(Termination::NumericalError, cost, gnorm),
+            };
+            loop {
+                let step = match factor_free.solve(g_free.as_ref(), r.as_ref(), &diag_free, lambda)
+                {
+                    Ok(s) => s,
+                    Err(StepError::NotPositiveDefinite) | Err(StepError::Factorization(_)) => {
+                        bump_lambda!();
+                        continue;
+                    }
+                };
+                if !step.predicted_reduction.is_finite() {
+                    bump_lambda!();
+                    continue;
+                }
+                // Held components keep their value; free ones take the step
+                // and are projected (clamped, not reflected) onto the box.
+                // Geodesic acceleration is not applied while a component is
+                // held: it is defined for the unconstrained step.
+                let mut p_trial = p_cur.clone();
+                // A non-zero step component that lands inside the box and
+                // still leaves p unchanged was rounded away, not clamped.
+                let mut rounded_away = false;
+                for (c, &i) in free.iter().enumerate() {
+                    let (lo, hi) = bx[i];
+                    let d = step.delta[(c, 0)];
+                    let t = p_cur[i] + d;
+                    rounded_away |= d != 0.0 && t == p_cur[i] && t > lo && t < hi;
+                    p_trial[i] = t.max(lo).min(hi);
+                }
+                // Fully clamped: the projection leaves nothing of the step.
+                // With a positive-definite damped matrix this needs the free
+                // gradient to vanish (each blocked component has g_i·δ_i ≥ 0,
+                // while gᵀδ = −g_Fᵀ(H_F + λD_F²)⁻¹g_F < 0 otherwise), so the
+                // point is stationary. Not a rejection: stop, no λ growth.
+                // A step that only rounded away (λ grown by rejections until
+                // p + δ == p) proves nothing: keep the rejection semantics,
+                // which end in `NoImprovement` as on the unbounded path.
+                if p_trial == p_cur {
+                    if rounded_away {
+                        bump_lambda!();
+                        continue;
+                    }
+                    report!(Termination::Gtol, cost, gnorm);
+                }
+                // Model reduction of the projected step δₚ = p_trial − p_cur.
+                let delta_p = Mat::from_fn(p, 1, |i, _| p_trial[i] - p_cur[i]);
+                let jdp = j.as_ref() * delta_p.as_ref();
+                let pred =
+                    -col_dot(g.as_ref(), delta_p.as_ref()) - 0.5 * jdp.as_ref().squared_norm_l2();
+                if !(pred.is_finite() && pred > 0.0) {
+                    bump_lambda!();
+                    continue;
+                }
+
+                problem.set_params(&p_trial);
+                if problem.residuals_into(r_trial.as_mut()).is_err() {
+                    problem.set_params(&p_cur);
+                    report!(Termination::NumericalError, cost, gnorm);
+                }
+                n_residual_evals += 1;
+                let cost_trial = 0.5 * r_trial.as_ref().squared_norm_l2();
+                let actual = cost - cost_trial;
+                // The problem may still move the point (e.g. a scaled bound
+                // rounding by an ulp): judge against the applied step then.
+                let p_applied = problem.params();
+                let pred_eff = if p_applied != p_trial {
+                    let delta_a = Mat::from_fn(p, 1, |i, _| p_applied[i] - p_cur[i]);
+                    let jda = j.as_ref() * delta_a.as_ref();
+                    -col_dot(g.as_ref(), delta_a.as_ref()) - 0.5 * jda.as_ref().squared_norm_l2()
+                } else {
+                    pred
+                };
+                let rho = if pred_eff.is_finite() && pred_eff > 0.0 {
+                    actual / pred_eff
+                } else {
+                    0.0
+                };
+
+                if rho > 1e-4 {
+                    // Accept — same bookkeeping and stopping tests as the
+                    // unbounded path below.
+                    let mut step_norm2 = 0.0;
+                    let mut param_norm2 = 0.0;
+                    for i in 0..p {
+                        let d = p_applied[i] - p_cur[i];
+                        step_norm2 += d * d;
+                        param_norm2 += p_applied[i] * p_applied[i];
+                    }
+                    let step_norm = step_norm2.sqrt();
+                    let param_norm = param_norm2.sqrt();
+
+                    std::mem::swap(&mut r, &mut r_trial);
+                    cost = cost_trial;
+                    n_iter += 1;
+
+                    lambda *= f64::max(1.0 / 3.0, 1.0 - (2.0 * rho - 1.0).powi(3));
+                    nu = 2.0;
+
+                    if cost == 0.0 {
+                        report!(Termination::ResidualsZero, cost, gnorm);
+                    }
+                    if actual <= cfg.ftol * cost.max(f64::MIN_POSITIVE) {
+                        report!(Termination::Ftol, cost, gnorm);
+                    }
+                    if step_norm <= cfg.xtol * (cfg.xtol + param_norm) {
+                        report!(Termination::Xtol, cost, gnorm);
+                    }
+                    break;
+                } else {
+                    problem.set_params(&p_cur);
+                    bump_lambda!();
+                }
+
+                if n_residual_evals >= cfg.max_nfev {
+                    report!(Termination::MaxEval, cost, gnorm);
+                }
+            }
+            if n_residual_evals >= cfg.max_nfev {
+                report!(Termination::MaxEval, cost, gnorm);
+            }
+            continue;
+        }
+
+        // Factor the step operator ONCE for this outer iteration (the O(m·p²)
+        // work: forming JᵀJ, or the thin SVD of J̃). `J` and `step_diag` are
+        // fixed across the inner λ search — only λ changes — so every λ trial and
+        // the geodesic acceleration solve reuse this factorization.
+        let factor: StepFactor = match factorize(cfg.kind, j.as_ref(), &step_diag) {
+            Ok(f) => f,
+            Err(_) => report!(Termination::NumericalError, cost, gnorm),
+        };
+
         loop {
             let step = match factor.solve(g.as_ref(), r.as_ref(), &step_diag, lambda) {
                 Ok(s) => s,
@@ -435,6 +684,7 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
                     r.as_ref(),
                     g.as_ref(),
                     &p_cur,
+                    bounds.as_deref(),
                     delta,
                     &step_diag,
                     lambda,
@@ -450,9 +700,12 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
                 continue;
             }
 
-            // Trial point: p_trial = p_applied + δ.
+            // Trial point p_cur + δ, projected onto the box when the problem
+            // exposes one (Kanzow, Yamashita, Fukushima 2004, projected LM
+            // step; module doc). Inside the box the projection is the identity.
             let p_trial: Vec<f64> = (0..p).map(|i| p_cur[i] + delta[(i, 0)]).collect();
-            problem.set_params(&p_trial);
+            let p_trial_proj = project_point(&p_trial, bounds.as_deref());
+            problem.set_params(p_trial_proj.as_deref().unwrap_or(&p_trial));
             if problem.residuals_into(r_trial.as_mut()).is_err() {
                 // Restore the last accepted point before bailing so `problem`
                 // holds the accepted θ (not the NaN-producing trial) when
@@ -466,8 +719,8 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
             let cost_trial = 0.5 * r_trial.as_ref().squared_norm_l2();
 
             let actual = cost - cost_trial;
-            // Gain ratio. When the problem's projection (bounds reflection /
-            // clamping in `set_params`) clipped the proposed step, judging
+            // Gain ratio. When the projection onto the box (above) or the
+            // problem's own `set_params` clipped the proposed step, judging
             // `actual` against the RAW step's predicted reduction is wrong:
             // the phantom reduction from the clipped direction dominates
             // `pred`, ρ collapses, and legitimate refinements of the still-
@@ -475,6 +728,8 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
             // Recompute the model reduction for the
             // APPLIED step δₐ = p_applied − p_cur in that case. Interior
             // (unclipped) steps keep the factorization's `pred` unchanged.
+            // `p_trial` is the raw, unprojected p_cur + δ, so a step clipped by
+            // the projection is detected here as before.
             let p_applied = problem.params();
             let clipped = p_applied.iter().zip(p_trial.iter()).any(|(a, t)| a != t);
             let pred_eff = if clipped {
@@ -489,12 +744,14 @@ pub fn minimize<P: TrustRegionProblem>(problem: &mut P, cfg: &StrategyConfig) ->
             } else {
                 // Fully-clamped (δₐ = 0) or degenerate applied step: no
                 // model reduction to judge against — treat as a rejection.
+                // (Reached only with nothing held; a fully clamped step of
+                // the active-set path above is a stationary stop instead.)
                 0.0
             };
 
             if rho > 1e-4 {
                 // Accept. Step norm uses the parameters the problem actually
-                // applied (post-reflection), not the proposed δ.
+                // applied (post-projection), not the proposed δ.
                 let mut step_norm2 = 0.0;
                 let mut param_norm2 = 0.0;
                 for i in 0..p {

@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
+
+_BOUND_JSON_SCHEMA = WithJsonSchema({"anyOf": [{"type": "number"}, {"type": "null"}]})
 
 
 class Parameter(BaseModel):
-    """A single fit parameter: a value, optional bounds, and constraints.
+    r"""A single fit parameter: a value, optional bounds, and constraints.
 
     Attributes:
         value (float): Initial (or fixed) parameter value.
-        min (float): Lower bound; defaults to ``-inf``.
-        max (float): Upper bound; defaults to ``+inf``.
+        min (float): Lower bound; defaults to $-\infty$ (unbounded), written as
+            ``null`` in JSON and read back from ``null``.
+        max (float): Upper bound; defaults to $+\infty$ (unbounded), written as
+            ``null`` in JSON and read back from ``null``.
         vary (bool): Whether the solver may adjust this parameter.  Ignored
             when ``expr`` is set — the engine always derives the value from
             the expression and excludes the parameter from the free set.
@@ -30,8 +36,14 @@ class Parameter(BaseModel):
     """
 
     value: float
-    min: float = float("-inf")
-    max: float = float("inf")
+    min: Annotated[float, _BOUND_JSON_SCHEMA] = Field(
+        default=float("-inf"),
+        description="Lower bound; null in JSON means unbounded below.",
+    )
+    max: Annotated[float, _BOUND_JSON_SCHEMA] = Field(
+        default=float("inf"),
+        description="Upper bound; null in JSON means unbounded above.",
+    )
     vary: bool = True
     expr: str | None = None
     scale: float | None = None

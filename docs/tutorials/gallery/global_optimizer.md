@@ -20,8 +20,7 @@ Initial guesses are poor, or the objective is genuinely multi-modal — two
 overlapping peaks with ambiguous or swapped starting positions. `"global"`
 (Differential Evolution + LM refinement, per `FitOptions.solver`'s own
 docstring) explores the full parameter space before refining locally, where
-a local solver like `"lm"` would just converge — cleanly, with
-`success=True` — to the wrong answer.
+a local solver like `"lm"` stops at the wrong answer.
 
 ```python
 --8<-- "global_optimizer.py:data"
@@ -44,15 +43,16 @@ single local descent.
 --8<-- "global_optimizer.py:run_solvers"
 ```
 
-`success=True` alone can't distinguish "converged to the right answer" from
-"converged, confidently, to the wrong one" — `chi2`/`r_squared` against the
-data is what actually does.
+`lm` stops (`converged_ftol`) where both peaks coincide. The Jacobian is
+rank-deficient there, so the end point cannot be verified as a minimum and
+`success=False` reports that; `chi2` and `r_squared` = 0.035 against the data
+show the wrong answer, and `"global"` recovers the planted solution.
 
 ```python
 --8<-- "global_optimizer.py:compare"
 ```
 
-![Bad initial guess: lm's wrong local optimum vs. global's correct fit](_static/global_optimizer.png)
+![Bad initial guess: lm's wrong end point vs. global's correct fit](_static/global_optimizer.png)
 
 ## Why this works
 
@@ -70,9 +70,11 @@ but this is its first demonstration on a spectroscopy-shaped fit.
 2. **A deliberately bad start** — both graph nodes' `center` initial guesses
    are seeded at `0.0`, the same wrong location.
 
-3. **`"lm"` converges to a wrong local optimum** — `success=True`, but a
-   single broad blob straddling the gap between the true peaks
-   (`r_squared` well below the `"global"` run's, asserted numerically).
+3. **`"lm"` stops where both peaks coincide** — a single broad blob
+   straddling the gap between the true peaks (`converged_ftol`,
+   `success=False`: the Jacobian is rank-deficient there, so the end point
+   cannot be verified as a minimum; `r_squared` well below the `"global"`
+   run's, asserted numerically).
 
 4. **`"global"` finds the true two-peak solution** — differential evolution
    explores broadly first (`n_de_generations` reports how many generations

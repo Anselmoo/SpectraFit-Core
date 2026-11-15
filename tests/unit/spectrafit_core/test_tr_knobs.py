@@ -126,8 +126,11 @@ def test_tr_knob_eta_in_range_reaches_the_solver() -> None:
     cannot discriminate. A deliberately bad-started, sloppy two-peak
     problem gives Newton-CG enough marginal trial steps that the two
     extremes take a measurably different number of accepted iterations to
-    reach the same `converged_ftol` optimum (measured at 30 vs. 25 on this
-    fixture, reproducible across runs since the solver has no RNG). If
+    reach the same `converged_ftol` end point (measured at 30 vs. 25 on this
+    fixture, reproducible across runs since the solver has no RNG). That end
+    point is not stationary (Gauss-Newton predicted decrease 6.35e-3 of the
+    RSS), so both fits report `success=False` (#93); the test reads only the
+    iteration counts. If
     `eta` were silently dropped before reaching
     `dispatch.rs::TrustRegionConfig`, both runs would take the identical
     path and `n_iter` would match.
@@ -175,8 +178,6 @@ def test_tr_knob_eta_in_range_reaches_the_solver() -> None:
         data,
         FitOptions(solver="newton-cg", max_iterations=300, eta=0.24),
     )
-    assert r_lo.success
-    assert r_hi.success
     assert r_lo.n_iter != r_hi.n_iter, (
         f"eta=0.0 (n_iter={r_lo.n_iter}) vs eta=0.24 (n_iter={r_hi.n_iter}) "
         "should take a different number of accepted iterations on this "

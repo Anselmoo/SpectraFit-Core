@@ -67,6 +67,28 @@ collection time.
 - **`oracles.migrate`** — the `MIGRATIONS` registry for `BenchReport` schema
   version upgrades (additive minor vs. breaking major).
 
+## Stopping tolerances (`--tolerance-mode`)
+
+`python -m oracles.cli run --tolerance-mode default` (the default) lets every
+backend stop by its own library's tests at their default thresholds.
+`--tolerance-mode common` hands every backend the same setting,
+ftol = xtol = gtol = $10^{-8}$, passed to each test the library has, and
+writes it to `tolerances.json` in the run directory
+(`python/oracles/backends/_tolerance.py`):
+
+| backend | default thresholds | what `common` passes |
+|---|---|---|
+| spectrafit | one `FitOptions.tolerance` for all three tests, $10^{-8}$ | `tolerance=1e-8` |
+| lmfit `leastsq` | ftol = xtol = $1.5\times10^{-8}$, gtol = 0 (no gradient test) | `fit_kws` ftol, xtol, gtol $= 10^{-8}$ |
+| lmfit differential evolution (optfn) | scipy `tol=0.01`, `atol=0` | nothing (no ftol/xtol/gtol); keeps its stop |
+| `scipy-ls-{lm,trf,dogbox}` | ftol = xtol = gtol = $10^{-8}$ | the same three, explicitly |
+| jax / optimistix LM | `rtol = atol = 1e-8` (set by the adapter); no gradient test | `rtol = atol = 1e-8` |
+
+`common` equalises the thresholds, not the definitions: the libraries still
+compare different quantities (relative or absolute, raw or scaled parameters,
+gradient norm or cosine). Evaluation and step budgets are the same in both
+modes.
+
 ## Adding a case for an existing model
 
 A single `CaseSpec`/`CaseFamily` entry in `oracles/cases.py` referencing an

@@ -1,0 +1,210 @@
+{
+  "$defs": {
+    "ExprEdge": {
+      "additionalProperties": false,
+      "description": "A directed expression edge that constrains one parameter to a formula.\n\nAttributes:\n    target_node (str): ID of the node whose parameter is constrained.\n    target_param (str): Name of the parameter to constrain.\n    expression (str): Formula referencing other node params as\n        ``node_id.param``.\n\nNote:\n    Expression edges are validated for cycles and unknown nodes at\n    construction time.  The engine parses them into a dependency-ordered,\n    cycle-checked plan (a DAG) and evaluates them per solver iteration, so\n    ``fit()`` applies the tie during fitting — they are not rejected.",
+      "properties": {
+        "target_node": {
+          "title": "Target Node",
+          "type": "string"
+        },
+        "target_param": {
+          "title": "Target Param",
+          "type": "string"
+        },
+        "expression": {
+          "title": "Expression",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_node",
+        "target_param",
+        "expression"
+      ],
+      "title": "ExprEdge",
+      "type": "object"
+    },
+    "ModelNodeSpec": {
+      "additionalProperties": false,
+      "description": "One model node: a unique ``id``, a ``model_type``, and its parameters.\n\nAttributes:\n    id (str): Unique node identifier within a graph.\n    model_type (ModelType): Which model kernel this node evaluates.\n    parameters (dict[str, Parameter]): Parameter definitions keyed by\n        parameter name.\n    dataset_index (int | None): Dataset scope for simultaneous\n        multi-dataset (\"global analysis\") fits. ``None`` (default) =\n        global node, contributing to every dataset's points. ``i`` =\n        local to dataset ``i``, contributing residuals/Jacobian only to\n        that dataset's contiguous point-range.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "model_type": {
+          "$ref": "#/$defs/ModelType"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Parameter"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "dataset_index": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Index"
+        }
+      },
+      "required": [
+        "id",
+        "model_type",
+        "parameters"
+      ],
+      "title": "ModelNodeSpec",
+      "type": "object"
+    },
+    "ModelType": {
+      "description": "Supported model kernels, identified by their canonical string name.",
+      "enum": [
+        "gaussian",
+        "gaussian2d",
+        "gaussian_nd",
+        "lorentzian",
+        "voigt",
+        "constant",
+        "linear",
+        "quadratic",
+        "arctan_step",
+        "tanh_step",
+        "erfc_step",
+        "pseudo_voigt",
+        "fano",
+        "double_exponential",
+        "true_voigt",
+        "skewed_gaussian",
+        "exp_gaussian",
+        "doniach_sunjic",
+        "log_normal",
+        "pearson7",
+        "split_gaussian",
+        "moffat",
+        "students_t",
+        "split_pearson7",
+        "breit_wigner",
+        "asym_ir",
+        "harmonic_ir",
+        "tauc",
+        "cauchy_dispersion",
+        "kww",
+        "saturating_exponential",
+        "power_saturation",
+        "power_law_offset",
+        "mgh09_rational",
+        "rational_cubic",
+        "generalised_logistic",
+        "exp_over_linear"
+      ],
+      "title": "ModelType",
+      "type": "string"
+    },
+    "Parameter": {
+      "additionalProperties": false,
+      "description": "A single fit parameter: a value, optional bounds, and constraints.\n\nAttributes:\n    value (float): Initial (or fixed) parameter value.\n    min (float): Lower bound; defaults to $-\\infty$ (unbounded), written as\n        ``null`` in JSON and read back from ``null``.\n    max (float): Upper bound; defaults to $+\\infty$ (unbounded), written as\n        ``null`` in JSON and read back from ``null``.\n    vary (bool): Whether the solver may adjust this parameter.  Ignored\n        when ``expr`` is set — the engine always derives the value from\n        the expression and excludes the parameter from the free set.\n    expr (str | None): Optional symbolic expression tying this parameter\n        to others; re-evaluated on every solver iteration\n        (dependency-ordered), so the model always sees the current tied\n        value. References other parameters as ``node_id.param`` (e.g.\n        ``\"g1.sigma\"``). When set, the parameter is excluded from the\n        free set regardless of ``vary``.\n    scale (float | None): Positive scale factor for the solver's working\n        variable: the optimiser iterates on ``value / scale`` so\n        parameters of very different magnitude are conditioned alike.\n        Does not change the reported physical value. ``None`` (default)\n        disables scaling for this parameter.",
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lower bound; null in JSON means unbounded below.",
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Upper bound; null in JSON means unbounded above.",
+          "title": "Max"
+        },
+        "vary": {
+          "default": true,
+          "title": "Vary",
+          "type": "boolean"
+        },
+        "expr": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expr"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scale"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "Parameter",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A directed acyclic graph specifying the model topology for a fit.\n\nAttributes:\n    schema_version (str): IR schema version string (default ``\"0.1\"``).\n    nodes (list[ModelNodeSpec]): Ordered list of model nodes (each with a\n        unique ``id``).\n    expr_edges (list[ExprEdge]): Optional parameter-constraint edges.\n        Must form a DAG.\n\nNote:\n    The Rust engine parses ``expr_edges`` into a dependency-ordered,\n    cycle-checked plan (``CompiledGraph.tied_plan``) and the LM/TRF solver\n    loop applies that plan per iteration, so calling ``fit()`` with\n    non-empty ``expr_edges`` evaluates the tied parameters during the fit.\n    Per-parameter ``Parameter.expr`` is an equivalent constraint surface:\n    both ``expr_edges`` and ``Parameter.expr`` are validated for cycles and\n    unknown nodes at construction time and evaluated identically at fit-time.",
+  "properties": {
+    "schema_version": {
+      "default": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/ModelNodeSpec"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "expr_edges": {
+      "items": {
+        "$ref": "#/$defs/ExprEdge"
+      },
+      "title": "Expr Edges",
+      "type": "array"
+    }
+  },
+  "required": [
+    "nodes"
+  ],
+  "title": "FitGraph",
+  "type": "object"
+}
