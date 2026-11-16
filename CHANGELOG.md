@@ -152,6 +152,13 @@ This project follows repository release policy enforced by `repo-release-tools`.
   matched nothing. The pattern now accepts either order. The wheel itself is
   unchanged: its extension module carries `x86_64` and `arm64`, and it
   declares the same three tags as `0.1.2`. CI only.
+- **The tolerance golden tests that need `jax` skip without the extra.**
+  `test_tolerance_default_golden.py` records a jax row and the jax and
+  optimistix versions, but the full-suite `test-matrix` job installs without
+  the optional `jax` extra on purpose, so three of its tests failed there. The
+  two tests that compare the installed roster and versions with the golden now
+  skip when `jax` or `optimistix` is missing; the rest of the file still runs
+  everywhere, and all of it runs wherever the extra is installed. Tests only.
 
 ## [0.1.2] - 2026-10-05
 

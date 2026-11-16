@@ -34,6 +34,17 @@ import pytest
 from oracles.backends import get_backends
 from oracles.cases import build_catalog
 
+_JAX_EXTRA_MISSING = [m for m in ("jax", "optimistix") if importlib.util.find_spec(m) is None]
+needs_jax = pytest.mark.skipif(
+    bool(_JAX_EXTRA_MISSING),
+    reason=f"needs the optional jax extra, missing: {', '.join(_JAX_EXTRA_MISSING)}",
+)
+"""Only the tests that compare the installed roster or versions with the golden need jax.
+
+The golden records a jax row and the jax/optimistix versions; without the extra,
+``get_backends()`` drops the jax backend. CI ``test-matrix`` installs without it on purpose.
+"""
+
 FIXTURES = Path(__file__).parent / "fixtures"
 GOLDEN = FIXTURES / "tolerance_default_golden.json"
 BASE_COMMIT = "34cf94d63ecb2f2057291a71aabd5c4d54d42e76"
@@ -106,6 +117,7 @@ def _skip_unless_golden_host(golden: dict[str, Any], group: str) -> None:
         )
 
 
+@needs_jax
 def test_golden_comes_from_the_base_code() -> None:
     golden = _golden()
     assert golden["oracles_commit"] == BASE_COMMIT
@@ -121,6 +133,7 @@ def test_every_golden_backend_is_in_exactly_one_host_bound_group() -> None:
     assert set(_golden()["outcomes"]) == ALL_BOUND
 
 
+@needs_jax
 @pytest.mark.parametrize("call", CALLS)
 def test_default_mode_runs_exactly_the_golden_backends(call: str) -> None:
     """Runs on every host: the default roster is the golden's backend set."""
