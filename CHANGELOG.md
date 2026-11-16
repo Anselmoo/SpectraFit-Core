@@ -99,6 +99,11 @@ This project follows repository release policy enforced by `repo-release-tools`.
   `remove <case> from the known-failure list (<issue>)`, so the list cannot go
   stale. `--json` output gains a `known_failures` key. The gate thresholds are
   unchanged.
+- **Claude PR review on current models.** The review workflow now runs on
+  `claude-sonnet-5-5` (was `claude-sonnet-5`) and sets
+  `ANTHROPIC_DEFAULT_HAIKU_MODEL` to `claude-haiku-5-5`, so Claude Code's
+  background and `haiku` tasks no longer fall back to the bundled
+  `claude-haiku-4-5`. CI only.
 
 ### Fixed
 
