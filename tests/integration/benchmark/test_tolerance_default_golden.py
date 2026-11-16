@@ -34,6 +34,12 @@ import pytest
 from oracles.backends import get_backends
 from oracles.cases import build_catalog
 
+# The golden records a jax row and the jax/optimistix versions, so the file needs the
+# optional ``jax`` extra; without it ``get_backends()`` drops the jax backend. Skip
+# like the other jax tests (CI ``test-matrix`` deliberately installs without jax).
+pytest.importorskip("jax", reason="the tolerance golden needs the optional jax extra")
+pytest.importorskip("optimistix", reason="the tolerance golden needs the optional jax extra")
+
 FIXTURES = Path(__file__).parent / "fixtures"
 GOLDEN = FIXTURES / "tolerance_default_golden.json"
 BASE_COMMIT = "34cf94d63ecb2f2057291a71aabd5c4d54d42e76"
