@@ -54,6 +54,10 @@ jobs:
       - name: Run Claude review report
         id: claude-report
         uses: anthropics/claude-code-action@756cc22e19660d20e8cc9496b4f242475a7f7790  # v1
+        env:
+          # Claude Code's `haiku` alias and background tasks; without it the
+          # bundled default applies (claude-haiku-4-5 in the #52 run footer).
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: claude-haiku-5-5
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
@@ -84,7 +88,7 @@ jobs:
             multi-line code in fenced code blocks.
             Do not post anything yourself; answer only with the structured output.
           claude_args: |
-            --model claude-sonnet-5
+            --model claude-sonnet-5-5
             --allowedTools "Read,Glob,Grep,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git show:*)"
             --json-schema '{"type":"object","additionalProperties":false,"required":["summary","must","should","could","dont","checked"],"properties":{"summary":{"type":"string"},"must":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"should":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"could":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","line","title","issue","action"],"properties":{"path":{"type":"string"},"line":{"type":"integer"},"title":{"type":"string"},"issue":{"type":"string"},"action":{"type":"string"},"suggestion":{"type":"string"}}}},"dont":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["what","why"],"properties":{"what":{"type":"string"},"why":{"type":"string"}}}},"checked":{"type":"array","items":{"type":"string"}}}}'
 
