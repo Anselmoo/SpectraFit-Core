@@ -35,13 +35,25 @@ section below), written by the same call and gitignored the same way as the two
 artifacts above. ``matplotlib>=3.8`` is already a ``docs`` dependency-group package
 (``pyproject.toml``), so this adds no new dependency — only a third write from the one
 manifest read this module already does.
+
+The gate shown on both artifacts applies the shrink-only known-failure list of
+:mod:`oracles.known_failures`, the list the ``benchmark_gate`` command reads: a listed
+case that regresses is shown as a known failure (case id and failure class only) and is
+not counted as a regression. The speed figures are labelled as CI-runner measurements
+when the page is rendered inside a CI job (``CI=true``), which is where the published
+manifest comes from.
 """
 
 from __future__ import annotations
 
 import json
 import os
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
+
+from oracles.known_failures import KNOWN_FAILURES, KnownFailure, classify_known_failures
+from pydantic import BaseModel, ConfigDict
 
 DOCS_DIR = Path(__file__).parent
 REPO_ROOT = DOCS_DIR.parent
@@ -74,22 +86,170 @@ _NO_DATA_HERO_PROOF = """\
 </div>
 """
 
+CI_RUNNER_LABEL = "measured on a CI runner"
+"""Label attached to speed figures when the page is rendered inside a CI job."""
 
-def _format_summary(manifest: dict, figures: dict[str, str]) -> str:
+
+def running_in_ci(environ: Mapping[str, str] | None = None) -> bool:
+    """Return whether the page is rendered inside a CI job.
+
+    GitHub Actions and GitLab CI both set ``CI=true``; the published manifest is
+    fetched from a benchmark job of the same pipeline system, so its timings come from
+    a CI runner. A local build renders without the label because its manifest may
+    come from any machine.
+
+    Args:
+        environ (Mapping[str, str] | None): Environment to read; ``None`` reads
+            :data:`os.environ`.
+
+    Returns:
+        bool: ``True`` when ``CI`` is ``true`` (case-insensitive).
+    """
+    env = os.environ if environ is None else environ
+    return env.get("CI", "").lower() == "true"
+
+
+class KnownFailureRow(BaseModel):
+    """The public part of one known-failure entry: what the docs may show.
+
+    The entry's ``issue`` and ``removal_condition`` fields are deliberately absent, so
+    no rendering path can reach them.
+
+    Attributes:
+        case_id (str): Suite case id, e.g. ``CX-009``.
+        failure_class (str): Failure class from :data:`oracles.known_failures.KnownFailureClass`.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    case_id: str
+    failure_class: str
+
+
+class GateView(BaseModel):
+    """Gate verdict of one run with the known-failure list applied.
+
+    Attributes:
+        state (str): Overall gate state (``pass``, ``warn`` or ``fail``).
+        regressions (int): Regressions that count against the gate.
+        known_failures (list[KnownFailureRow]): Listed cases that regress in this run,
+            in list order.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    state: str
+    regressions: int
+    known_failures: list[KnownFailureRow]
+
+
+def gate_view(
+    manifest: dict[str, Any],
+    known_failures: Sequence[KnownFailure] = KNOWN_FAILURES,
+) -> GateView:
+    """Recompute the run's default gate with the known-failure list applied.
+
+    The listed cases are split off the manifest's ``regression_case_ids`` by
+    :func:`oracles.known_failures.classify_known_failures`, the function the
+    ``benchmark_gate`` command uses, and the remaining ids go through
+    :func:`oracles.reports._compute_default_gate_state`, the function that wrote the
+    manifest's ``gate_state``. The speed and accuracy axes use the same thresholds as
+    the stored state; only the regression count changes. The evidence-conditional axes
+    of ``benchmark_gate`` (stale list entries, model selection, calibration) need
+    ``results.json`` and are not part of this verdict. The import of
+    :mod:`oracles.reports` is deferred because it loads the compiled extension, which a
+    build without a manifest never needs.
+
+    Args:
+        manifest (dict[str, Any]): Parsed ``manifest.json`` of one run.
+        known_failures (Sequence[KnownFailure]): The known-failure list; defaults to
+            :data:`oracles.known_failures.KNOWN_FAILURES`.
+
+    Returns:
+        GateView: Overall state, counted regressions and the listed cases that
+        regress in this run. A manifest without ``regression_case_ids`` cannot be
+        matched against the list, so its stored ``gate_state`` and ``regressions`` are
+        returned unchanged with no known failures.
+    """
+    from oracles.reports import _compute_default_gate_state
+
+    regression_ids = manifest.get("regression_case_ids")
+    if regression_ids is None:
+        return GateView(
+            state=manifest["gate_state"],
+            regressions=int(manifest["regressions"]),
+            known_failures=[],
+        )
+    counted, results = classify_known_failures(list(regression_ids), None, known_failures)
+    state = _compute_default_gate_state(
+        float(manifest["geomean_speedup_vs_baseline"]),
+        float(manifest["max_abs_delta_r2"]),
+        counted,
+        list(manifest.get("nonfinite_dr2_case_ids") or []),
+    )
+    rows = [
+        KnownFailureRow(case_id=r.entry.case_id, failure_class=r.entry.failure_class)
+        for r in results
+        if r.status == "failing"
+    ]
+    return GateView(state=state, regressions=len(counted), known_failures=rows)
+
+
+def _format_known_failures_section(gate: GateView) -> str:
+    """Markdown section listing the run's known failures, or ``""`` when there are none.
+
+    Args:
+        gate (GateView): Gate verdict of the run.
+
+    Returns:
+        str: A heading, a short explanation and a case-id / failure-class table.
+    """
+    if not gate.known_failures:
+        return ""
+    rows = "\n".join(f"| `{row.case_id}` | `{row.failure_class}` |" for row in gate.known_failures)
+    return f"""
+## Known failures
+
+These cases regress in this run and are on the known-failure list of the benchmark
+gate, which does not count them as regressions. An entry is removed from the list when
+its removal condition holds. The interactive report (report.html) still counts these
+cases as regressions until it is updated.
+
+| Case | Failure class |
+| --- | --- |
+{rows}
+"""
+
+
+def _format_summary(
+    manifest: dict[str, Any],
+    figures: dict[str, str],
+    gate: GateView,
+    *,
+    ci_runner: bool = False,
+) -> str:
     """Render the manifest's headline fields as a markdown page.
 
     *figures* is whatever :func:`_render_figures` managed to write for this
     manifest (``{}`` when matplotlib wasn't importable) — passed in rather
     than recomputed here so this stays a pure string builder like every
     other ``_format_*`` function; the actual file I/O lives in :func:`render`.
+    *gate* is the verdict from :func:`gate_view`; the gate and regression rows read
+    it instead of the manifest's stored ``gate_state`` and ``regressions``. With
+    *ci_runner* the speedup row and the run line state that timings come from a CI
+    runner.
     """
-    gate = manifest["gate_state"]
-    gate_badge = "✅ **PASS**" if gate == "pass" else f"❌ **{gate.upper()}**"
+    gate_badge = "✅ **PASS**" if gate.state == "pass" else f"❌ **{gate.state.upper()}**"
     baseline = manifest["baseline_solver_id"]
     speedup = manifest["geomean_speedup_vs_baseline"]
     win_rate = manifest["spectrafit_win_rate"]
     max_dr2 = manifest["max_abs_delta_r2"]
-    regressions = manifest["regressions"]
+    speedup_label = f" ({CI_RUNNER_LABEL})" if ci_runner else ""
+    timing_note = (
+        " Timings were measured on a CI runner; speed figures on other hardware can differ."
+        if ci_runner
+        else ""
+    )
     return f"""\
 ---
 icon: lucide/gauge
@@ -100,7 +260,7 @@ icon: lucide/gauge
 Generated from run `{manifest["run_id"]}` ({manifest["date"]}), {manifest["n_cases"]} cases,
 baseline solver `{baseline}`. Regenerated on every docs build from the latest benchmark
 run — see [Benchmark engine](../contributor-guide/benchmark-engine.md) for how
-this number is produced and what it gates.
+this number is produced and what it gates.{timing_note}
 
 !!! note "This page is a teaser — the full report is one click away"
     Everything below is a summary. For the complete, self-contained
@@ -120,11 +280,12 @@ this number is produced and what it gates.
 | Metric | Value |
 | --- | --- |
 | Gate | {gate_badge} |
-| Geomean speedup vs. `{baseline}` | {speedup:.2f}× |
+| Geomean speedup vs. `{baseline}`{speedup_label} | {speedup:.2f}× |
 | spectrafit win rate | {win_rate:.1%} |
 | Max `\\|Δr²\\|` vs. `{baseline}` | {max_dr2:.2e} |
-| Regressions | {regressions} |
-
+| Regressions | {gate.regressions} |
+| Known failures | {len(gate.known_failures)} |
+{_format_known_failures_section(gate)}
 !!! note "Reading the win rate: `optfn` pulls it down on quality, not speed"
     `spectrafit win rate` is a composite score (r²·speedup) blended across
     **every** case category, including `optfn` — deliberately multimodal
@@ -858,7 +1019,7 @@ it — how consistent each backend actually is from case to case.
 """
 
 
-def _format_hero_proof(manifest: dict) -> str:
+def _format_hero_proof(manifest: dict[str, Any], gate: GateView, *, ci_runner: bool = False) -> str:
     """Render the manifest's headline fields as a compact homepage proof strip.
 
     Carries the run scope (case count, run id, date) alongside the headline
@@ -868,29 +1029,38 @@ def _format_hero_proof(manifest: dict) -> str:
     and its scope must stay traceable back to the run it came from rather than
     silently disagreeing with an older, smaller pinned run quoted elsewhere
     (e.g. ``LIMITATIONS.md``).
+
+    *gate* is the verdict from :func:`gate_view`: the badge and the regression count
+    read it, and the known failures get their own metric with their case ids. With
+    *ci_runner* the speedup is labelled with :data:`CI_RUNNER_LABEL`.
     """
-    gate = manifest["gate_state"]
-    passed = gate == "pass"
+    passed = gate.state == "pass"
     badge_class = "sf-hero__proof-badge--pass" if passed else "sf-hero__proof-badge--fail"
-    badge_text = "Gate: PASS" if passed else f"Gate: {gate.upper()}"
+    badge_text = "Gate: PASS" if passed else f"Gate: {gate.state.upper()}"
     baseline = manifest["baseline_solver_id"]
     speedup = manifest["geomean_speedup_vs_baseline"]
-    regressions = manifest["regressions"]
     run_id = manifest["run_id"]
     date = manifest["date"]
     n_cases = manifest["n_cases"]
+    speedup_label = f", {CI_RUNNER_LABEL}" if ci_runner else ""
+    known = ""
+    if gate.known_failures:
+        ids = ", ".join(row.case_id for row in gate.known_failures)
+        count = len(gate.known_failures)
+        noun = "known failure" if count == 1 else "known failures"
+        known = f'\n  <span class="sf-hero__proof-metric">{count} {noun}: {ids}</span>'
     return f"""\
 <div class="sf-hero__proof">
   <span class="sf-hero__proof-badge {badge_class}">{badge_text}</span>
-  <span class="sf-hero__proof-metric">{speedup:.2f}&times; geomean vs. {baseline}</span>
-  <span class="sf-hero__proof-metric">{regressions} regressions</span>
+  <span class="sf-hero__proof-metric">{speedup:.2f}&times; geomean vs. {baseline}{speedup_label}</span>
+  <span class="sf-hero__proof-metric">{gate.regressions} regressions</span>{known}
   <a class="sf-hero__proof-link" href="{{{{ 'performance/' | url }}}}">Full benchmark &rarr;</a>
   <span class="sf-hero__proof-scope">{n_cases} cases &middot; run <code>{run_id}</code> &middot; {date}</span>
 </div>
 """
 
 
-def render(manifest_path: str | None) -> tuple[Path, Path]:
+def render(manifest_path: str | None, *, ci_runner: bool = False) -> tuple[Path, Path]:
     """Write ``docs/performance/index.md`` and the hero proof strip, returning both paths.
 
     Falls back to the "no data yet" placeholders when *manifest_path* is unset or the
@@ -898,7 +1068,8 @@ def render(manifest_path: str | None) -> tuple[Path, Path]:
     returns BEFORE ``_render_figures`` is ever called: no manifest means no figures,
     not empty/placeholder ones, and it means matplotlib is never even imported for a
     no-data build — the same "don't pay for what you don't need" reasoning as
-    ``resolve_manifest``'s lazy ``oracles.reports`` import below.
+    ``resolve_manifest``'s lazy ``oracles.reports`` import below. *ci_runner* labels
+    the speed figures as CI-runner measurements on both artifacts.
     """
     PAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
     HERO_PROOF_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -908,8 +1079,15 @@ def render(manifest_path: str | None) -> tuple[Path, Path]:
         return PAGE_PATH, HERO_PROOF_PATH
     manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     figures = _render_figures(manifest)
-    PAGE_PATH.write_text(_format_summary(manifest, figures), encoding="utf-8")
-    HERO_PROOF_PATH.write_text(_format_hero_proof(manifest), encoding="utf-8")
+    gate = gate_view(manifest)
+    PAGE_PATH.write_text(
+        _format_summary(manifest, figures, gate, ci_runner=ci_runner),
+        encoding="utf-8",
+    )
+    HERO_PROOF_PATH.write_text(
+        _format_hero_proof(manifest, gate, ci_runner=ci_runner),
+        encoding="utf-8",
+    )
     return PAGE_PATH, HERO_PROOF_PATH
 
 
@@ -950,6 +1128,6 @@ if __name__ == "__main__":
     # Name the run actually used — a silent fallback to an unexpected local run
     # is otherwise indistinguishable from a correct one in the build log.
     print(f"manifest: {resolved or '<none — rendering placeholders>'}")
-    page, proof = render(resolved)
+    page, proof = render(resolved, ci_runner=running_in_ci())
     print(f"wrote {page}")
     print(f"wrote {proof}")

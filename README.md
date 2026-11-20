@@ -22,6 +22,8 @@
 
 > **Status: beta (`0.1.3`).** APIs and the benchmark contract may still change before the stable 1.0 release. See [LIMITATIONS.md](LIMITATIONS.md) for disclosed gaps.
 
+**Reproducibility archive:** results and figures regenerated from the published release, [doi:10.5281/zenodo.23171640](https://doi.org/10.5281/zenodo.23171640).
+
 **Documentation:** <https://anselmoo.github.io/SpectraFit-Core/> — start with
 [Installation](https://anselmoo.github.io/SpectraFit-Core/getting-started/installation/)
 and [Quickstart](https://anselmoo.github.io/SpectraFit-Core/getting-started/quickstart/).

@@ -24,6 +24,18 @@ This project follows repository release policy enforced by `repo-release-tools`.
 
 ## [Unreleased]
 
+### Changed
+
+- **Benchmark gate summary in the documentation.** The homepage proof strip
+  and the performance page recompute the default gate verdict with the
+  known-failure list of `benchmark_gate` (`oracles.known_failures`) and show
+  the listed cases that regress in the run separately (the performance page
+  with their failure class); the timing figures are labelled as CI-runner
+  measurements when the docs are built in CI. The performance page notes
+  that the interactive report (report.html) still counts these cases as
+  regressions. The README links the reproducibility archive (concept DOI
+  10.5281/zenodo.23171640).
+
 ## [0.1.3] - 2026-11-16
 
 ### Added
